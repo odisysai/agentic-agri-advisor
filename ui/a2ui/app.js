@@ -129,6 +129,9 @@ document.addEventListener('DOMContentLoaded', () => {
             o.textContent = opt;
             select.appendChild(o);
           });
+          if (field.value !== undefined) {
+            select.value = field.value.toLowerCase();
+          }
           fRow.appendChild(select);
         } else if (field.type === 'input') {
           const input = document.createElement('input');
@@ -140,6 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
           input.style.color = 'var(--text-main)';
           input.style.border = '1px solid var(--border)';
           input.style.borderRadius = '4px';
+          if (field.value !== undefined) {
+            input.value = field.value;
+          }
           fRow.appendChild(input);
         }
         form.appendChild(fRow);

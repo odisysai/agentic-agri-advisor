@@ -1,0 +1,74 @@
+{
+  "type": "card",
+  "title": "Farmer Digital Twin Profile",
+  "theme": "info",
+  "components": [
+    {
+      "type": "text",
+      "value": "Configure your farm parameters to enable micro-personalized advisory updates from the agents."
+    },
+    {
+      "type": "form",
+      "fields": [
+        {
+          "type": "input",
+          "name": "farmer_name",
+          "label": "Farmer Name",
+          "placeholder": "Enter your name"
+        },
+        {
+          "type": "select",
+          "name": "region",
+          "label": "Farm Location / District",
+          "options": [
+            "Maharashtra (India)",
+            "Punjab (India)",
+            "Rift Valley (Kenya)",
+            "West Region (Ghana)"
+          ]
+        },
+        {
+          "type": "input",
+          "name": "acres",
+          "label": "Farm Size (Acres)",
+          "placeholder": "e.g. 5"
+        },
+        {
+          "type": "select",
+          "name": "soil_type",
+          "label": "Soil Composition",
+          "options": [
+            "Black Clay (Cotton Soil)",
+            "Red Sandy Loam",
+            "Alluvial",
+            "Clay Loam"
+          ]
+        },
+        {
+          "type": "select",
+          "name": "primary_crop",
+          "label": "Current Crop Type",
+          "options": [
+            "Corn",
+            "Wheat",
+            "Soybeans"
+          ]
+        },
+        {
+          "type": "select",
+          "name": "has_drip",
+          "label": "Has Drip Irrigation System?",
+          "options": [
+            "Yes",
+            "No"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "button",
+      "label": "💾 Save & Sync Profile",
+      "action": "save_farmer_profile"
+    }
+  ]
+}

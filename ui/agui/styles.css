@@ -76,13 +76,22 @@ body {
   letter-spacing: 0.5px;
 }
 
-.date-selector {
-  font-size: 0.9rem;
-  color: var(--text-sub);
+.field-select-dropdown {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.85rem;
+  color: var(--text-main);
   background-color: var(--panel-bg);
   padding: 0.4rem 0.8rem;
   border-radius: var(--radius-s);
   border: 1px solid var(--border);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.field-select-dropdown:hover, .field-select-dropdown:focus {
+  border-color: var(--accent);
+  box-shadow: var(--m3-glow);
 }
 
 /* Dynamic A2UI Canvas Container */
@@ -236,6 +245,16 @@ body {
   color: var(--text-sub);
   font-style: italic;
   box-shadow: none;
+}
+
+.speak-msg-btn {
+  opacity: 0.5;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.speak-msg-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
 }
 
 /* Input Bar */
@@ -528,3 +547,44 @@ body {
   from { transform: translateX(0); opacity: 1; }
   to { transform: translateX(120%); opacity: 0; }
 }
+
+/* Workspace Segmented Tabs */
+.workspace-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+  background-color: var(--sidebar-bg);
+  padding: 0.4rem;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--border);
+}
+
+.tab-btn {
+  background: transparent;
+  color: var(--text-sub);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.tab-btn:hover {
+  color: var(--text-main);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.2);
+}
+

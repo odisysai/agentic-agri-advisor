@@ -37,6 +37,19 @@ async def fetch_commodity_price(commodity: str) -> dict:
         change_pct = round(((raw_price - prev_close) / prev_close) * 100, 2)
         trend = "up" if change_pct >= 0 else "down"
         
+        # Local Conversions for Indian (INR) and East African (KES) farmers
+        inr_per_usd = 83.5
+        kes_per_usd = 130.0
+        # Bushel to Metric Quintal (100 kg) conversion factors
+        bushel_weights = {
+            "corn": 0.254,      # 25.4 kg per bushel
+            "wheat": 0.272,     # 27.21 kg per bushel
+            "soybeans": 0.272   # 27.21 kg per bushel
+        }
+        weight_factor = bushel_weights.get(name, 0.27)
+        price_inr_quintal = round((usd_price / weight_factor) * inr_per_usd, 0)
+        price_kes_quintal = round((usd_price / weight_factor) * kes_per_usd, 0)
+        
         return {
             "commodity": name,
             "price_usd": usd_price,
@@ -44,7 +57,11 @@ async def fetch_commodity_price(commodity: str) -> dict:
             "ticker": ticker,
             "change_percent": change_pct,
             "trend": trend,
-            "source": "Yahoo Finance Real-Time Futures API"
+            "local_market_estimates": {
+                "india_inr_per_quintal": price_inr_quintal,
+                "kenya_kes_per_quintal": price_kes_quintal
+            },
+            "source": "Yahoo Finance Real-Time Futures & Local Conversion Engine"
         }
     except Exception as e:
         fallback_rates = {"corn": 4.50, "wheat": 6.12, "soybeans": 11.20}

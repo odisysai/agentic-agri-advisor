@@ -12,12 +12,21 @@ async def fetch_weather_forecast(location: str, days: int = 5) -> dict:
         location: Coordinate string 'lat,lon' (e.g., '41.85,-87.65') or a city name.
         days: Forecast period in days (max 7).
     """
-    lat, lon = 41.85, -87.65
+    lat, lon = 18.52, 73.85  # Default fallback coordinates (Pune, India)
     try:
         if "," in location:
             parts = location.split(",")
             lat = float(parts[0].strip())
             lon = float(parts[1].strip())
+        else:
+            import urllib.parse
+            geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={urllib.parse.quote(location)}&count=1&format=json"
+            geo_res = urllib.request.urlopen(geo_url, timeout=5)
+            geo_data = json.loads(geo_res.read().decode())
+            results = geo_data.get("results", [])
+            if results:
+                lat = float(results[0]["latitude"])
+                lon = float(results[0]["longitude"])
     except Exception:
         pass
         

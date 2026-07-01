@@ -26,7 +26,7 @@
         {
           "type": "metric",
           "label": "Soil Temp",
-          "value": "23\u00b0C",
+          "value": "22\u00b0C",
           "status": "optimal"
         }
       ]

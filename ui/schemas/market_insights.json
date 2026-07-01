@@ -14,19 +14,19 @@
         {
           "type": "metric",
           "label": "CBOT Corn / bu",
-          "value": "$4.19",
+          "value": "$4.32",
           "status": "optimal"
         },
         {
           "type": "metric",
           "label": "CBOT Wheat / bu",
-          "value": "$5.91",
+          "value": "$5.81",
           "status": "warning"
         },
         {
           "type": "metric",
           "label": "CBOT Soy / bu",
-          "value": "$11.53",
+          "value": "$11.42",
           "status": "optimal"
         }
       ]

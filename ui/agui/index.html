@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AAA Advisor - Hybrid Workspace</title>
+  <title>Krishi Sampark - Traditional Agriculture Advisor</title>
   <link rel="stylesheet" href="styles.css">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
@@ -12,9 +12,34 @@
     <!-- Left Pane: Dynamic UI Workspace -->
     <aside class="workspace-pane">
       <header class="workspace-header">
-        <div class="logo">AAA Workspace</div>
-        <div class="date-selector">Rabi Season 2026</div>
+        <div class="logo">🌾 Krishi Sampark</div>
+        <div class="header-selectors" style="display: flex; gap: 0.5rem; align-items: center;">
+          <select id="field-selector" class="field-select-dropdown">
+            <option value="">Loading Fields...</option>
+          </select>
+          <select id="language-selector" class="field-select-dropdown">
+            <option value="English">English</option>
+            <option value="Hindi">Hindi (हिंदी)</option>
+            <option value="Marathi">Marathi (मराठी)</option>
+            <option value="Telugu">Telugu (తెలుగు)</option>
+            <option value="Swahili">Swahili (Kiswahili)</option>
+          </select>
+          <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.85rem; color: var(--text-main); cursor: pointer; user-select: none;">
+            <input type="checkbox" id="tts-toggle" style="cursor: pointer;">
+            🔊 Auto-Speak
+          </label>
+        </div>
       </header>
+      
+      <!-- Horizontal Tab Segment Controls -->
+      <nav class="workspace-tabs" id="dashboard-nav">
+        <a href="#" data-schema="crop_dashboard" class="tab-btn active">🌾 Health</a>
+        <a href="#" data-schema="irrigation_planner" class="tab-btn">💧 Irrigation</a>
+        <a href="#" data-schema="pest_alert" class="tab-btn">🐛 Pests</a>
+        <a href="#" data-schema="market_insights" class="tab-btn">📈 Markets</a>
+        <a href="#" data-schema="simulation" class="tab-btn">🎮 Simulator</a>
+        <a href="#" id="nav-profile-link" data-schema="farmer_profile" class="tab-btn">🧬 Profile</a>
+      </nav>
       
       <!-- Dynamic A2UI Canvas -->
       <div class="canvas-container">
@@ -32,10 +57,10 @@
     <!-- Right Pane: Persistent Assistant Chat Panel -->
     <main class="chat-pane">
       <header class="chat-header">
-        <h2>Advisor Chat Portal</h2>
+        <h2>Krishi Sastri Chat Portal</h2>
         <div class="system-status">
-          <span class="status-indicator online"></span>
-          <span class="status-text">Agents Online</span>
+          <span id="agents-status-indicator" class="status-indicator online"></span>
+          <span id="agents-status-text" class="status-text">Agents Online</span>
         </div>
       </header>
 
