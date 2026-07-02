@@ -1,108 +1,88 @@
 {
-    "REQ-AAA-001": {
-        "title": "Multilingual UI (English, Hindi, Marathi, Telugu, Swahili)",
-        "adr": "ADR-AAA-001",
-        "source_files": [
-            "ui/agui/translations.js",
-            "ui/agui/index.html"
-        ],
-        "tests": [
-            "tests/integration/test_localization.py"
-        ],
-        "controls": "UX-Localization-Verification"
+  "status": "WARNING",
+  "generatedAt": "2026-07-02T18:32:45+00:00",
+  "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+  "duplicateIds": [],
+  "requirements": [
+    {
+      "id": "REQ-AAA-001",
+      "title": "Multilingual UI",
+      "adr": "docs/adr/ADR-AAA-001.md",
+      "source_files": [
+        "ui/agui/translations.js",
+        "ui/agui/index.html"
+      ],
+      "tests": [
+        "tests/integration/test_localization.py"
+      ],
+      "security_controls": [],
+      "safety_controls": [],
+      "adr_status": "GAP",
+      "source_status": {
+        "ui/agui/translations.js": "OK",
+        "ui/agui/index.html": "OK"
+      },
+      "test_status": {
+        "tests/integration/test_localization.py": "OK"
+      },
+      "status": "GAP",
+      "gaps": [
+        "missing ADR docs/adr/ADR-AAA-001.md"
+      ]
     },
-    "REQ-AAA-002": {
-        "title": "Offline-First Operation & Storage",
-        "adr": "ADR-AAA-002",
-        "source_files": [
-            "ui/sw.js",
-            "ui/agui/local_db.js"
-        ],
-        "tests": [
-            "tests/integration/test_phase4.py"
-        ],
-        "controls": "Service-Worker-Verification"
+    {
+      "id": "REQ-AAA-002",
+      "title": "Offline-First Operation & Storage",
+      "adr": "docs/adr/ADR-AAA-002.md",
+      "source_files": [
+        "ui/sw.js",
+        "ui/agui/local_db.js"
+      ],
+      "tests": [
+        "tests/integration/test_phase4.py"
+      ],
+      "security_controls": [],
+      "safety_controls": [],
+      "adr_status": "GAP",
+      "source_status": {
+        "ui/sw.js": "OK",
+        "ui/agui/local_db.js": "OK"
+      },
+      "test_status": {
+        "tests/integration/test_phase4.py": "OK"
+      },
+      "status": "GAP",
+      "gaps": [
+        "missing ADR docs/adr/ADR-AAA-002.md"
+      ]
     },
-    "REQ-AAA-003": {
-        "title": "Voice-First Interaction & STT/TTS",
-        "adr": "ADR-AAA-003",
-        "source_files": [
-            "ui/agui/voice.js"
-        ],
-        "tests": [
-            "tests/integration/test_phase4.py"
-        ],
-        "controls": "Voice-AutoSpeak-Verification"
-    },
-    "REQ-AAA-004": {
-        "title": "Farmer Mode Dynamic Advisor & AI-Twin Profile",
-        "adr": "ADR-AAA-004",
-        "source_files": [
-            "agents/coordinator/agent.py",
-            "ui/agui/dashboard.js"
-        ],
-        "tests": [
-            "tests/integration/test_agent.py"
-        ],
-        "controls": "Ask-Prompt-Enforcement"
-    },
-    "REQ-AAA-005": {
-        "title": "Agricultural Safety Kernel Advice Audit",
-        "adr": "ADR-AAA-005",
-        "source_files": [
-            "app/fast_api_app.py"
-        ],
-        "tests": [
-            "tests/integration/test_server_e2e.py"
-        ],
-        "controls": "Safety-Kernel-Escalation"
-    },
-    "REQ-AAA-006": {
-        "title": "Regional Outbreak Intel Map Tracking",
-        "adr": "ADR-AAA-006",
-        "source_files": [
-            "ui/schemas/regional_risk_map.json",
-            "ui/agui/expert_dashboards.js"
-        ],
-        "tests": [
-            "tests/integration/test_collapsible_nav.py"
-        ],
-        "controls": "Outbreak-Triage-Queue"
-    },
-    "REQ-AAA-007": {
-        "title": "Reliable DLQ & Synchronization Queue",
-        "adr": "ADR-AAA-007",
-        "source_files": [
-            "ui/agui/local_db.js",
-            "ui/agui/dashboard.js"
-        ],
-        "tests": [
-            "tests/integration/test_phase5.py"
-        ],
-        "controls": "Sync-Retry-DLQ"
-    },
-    "REQ-AAA-008": {
-        "title": "observability Log Audit Trails",
-        "adr": "ADR-AAA-008",
-        "source_files": [
-            "app/fast_api_app.py",
-            "ui/agui/dashboard.js"
-        ],
-        "tests": [
-            "tests/integration/test_phase5.py"
-        ],
-        "controls": "Log-Audit-Correlation"
-    },
-    "REQ-AAA-009": {
-        "title": "Collapsible Left Navigation Layout",
-        "adr": "ADR-AAA-009",
-        "source_files": [
-            "ui/agui/index.html",
-            "ui/agui/dashboard.js"
-        ],
-        "tests": [
-            "tests/integration/test_collapsible_nav.py"
-        ],
-        "controls": "Layout-Responsive-Checks"
+    {
+      "id": "REQ-AAA-005",
+      "title": "Agricultural Safety Kernel Advice Audit",
+      "adr": "docs/adr/ADR-AAA-005.md",
+      "source_files": [
+        "app/fast_api_app.py",
+        "ui/agui/dashboard.js"
+      ],
+      "tests": [
+        "tests/integration/test_server_e2e.py"
+      ],
+      "security_controls": [],
+      "safety_controls": [
+        "safety-validation"
+      ],
+      "adr_status": "GAP",
+      "source_status": {
+        "app/fast_api_app.py": "OK",
+        "ui/agui/dashboard.js": "OK"
+      },
+      "test_status": {
+        "tests/integration/test_server_e2e.py": "OK"
+      },
+      "status": "GAP",
+      "gaps": [
+        "missing ADR docs/adr/ADR-AAA-005.md"
+      ]
     }
+  ]
 }

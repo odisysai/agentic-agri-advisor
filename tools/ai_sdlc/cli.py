@@ -1,119 +1,115 @@
 import argparse
-import os
 import subprocess
 import sys
 
 
-def run_script(module_name):
-    # Runs the script under tools/ai_sdlc
-    fpath = f"tools/ai_sdlc/{module_name}.py"
-    if not os.path.exists(fpath):
-        print(f"❌ Diagnostic script {fpath} not found.")
-        return 1
+def run_module(module_name: str, *args: str) -> int:
+    command = [sys.executable, "-m", f"tools.ai_sdlc.{module_name}", *args]
+    result = subprocess.run(command, check=False)
+    return result.returncode
 
-    try:
-        # Run using virtualenv python if available
-        py_bin = ".venv/bin/python" if os.path.exists(".venv/bin/python") else sys.executable
-        res = subprocess.run([py_bin, fpath], capture_output=False)
-        return res.returncode
-    except Exception as e:
-        print(f"❌ Failed to run script {fpath}: {e}")
-        return 1
 
-def main():
-    parser = argparse.ArgumentParser(description="Krishi Sampark - AI-SDLC Unified CLI")
-    subparsers = parser.add_subparsers(dest="command", help="AI-SDLC Command Target")
+def combine(codes: list[int]) -> int:
+    return 1 if any(code != 0 for code in codes) else 0
 
-    # 1. validate command
-    val_parser = subparsers.add_parser("validate", help="Validate translation keys, A2UI schemas, and script leaks")
-    val_parser.add_argument("--all", action="store_true", help="Run all static validation gates")
-    val_parser.add_argument("--schemas", action="store_true", help="Run only A2UI schema validations")
-    val_parser.add_argument("--translations", action="store_true", help="Run translation dictionary checks")
-    val_parser.add_argument("--safety", action="store_true", help="Run Agricultural Safety Kernel compliance checks")
 
-    # 2. requirements command
-    subparsers.add_parser("requirements", help="Run requirements tracking and update traceability")
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Krishi Sampark AI-SDLC CLI")
+    subparsers = parser.add_subparsers(dest="command")
 
-    # 3. architecture command
-    subparsers.add_parser("architecture", help="Run architectural impact check and write ADR")
+    validate = subparsers.add_parser("validate")
+    validate.add_argument("--all", action="store_true")
+    validate.add_argument("--schemas", action="store_true")
+    validate.add_argument("--translations", action="store_true")
+    validate.add_argument("--safety", action="store_true")
 
-    # 4. test command
-    test_parser = subparsers.add_parser("test", help="Execute the complete test suite and package logs")
-    test_parser.add_argument("--evidence", action="store_true", help="Collect test coverage evidence JSON")
+    subparsers.add_parser("requirements")
 
-    # 5. security command
-    subparsers.add_parser("security", help="Audit dependency vulnerabilities and scan history for secrets")
+    test = subparsers.add_parser("test")
+    test.add_argument("--evidence", action="store_true")
 
-    # 6. safety command
-    subparsers.add_parser("safety", help="Verify agronomist advice loops against Agricultural Safety Kernel")
+    security = subparsers.add_parser("security")
+    security.add_argument("--all", action="store_true")
+    security.add_argument("--secrets", action="store_true")
+    security.add_argument("--dependencies", action="store_true")
+    security.add_argument("--sast", action="store_true")
+    security.add_argument("--container", action="store_true")
 
-    # 7. devops command
-    subparsers.add_parser("devops", help="Validate PWA build environment configuration and syncer contracts")
+    subparsers.add_parser("safety")
 
-    # 8. evidence command
-    subparsers.add_parser("evidence", help="Compile signed evidence package reports")
+    evidence = subparsers.add_parser("evidence")
+    evidence.add_argument("--verify", action="store_true")
 
-    # 9. release command
-    rel_parser = subparsers.add_parser("release", help="Audit release criteria gates and generate scorecard report")
-    rel_parser.add_argument("--version", type=str, default="1.0.0", help="Release version target")
-    rel_parser.add_argument("--report", action="store_true", help="Output release readiness report markdown")
+    release = subparsers.add_parser("release")
+    release.add_argument("--version", default="1.0.0")
+    release.add_argument("--report", action="store_true")
 
     args = parser.parse_args()
-
     if not args.command:
         parser.print_help()
-        sys.exit(0)
+        return 2
 
-    code = 0
-    if args.command == "validate":
-        if args.all or args.schemas:
-            code |= run_script("validate_schemas")
-        if args.all or args.translations:
-            code |= run_script("validate_translations")
-            code |= run_script("detect_mixed_scripts")
-        if args.all or args.safety:
-            code |= run_script("validate_safety_policies")
+    try:
+        if args.command == "validate":
+            run_all = args.all or not (args.schemas or args.translations or args.safety)
+            codes = []
+            if run_all or args.schemas:
+                codes.append(run_module("validate_schemas"))
+            if run_all or args.translations:
+                codes.append(run_module("validate_translations"))
+                codes.append(run_module("detect_mixed_scripts"))
+            if run_all or args.safety:
+                codes.append(run_module("validate_safety_policies"))
+            return combine(codes)
 
-    elif args.command == "requirements":
-        code |= run_script("generate_traceability")
+        if args.command == "requirements":
+            return run_module("generate_traceability")
 
-    elif args.command == "architecture":
-        print("✅ ADR consistency verified.")
+        if args.command == "test":
+            if args.evidence:
+                return run_module("collect_test_evidence")
+            return subprocess.run([sys.executable, "-m", "pytest", "tests/", "--ignore=scratch/"], check=False).returncode
 
-    elif args.command == "test":
-        # Execute tests via pytest
-        try:
-            py_bin = ".venv/bin/pytest" if os.path.exists(".venv/bin/pytest") else "pytest"
-            res = subprocess.run([py_bin, "tests/", "--ignore=scratch/"])
-            code |= res.returncode
-        except Exception as e:
-            print(f"❌ Failed to run pytest suite: {e}")
-            code |= 1
+        if args.command == "security":
+            run_all = args.all or not (
+                args.secrets or args.dependencies or args.sast or args.container
+            )
+            codes = []
+            if run_all or args.secrets:
+                codes.append(run_module("run_secret_scan"))
+            if run_all or args.dependencies:
+                codes.append(run_module("run_dependency_scan"))
+            if run_all or args.sast:
+                codes.append(run_module("run_sast_scan"))
+            if run_all or args.container:
+                codes.append(run_module("run_container_scan"))
+            return combine(codes)
 
-        if args.evidence:
-            code |= run_script("collect_test_evidence")
+        if args.command == "safety":
+            return run_module("validate_safety_policies")
 
-    elif args.command == "security":
-        code |= run_script("validate_environment")
-        print("✅ Secret scan complete: 0 leaks found.")
-        print("✅ Dependency scan complete: 0 vulnerabilities found.")
+        if args.command == "evidence":
+            if args.verify:
+                return run_module("evidence")
+            codes = [
+                run_module("collect_test_evidence"),
+                run_module("generate_traceability"),
+                run_module("validate_safety_policies"),
+            ]
+            return combine(codes)
 
-    elif args.command == "safety":
-        code |= run_script("validate_safety_policies")
+        if args.command == "release":
+            scorecard = run_module("generate_quality_scorecard")
+            report = run_module("generate_release_report", "--version", args.version)
+            return combine([scorecard, report])
 
-    elif args.command == "devops":
-        code |= run_script("validate_environment")
-        code |= run_script("validate_sync_contracts")
+    except Exception as exc:
+        print(f"AI-SDLC CLI error: {exc}", file=sys.stderr)
+        return 1
 
-    elif args.command == "evidence":
-        code |= run_script("collect_test_evidence")
-        code |= run_script("generate_traceability")
+    parser.print_help()
+    return 2
 
-    elif args.command == "release":
-        code |= run_script("generate_quality_scorecard")
-        code |= run_script("generate_release_report")
 
-    sys.exit(code)
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    raise SystemExit(main())

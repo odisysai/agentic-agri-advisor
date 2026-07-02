@@ -105,3 +105,7 @@ Verify staging/production release eligibility and compile quality scorecards:
 ```bash
 make release-check
 ```
+
+The AI-SDLC gates are evidence-driven. Test, safety, traceability, and security reports are registered in `.ai-sdlc/evidence/evidence-manifest.json` with command, exit code, timestamp, commit SHA, and SHA-256. Missing scanners are reported as `NOT_EXECUTED`; they are not treated as clean scans.
+
+Production release readiness requires current evidence, a rollback reference, and a human approval in `.ai-sdlc/evidence/approvals/approvals.json` for the exact commit. The evidence is hashed and auditable, but it is not cryptographically signed.

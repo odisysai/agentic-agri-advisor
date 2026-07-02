@@ -1,0 +1,133 @@
+{
+  "artifacts": [
+    {
+      "artifactId": "coverage-results",
+      "artifactType": "coverage-results",
+      "path": ".ai-sdlc/evidence/tests/coverage.json",
+      "status": "NOT_EXECUTED",
+      "generatedAt": "2026-07-02T19:05:57+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "command": "coverage json",
+      "exitCode": null,
+      "sha256": "a3d038a99755f1b13895b2e34a0d817fcf4fad5a3f5c1dff43d3ae1565b42cf3",
+      "sourceTool": "coverage",
+      "metadata": {
+        "coverageXml": null
+      }
+    },
+    {
+      "artifactId": "safety-validation",
+      "artifactType": "safety-validation",
+      "path": ".ai-sdlc/evidence/safety/safety.json",
+      "status": "PASS",
+      "generatedAt": "2026-07-02T19:04:12+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "command": "python -m tools.ai_sdlc.validate_safety_policies",
+      "exitCode": 0,
+      "sha256": "cbcf04608a677f0aabea39c5d342e27b3c05e78b054a3c2475c79e5f0c1b9feb",
+      "sourceTool": "static-safety-validator"
+    },
+    {
+      "artifactId": "security-container",
+      "artifactType": "security-container",
+      "path": ".ai-sdlc/evidence/security/container.json",
+      "status": "NOT_EXECUTED",
+      "generatedAt": "2026-07-02T19:06:46+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "command": "trivy",
+      "exitCode": 127,
+      "sha256": "b870c6942d26b263eda1d93053f4d1c9ef112efc31d05e4c6f1a738988a631ad",
+      "sourceTool": "trivy",
+      "metadata": {
+        "findingCount": 0
+      }
+    },
+    {
+      "artifactId": "security-dependencies",
+      "artifactType": "security-dependencies",
+      "path": ".ai-sdlc/evidence/security/dependencies.json",
+      "status": "NOT_EXECUTED",
+      "generatedAt": "2026-07-02T19:06:46+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "command": "pip-audit",
+      "exitCode": 127,
+      "sha256": "920c90c754e362012b0845d0332b87d8142932a298a8ee89b39786c968315718",
+      "sourceTool": "pip-audit",
+      "metadata": {
+        "findingCount": 0
+      }
+    },
+    {
+      "artifactId": "security-sast",
+      "artifactType": "security-sast",
+      "path": ".ai-sdlc/evidence/security/sast.json",
+      "status": "NOT_EXECUTED",
+      "generatedAt": "2026-07-02T19:06:46+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "command": "bandit",
+      "exitCode": 127,
+      "sha256": "7b58944aa3d083ff3d64cf0d80b83853ace72f5a7e17d9a4f34f1cabd191f877",
+      "sourceTool": "bandit",
+      "metadata": {
+        "findingCount": 0
+      }
+    },
+    {
+      "artifactId": "security-secrets",
+      "artifactType": "security-secrets",
+      "path": ".ai-sdlc/evidence/security/secrets.json",
+      "status": "NOT_EXECUTED",
+      "generatedAt": "2026-07-02T19:06:46+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "command": "gitleaks or detect-secrets",
+      "exitCode": 127,
+      "sha256": "9b530913b8c73058651d5d3d347c21c9d6a2413dd0b4d5193168110d4b9b5a79",
+      "sourceTool": "gitleaks or detect-secrets",
+      "metadata": {
+        "findingCount": 0
+      }
+    },
+    {
+      "artifactId": "test-report",
+      "artifactType": "test-report",
+      "path": ".ai-sdlc/evidence/tests/tests.md",
+      "status": "FAIL",
+      "generatedAt": "2026-07-02T19:05:57+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "command": "/Users/nalin.giri/workspaces/agentic-agri-advisor/.venv/bin/pytest tests/ --ignore=scratch/ --junitxml=/var/folders/ry/45cn9mzj5vz9hlf9n2v08r_00000gp/T/ai-sdlc-pytest-xzwm7qb7/junit.xml",
+      "exitCode": 1,
+      "sha256": "dc052806582d198c282b1b57b139d565efb00dac8d72b782ca464c62b723da10",
+      "sourceTool": "pytest"
+    },
+    {
+      "artifactId": "test-results",
+      "artifactType": "test-results",
+      "path": ".ai-sdlc/evidence/tests/tests.json",
+      "status": "FAIL",
+      "generatedAt": "2026-07-02T19:05:57+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "command": "/Users/nalin.giri/workspaces/agentic-agri-advisor/.venv/bin/pytest tests/ --ignore=scratch/ --junitxml=/var/folders/ry/45cn9mzj5vz9hlf9n2v08r_00000gp/T/ai-sdlc-pytest-xzwm7qb7/junit.xml",
+      "exitCode": 1,
+      "sha256": "cc17bea501fe5c5263962f07695b56e2bf5f18b1870ec4991fa606e041410a54",
+      "sourceTool": "pytest",
+      "metadata": {
+        "markdown": ".ai-sdlc/evidence/tests/tests.md"
+      }
+    },
+    {
+      "artifactId": "traceability-matrix",
+      "artifactType": "traceability",
+      "path": ".ai-sdlc/reports/traceability-matrix.json",
+      "status": "WARNING",
+      "generatedAt": "2026-07-02T18:32:45+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "command": "python -m tools.ai_sdlc.generate_traceability",
+      "exitCode": 0,
+      "sha256": "9b47ec0a45b6fc172c65a40f7b14244f37221844e9550aa69e2b1471a86cbc1b",
+      "sourceTool": "traceability-validator",
+      "metadata": {
+        "markdown": ".ai-sdlc/reports/traceability-matrix.md"
+      }
+    }
+  ]
+}

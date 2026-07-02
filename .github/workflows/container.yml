@@ -7,15 +7,37 @@ on:
 jobs:
   container-build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
-      
-    - name: Build Docker Image
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+
+    - name: Install dependencies
       run: |
-        docker build -t krishi-sampark:latest .
-        
+        python -m pip install --upgrade pip
+        pip install uv
+        uv sync --all-extras --dev
+
+    - name: Install Trivy
+      uses: aquasecurity/setup-trivy@v0.2.3
+
     - name: Container Vulnerability Scan
-      run: |
-        echo "Running mock Trivy container vulnerability scan..."
-        echo "0 critical vulnerabilities found."
+      run: uv run python -m tools.ai_sdlc.cli security --container
+
+    - name: Upload container evidence
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: container-evidence
+        path: |
+          .ai-sdlc/evidence/security/container*
+          .ai-sdlc/evidence/security/trivy-image-report.json
+          .ai-sdlc/evidence/evidence-manifest.json

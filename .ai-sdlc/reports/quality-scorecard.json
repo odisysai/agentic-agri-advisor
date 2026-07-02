@@ -1,0 +1,120 @@
+{
+  "generatedAt": "2026-07-02T19:06:55+00:00",
+  "rows": [
+    {
+      "category": "Requirements",
+      "status": "WARNING",
+      "evidence": [
+        ".ai-sdlc/reports/traceability-matrix.json"
+      ],
+      "timestamps": [
+        "2026-07-02T18:32:45+00:00"
+      ],
+      "details": "Derived from registered evidence"
+    },
+    {
+      "category": "Architecture",
+      "status": "NOT_EXECUTED",
+      "evidence": [],
+      "timestamps": [],
+      "details": "Derived from registered evidence"
+    },
+    {
+      "category": "Code Quality",
+      "status": "NOT_EXECUTED",
+      "evidence": [],
+      "timestamps": [],
+      "details": "Derived from registered evidence"
+    },
+    {
+      "category": "Tests",
+      "status": "FAIL",
+      "evidence": [
+        ".ai-sdlc/evidence/tests/tests.json"
+      ],
+      "timestamps": [
+        "2026-07-02T19:05:57+00:00"
+      ],
+      "details": "Derived from registered evidence"
+    },
+    {
+      "category": "Security",
+      "status": "NOT_EXECUTED",
+      "evidence": [
+        ".ai-sdlc/evidence/security/secrets.json",
+        ".ai-sdlc/evidence/security/dependencies.json",
+        ".ai-sdlc/evidence/security/sast.json"
+      ],
+      "timestamps": [
+        "2026-07-02T19:06:46+00:00",
+        "2026-07-02T19:06:46+00:00",
+        "2026-07-02T19:06:46+00:00"
+      ],
+      "details": "Derived from registered evidence"
+    },
+    {
+      "category": "Privacy",
+      "status": "NOT_EXECUTED",
+      "evidence": [],
+      "timestamps": [],
+      "details": "Derived from registered evidence"
+    },
+    {
+      "category": "Agricultural Safety",
+      "status": "PASS",
+      "evidence": [
+        ".ai-sdlc/evidence/safety/safety.json"
+      ],
+      "timestamps": [
+        "2026-07-02T19:04:12+00:00"
+      ],
+      "details": "Derived from registered evidence"
+    },
+    {
+      "category": "Accessibility",
+      "status": "NOT_EXECUTED",
+      "evidence": [],
+      "timestamps": [],
+      "details": "Derived from registered evidence"
+    },
+    {
+      "category": "Localization",
+      "status": "NOT_EXECUTED",
+      "evidence": [],
+      "timestamps": [],
+      "details": "Derived from registered evidence"
+    },
+    {
+      "category": "Offline Reliability",
+      "status": "NOT_EXECUTED",
+      "evidence": [],
+      "timestamps": [],
+      "details": "Derived from registered evidence"
+    },
+    {
+      "category": "DevOps",
+      "status": "NOT_EXECUTED",
+      "evidence": [
+        ".ai-sdlc/evidence/security/container.json"
+      ],
+      "timestamps": [
+        "2026-07-02T19:06:46+00:00"
+      ],
+      "details": "Derived from registered evidence"
+    },
+    {
+      "category": "Documentation",
+      "status": "NOT_EXECUTED",
+      "evidence": [],
+      "timestamps": [],
+      "details": "Derived from registered evidence"
+    }
+  ],
+  "allowedStatuses": [
+    "PASS",
+    "WARNING",
+    "FAIL",
+    "NOT_EXECUTED",
+    "NOT_APPLICABLE"
+  ]
+}

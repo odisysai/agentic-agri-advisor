@@ -25,7 +25,7 @@ Krishi Sampark is an offline-first, voice-first agricultural advisor platform.
 - `ui/schemas/`: A2UI declarative screen JSON layouts.
 - `ui/a2ui/`: A2UI 2.0 canvas components rendering library.
 - `tools/ai_sdlc/`: Verification CLI and diagnostic scripts.
-- `.ai-sdlc/`: SDLC manifests, agent definitions, workflows, reports, and signed evidence packages.
+- `.ai-sdlc/`: SDLC manifests, agent definitions, workflows, reports, command-backed evidence, and human approval records.
 
 ---
 
@@ -51,6 +51,9 @@ make test-integration  # Runs only integration tests
 ### AI-SDLC Local Validation Gates
 ```bash
 make ai-sdlc-check     # Run translation, schema, safety, and codebase audits
+make coverage          # Run pytest with JUnit and optional coverage evidence
+make security          # Run configured security scanners and record evidence
+make release-check     # Evaluate release readiness from evidence and approvals
 ```
 
 ---
@@ -82,4 +85,11 @@ make ai-sdlc-check     # Run translation, schema, safety, and codebase audits
 - Do NOT bypass failing tests or suppress linter errors.
 - Do NOT commit binary weights or credentials.
 - Do NOT disable PWA caching or local database twin fallback.
-- **Definition of Done**: A task is complete only when code changes are reviewable, Makefile validation checks pass (`make ai-sdlc-check`), tests are executed, and signed evidence JSON files are archived.
+- **Definition of Done**: A task is complete only when code changes are reviewable, Makefile validation checks pass where required, tests are executed, and evidence JSON/Markdown files are archived. Do not claim signed evidence unless cryptographic signing is added.
+
+## 7. Evidence and Release Honesty
+
+- PASS requires a successful command-backed evidence artifact.
+- Missing tools or skipped checks must be reported as NOT_EXECUTED, not PASS.
+- Production release requires a human approval entry in `.ai-sdlc/evidence/approvals/approvals.json` that matches the current commit.
+- Release readiness must remain NOT_READY when mandatory evidence, approvals, or rollback references are missing.

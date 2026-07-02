@@ -1,0 +1,15 @@
+{
+  "instructions": "Authorized humans record production approvals here. Change status to approved only after repository review, and set commitSha to the exact release commit. Automated tools must not auto-approve releases.",
+  "approvals": [
+    {
+      "approvalId": "APR-PENDING-PRODUCTION-RELEASE",
+      "approvalType": "release",
+      "environment": "production",
+      "approvedBy": "",
+      "approvedAt": "",
+      "commitSha": "",
+      "status": "pending",
+      "comments": "Default pending state. Production release is blocked until an authorized human records approval for the current commit."
+    }
+  ]
+}

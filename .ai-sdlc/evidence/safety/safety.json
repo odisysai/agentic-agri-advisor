@@ -1,0 +1,36 @@
+{
+  "status": "PASS",
+  "generatedAt": "2026-07-02T19:04:12+00:00",
+  "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+  "command": "python -m tools.ai_sdlc.validate_safety_policies",
+  "exitCode": 0,
+  "scope": [
+    "agents/coordinator/agent.py",
+    "ui/agui/dashboard.js",
+    "ui/schemas/crop_safe_actions.json",
+    "app/fast_api_app.py"
+  ],
+  "limitations": "Static safety validation checks configured code paths only; it is not complete agricultural assurance.",
+  "findings": [
+    {
+      "status": "PASS",
+      "control": "client-prescriptive-filter",
+      "detail": "Dashboard prescriptive text is routed through applySafetyKernelFilter scope."
+    },
+    {
+      "status": "PASS",
+      "control": "agent-escalation-policy",
+      "detail": "Coordinator instruction requires ASK limits and low-confidence escalation."
+    },
+    {
+      "status": "PASS",
+      "control": "safe-actions-schema",
+      "detail": "Crop safe actions schema exists for ASK warning presentation."
+    },
+    {
+      "status": "PASS",
+      "control": "safety-telemetry",
+      "detail": "Observability endpoint records safety_decision."
+    }
+  ]
+}

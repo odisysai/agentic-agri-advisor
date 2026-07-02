@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="8" failures="1" skipped="0" tests="19" time="95.976" timestamp="2026-07-02T12:04:21.729613-07:00" hostname="DS-LX7RFWWK4Y"><testcase classname="tests.integration.test_activities" name="test_activities_logging_flow" time="90.600"><error message="failed on setup with &quot;Failed: Server failed to start&quot;">fixturedef = &lt;FixtureDef argname='server_fixture' scope='session' baseid='tests/integration'&gt;
+request = &lt;SubRequest 'server_fixture' for &lt;Function test_activities_logging_flow&gt;&gt;
+
+    @pytest.hookimpl(wrapper=True)
+    def pytest_fixture_setup(fixturedef: FixtureDef, request) -&gt; object | None:
+        if (
+            fixturedef.argname == "event_loop_policy"
+            and fixturedef.func.__module__ != __name__
+        ):
+            warnings.warn(
+                PytestDeprecationWarning(_EVENT_LOOP_POLICY_FIXTURE_DEPRECATION_WARNING),
+            )
+        asyncio_mode = _get_asyncio_mode(request.config)
+        if not _is_asyncio_fixture_function(fixturedef.func):
+            if asyncio_mode == Mode.STRICT:
+                # Ignore async fixtures without explicit asyncio mark in strict mode
+                # This applies to pytest_trio fixtures, for example
+&gt;               return (yield)
+                        ^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:924: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+request = &lt;SubRequest 'server_fixture' for &lt;Function test_activities_logging_flow&gt;&gt;
+
+    @pytest.fixture(scope="session")
+    def server_fixture(request: Any) -&gt; Iterator[subprocess.Popen[str]]:
+        """Pytest fixture to start and stop the server for testing."""
+        logger.info("Purging database file before E2E tests")
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "farm_twin.db"))
+        if os.path.exists(db_path):
+            try:
+                os.remove(db_path)
+                logger.info(f"Successfully deleted database file at {db_path} for fresh test run")
+            except Exception as e:
+                logger.error(f"Failed to delete database file: {e}")
+        from data.init_db import init_database
+        init_database()
+        logger.info("Starting server process")
+        server_process = start_server()
+        if not wait_for_server():
+&gt;           pytest.fail("Server failed to start")
+E           Failed: Server failed to start
+
+tests/integration/conftest.py:93: Failed</error></testcase><testcase classname="tests.integration.test_agent" name="test_agent_stream" time="4.094"><failure message="AssertionError: Expected at least one message with text content&#10;assert False">def test_agent_stream() -&gt; None:
+        """
+        Integration test for the agent stream functionality.
+        Tests that the agent returns valid streaming responses.
+        """
+    
+        session_service = InMemorySessionService()
+    
+        session = session_service.create_session_sync(user_id="test_user", app_name="test")
+        runner = Runner(agent=root_agent, session_service=session_service, app_name="test")
+    
+        message = types.Content(
+            role="user", parts=[types.Part.from_text(text="Why is the sky blue?")]
+        )
+    
+        events = list(
+            runner.run(
+                new_message=message,
+                user_id="test_user",
+                session_id=session.id,
+                run_config=RunConfig(streaming_mode=StreamingMode.SSE),
+            )
+        )
+        assert len(events) &gt; 0, "Expected at least one message"
+    
+        has_text_content = False
+        for event in events:
+            if (
+                event.content
+                and event.content.parts
+                and any(part.text for part in event.content.parts)
+            ):
+                has_text_content = True
+                break
+&gt;       assert has_text_content, "Expected at least one message with text content"
+E       AssertionError: Expected at least one message with text content
+E       assert False
+
+tests/integration/test_agent.py:57: AssertionError</failure></testcase><testcase classname="tests.integration.test_collapsible_nav" name="test_collapsible_nav_elements_served" time="0.001"><error message="failed on setup with &quot;Failed: Server failed to start&quot;">request = &lt;SubRequest 'server_fixture' for &lt;Function test_activities_logging_flow&gt;&gt;
+
+    @pytest.fixture(scope="session")
+    def server_fixture(request: Any) -&gt; Iterator[subprocess.Popen[str]]:
+        """Pytest fixture to start and stop the server for testing."""
+        logger.info("Purging database file before E2E tests")
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "farm_twin.db"))
+        if os.path.exists(db_path):
+            try:
+                os.remove(db_path)
+                logger.info(f"Successfully deleted database file at {db_path} for fresh test run")
+            except Exception as e:
+                logger.error(f"Failed to delete database file: {e}")
+        from data.init_db import init_database
+        init_database()
+        logger.info("Starting server process")
+        server_process = start_server()
+        if not wait_for_server():
+&gt;           pytest.fail("Server failed to start")
+E           Failed: Server failed to start
+
+tests/integration/conftest.py:93: Failed</error></testcase><testcase classname="tests.integration.test_collapsible_nav" name="test_observability_logs_endpoint" time="0.000"><error message="failed on setup with &quot;Failed: Server failed to start&quot;">request = &lt;SubRequest 'server_fixture' for &lt;Function test_activities_logging_flow&gt;&gt;
+
+    @pytest.fixture(scope="session")
+    def server_fixture(request: Any) -&gt; Iterator[subprocess.Popen[str]]:
+        """Pytest fixture to start and stop the server for testing."""
+        logger.info("Purging database file before E2E tests")
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "farm_twin.db"))
+        if os.path.exists(db_path):
+            try:
+                os.remove(db_path)
+                logger.info(f"Successfully deleted database file at {db_path} for fresh test run")
+            except Exception as e:
+                logger.error(f"Failed to delete database file: {e}")
+        from data.init_db import init_database
+        init_database()
+        logger.info("Starting server process")
+        server_process = start_server()
+        if not wait_for_server():
+&gt;           pytest.fail("Server failed to start")
+E           Failed: Server failed to start
+
+tests/integration/conftest.py:93: Failed</error></testcase><testcase classname="tests.integration.test_localization" name="test_translation_keys_defined" time="0.018" /><testcase classname="tests.integration.test_localization" name="test_script_separation_and_leak_prevention" time="0.007" /><testcase classname="tests.integration.test_localization" name="test_english_translation_cleanliness" time="0.007" /><testcase classname="tests.integration.test_localization" name="test_preservation_of_farmer_names" time="0.006" /><testcase classname="tests.integration.test_phase4" name="test_phase4_endpoints" time="0.000"><error message="failed on setup with &quot;Failed: Server failed to start&quot;">request = &lt;SubRequest 'server_fixture' for &lt;Function test_activities_logging_flow&gt;&gt;
+
+    @pytest.fixture(scope="session")
+    def server_fixture(request: Any) -&gt; Iterator[subprocess.Popen[str]]:
+        """Pytest fixture to start and stop the server for testing."""
+        logger.info("Purging database file before E2E tests")
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "farm_twin.db"))
+        if os.path.exists(db_path):
+            try:
+                os.remove(db_path)
+                logger.info(f"Successfully deleted database file at {db_path} for fresh test run")
+            except Exception as e:
+                logger.error(f"Failed to delete database file: {e}")
+        from data.init_db import init_database
+        init_database()
+        logger.info("Starting server process")
+        server_process = start_server()
+        if not wait_for_server():
+&gt;           pytest.fail("Server failed to start")
+E           Failed: Server failed to start
+
+tests/integration/conftest.py:93: Failed</error></testcase><testcase classname="tests.integration.test_phase5" name="test_phase5_routes" time="0.000"><error message="failed on setup with &quot;Failed: Server failed to start&quot;">request = &lt;SubRequest 'server_fixture' for &lt;Function test_activities_logging_flow&gt;&gt;
+
+    @pytest.fixture(scope="session")
+    def server_fixture(request: Any) -&gt; Iterator[subprocess.Popen[str]]:
+        """Pytest fixture to start and stop the server for testing."""
+        logger.info("Purging database file before E2E tests")
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "farm_twin.db"))
+        if os.path.exists(db_path):
+            try:
+                os.remove(db_path)
+                logger.info(f"Successfully deleted database file at {db_path} for fresh test run")
+            except Exception as e:
+                logger.error(f"Failed to delete database file: {e}")
+        from data.init_db import init_database
+        init_database()
+        logger.info("Starting server process")
+        server_process = start_server()
+        if not wait_for_server():
+&gt;           pytest.fail("Server failed to start")
+E           Failed: Server failed to start
+
+tests/integration/conftest.py:93: Failed</error></testcase><testcase classname="tests.integration.test_server_e2e" name="test_chat_stream" time="0.000"><error message="failed on setup with &quot;Failed: Server failed to start&quot;">request = &lt;SubRequest 'server_fixture' for &lt;Function test_activities_logging_flow&gt;&gt;
+
+    @pytest.fixture(scope="session")
+    def server_fixture(request: Any) -&gt; Iterator[subprocess.Popen[str]]:
+        """Pytest fixture to start and stop the server for testing."""
+        logger.info("Purging database file before E2E tests")
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "farm_twin.db"))
+        if os.path.exists(db_path):
+            try:
+                os.remove(db_path)
+                logger.info(f"Successfully deleted database file at {db_path} for fresh test run")
+            except Exception as e:
+                logger.error(f"Failed to delete database file: {e}")
+        from data.init_db import init_database
+        init_database()
+        logger.info("Starting server process")
+        server_process = start_server()
+        if not wait_for_server():
+&gt;           pytest.fail("Server failed to start")
+E           Failed: Server failed to start
+
+tests/integration/conftest.py:93: Failed</error></testcase><testcase classname="tests.integration.test_server_e2e" name="test_chat_stream_error_handling" time="0.000"><error message="failed on setup with &quot;Failed: Server failed to start&quot;">request = &lt;SubRequest 'server_fixture' for &lt;Function test_activities_logging_flow&gt;&gt;
+
+    @pytest.fixture(scope="session")
+    def server_fixture(request: Any) -&gt; Iterator[subprocess.Popen[str]]:
+        """Pytest fixture to start and stop the server for testing."""
+        logger.info("Purging database file before E2E tests")
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "farm_twin.db"))
+        if os.path.exists(db_path):
+            try:
+                os.remove(db_path)
+                logger.info(f"Successfully deleted database file at {db_path} for fresh test run")
+            except Exception as e:
+                logger.error(f"Failed to delete database file: {e}")
+        from data.init_db import init_database
+        init_database()
+        logger.info("Starting server process")
+        server_process = start_server()
+        if not wait_for_server():
+&gt;           pytest.fail("Server failed to start")
+E           Failed: Server failed to start
+
+tests/integration/conftest.py:93: Failed</error></testcase><testcase classname="tests.integration.test_server_e2e" name="test_collect_feedback" time="0.000"><error message="failed on setup with &quot;Failed: Server failed to start&quot;">request = &lt;SubRequest 'server_fixture' for &lt;Function test_activities_logging_flow&gt;&gt;
+
+    @pytest.fixture(scope="session")
+    def server_fixture(request: Any) -&gt; Iterator[subprocess.Popen[str]]:
+        """Pytest fixture to start and stop the server for testing."""
+        logger.info("Purging database file before E2E tests")
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "farm_twin.db"))
+        if os.path.exists(db_path):
+            try:
+                os.remove(db_path)
+                logger.info(f"Successfully deleted database file at {db_path} for fresh test run")
+            except Exception as e:
+                logger.error(f"Failed to delete database file: {e}")
+        from data.init_db import init_database
+        init_database()
+        logger.info("Starting server process")
+        server_process = start_server()
+        if not wait_for_server():
+&gt;           pytest.fail("Server failed to start")
+E           Failed: Server failed to start
+
+tests/integration/conftest.py:93: Failed</error></testcase><testcase classname="tests.unit.test_ai_sdlc_hardening" name="test_register_artifact_rejects_pass_without_success" time="0.004" /><testcase classname="tests.unit.test_ai_sdlc_hardening" name="test_register_artifact_records_sha_and_prevents_duplicate_records" time="0.002" /><testcase classname="tests.unit.test_ai_sdlc_hardening" name="test_parse_junit_rejects_malformed_xml" time="0.001" /><testcase classname="tests.unit.test_ai_sdlc_hardening" name="test_traceability_duplicate_ids_are_detected" time="0.000" /><testcase classname="tests.unit.test_ai_sdlc_hardening" name="test_release_approval_requires_current_commit" time="0.001" /><testcase classname="tests.unit.test_ai_sdlc_hardening" name="test_unavailable_scanner_registers_not_executed" time="0.036" /></testsuite></testsuites>

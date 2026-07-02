@@ -9,6 +9,9 @@ on:
 jobs:
   security-audit:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -17,15 +20,32 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-        
+        cache: pip
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install uv
-        uv pip install --system -r pyproject.toml
-        
-    - name: Run Secret Scanning
-      run: python -m tools.ai_sdlc.cli security
-      
+        uv sync --all-extras --dev
+
+    - name: Print security tool versions
+      run: |
+        uv run bandit --version
+        uv run pip-audit --version
+        uv run detect-secrets --version
+        uv run codespell --version
+
+    - name: Run Security Scans
+      run: uv run python -m tools.ai_sdlc.cli security --secrets --dependencies --sast
+
     - name: Run Codespell
-      run: codespell --skip="./.venv,./uv.lock"
+      run: uv run codespell --skip="./.venv,./uv.lock"
+
+    - name: Upload security evidence
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-evidence
+        path: |
+          .ai-sdlc/evidence/security/
+          .ai-sdlc/evidence/evidence-manifest.json

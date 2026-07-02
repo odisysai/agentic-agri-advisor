@@ -9,6 +9,9 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -17,27 +20,45 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-        
+        cache: pip
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install uv
-        uv pip install --system -r pyproject.toml
-        
+        uv sync --all-extras --dev
+
+    - name: Print tool versions
+      run: |
+        uv run pytest --version
+        uv run coverage --version
+        uv run ruff --version
+        uv run ty --version
+        uv run codespell --version
+
     - name: Run Ruff Linter
-      run: ruff check .
-      
+      run: uv run ruff check .
+
     - name: Run Ty Type Checker
-      run: ty check
-      
+      run: uv run ty check
+
     - name: Run Schema Validations
-      run: python -m tools.ai_sdlc.cli validate --schemas
-      
+      run: uv run python -m tools.ai_sdlc.cli validate --schemas
+
     - name: Run Translation Validations
-      run: python -m tools.ai_sdlc.cli validate --translations
-      
+      run: uv run python -m tools.ai_sdlc.cli validate --translations
+
     - name: Run Safety Kernel Validations
-      run: python -m tools.ai_sdlc.cli validate --safety
-      
-    - name: Run Test Suite
-      run: pytest tests/ --ignore=scratch/
+      run: uv run python -m tools.ai_sdlc.cli validate --safety
+
+    - name: Run Test Suite With Evidence
+      run: uv run python -m tools.ai_sdlc.cli test --evidence
+
+    - name: Upload test evidence
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-evidence
+        path: |
+          .ai-sdlc/evidence/tests/
+          .ai-sdlc/evidence/evidence-manifest.json

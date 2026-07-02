@@ -1,0 +1,108 @@
+{
+  "version": "1.0.0",
+  "environment": "production",
+  "decision": "NOT_READY",
+  "generatedAt": "2026-07-02T19:06:55+00:00",
+  "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+  "gates": [
+    {
+      "gate": "Tests",
+      "required": true,
+      "status": "FAIL",
+      "evidencePath": ".ai-sdlc/evidence/tests/tests.json",
+      "command": "/Users/nalin.giri/workspaces/agentic-agri-advisor/.venv/bin/pytest tests/ --ignore=scratch/ --junitxml=/var/folders/ry/45cn9mzj5vz9hlf9n2v08r_00000gp/T/ai-sdlc-pytest-xzwm7qb7/junit.xml",
+      "timestamp": "2026-07-02T19:05:57+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "reason": "Evidence registered",
+      "remediation": "Regenerate the evidence on this commit."
+    },
+    {
+      "gate": "Secret Scan",
+      "required": true,
+      "status": "NOT_EXECUTED",
+      "evidencePath": ".ai-sdlc/evidence/security/secrets.json",
+      "command": "gitleaks or detect-secrets",
+      "timestamp": "2026-07-02T19:06:46+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "reason": "Evidence registered",
+      "remediation": "Regenerate the evidence on this commit."
+    },
+    {
+      "gate": "Dependency Scan",
+      "required": true,
+      "status": "NOT_EXECUTED",
+      "evidencePath": ".ai-sdlc/evidence/security/dependencies.json",
+      "command": "pip-audit",
+      "timestamp": "2026-07-02T19:06:46+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "reason": "Evidence registered",
+      "remediation": "Regenerate the evidence on this commit."
+    },
+    {
+      "gate": "SAST Scan",
+      "required": true,
+      "status": "NOT_EXECUTED",
+      "evidencePath": ".ai-sdlc/evidence/security/sast.json",
+      "command": "bandit",
+      "timestamp": "2026-07-02T19:06:46+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "reason": "Evidence registered",
+      "remediation": "Regenerate the evidence on this commit."
+    },
+    {
+      "gate": "Traceability",
+      "required": true,
+      "status": "WARNING",
+      "evidencePath": ".ai-sdlc/reports/traceability-matrix.json",
+      "command": "python -m tools.ai_sdlc.generate_traceability",
+      "timestamp": "2026-07-02T18:32:45+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "reason": "Evidence registered",
+      "remediation": "Regenerate the evidence on this commit."
+    },
+    {
+      "gate": "Safety",
+      "required": true,
+      "status": "PASS",
+      "evidencePath": ".ai-sdlc/evidence/safety/safety.json",
+      "command": "python -m tools.ai_sdlc.validate_safety_policies",
+      "timestamp": "2026-07-02T19:04:12+00:00",
+      "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+      "reason": "Evidence registered",
+      "remediation": ""
+    },
+    {
+      "gate": "Evidence Manifest Integrity",
+      "required": true,
+      "status": "PASS",
+      "evidencePath": "",
+      "command": "",
+      "timestamp": "",
+      "commitSha": "",
+      "reason": "Manifest hashes and commit links verified",
+      "remediation": ""
+    },
+    {
+      "gate": "Human Production Approval",
+      "required": true,
+      "status": "FAIL",
+      "evidencePath": "",
+      "command": "",
+      "timestamp": "",
+      "commitSha": "",
+      "reason": "Approval status is pending",
+      "remediation": "An authorized human must record an approved release approval for this commit."
+    },
+    {
+      "gate": "Rollback Plan",
+      "required": true,
+      "status": "PASS",
+      "evidencePath": ".ai-sdlc/workflows/release.yaml",
+      "command": "",
+      "timestamp": "",
+      "commitSha": "",
+      "reason": "Rollback reference exists",
+      "remediation": "Add or update a rollback plan before release."
+    }
+  ]
+}

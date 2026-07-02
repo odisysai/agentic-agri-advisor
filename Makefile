@@ -1,45 +1,60 @@
-.PHONY: setup lint typecheck test test-integration validate-schemas validate-translations validate-safety security build smoke-test evidence release-check ai-sdlc-check
+.PHONY: setup lint typecheck test test-integration coverage validate-schemas validate-translations validate-safety security secret-scan dependency-scan sast container-scan build smoke-test evidence release-check ai-sdlc-check
+
+PYTHON ?= .venv/bin/python
+UV ?= uv
 
 setup:
-	pip install uv
-	uv pip install --system -e .
+	$(UV) sync --all-extras --dev
 
 lint:
-	.venv/bin/ruff check .
+	$(UV) run ruff check .
 
 typecheck:
-	.venv/bin/ty check
+	$(UV) run ty check
 
 test:
-	.venv/bin/pytest tests/ --ignore=scratch/
+	$(UV) run pytest tests/ --ignore=scratch/
 
 test-integration:
-	.venv/bin/pytest tests/integration/ --ignore=scratch/
+	$(UV) run pytest tests/integration/ --ignore=scratch/
+
+coverage:
+	$(UV) run python -m tools.ai_sdlc.cli test --evidence
 
 validate-schemas:
-	.venv/bin/python -m tools.ai_sdlc.cli validate --schemas
+	$(UV) run python -m tools.ai_sdlc.cli validate --schemas
 
 validate-translations:
-	.venv/bin/python -m tools.ai_sdlc.cli validate --translations
+	$(UV) run python -m tools.ai_sdlc.cli validate --translations
 
 validate-safety:
-	.venv/bin/python -m tools.ai_sdlc.cli validate --safety
+	$(UV) run python -m tools.ai_sdlc.cli validate --safety
 
 security:
-	.venv/bin/python -m tools.ai_sdlc.cli security
+	$(UV) run python -m tools.ai_sdlc.cli security --all
+
+secret-scan:
+	$(UV) run python -m tools.ai_sdlc.cli security --secrets
+
+dependency-scan:
+	$(UV) run python -m tools.ai_sdlc.cli security --dependencies
+
+sast:
+	$(UV) run python -m tools.ai_sdlc.cli security --sast
+
+container-scan:
+	$(UV) run python -m tools.ai_sdlc.cli security --container
 
 build:
 	docker build -t krishi-sampark:latest .
 
 smoke-test:
-	@echo "Spinning up container smoke tests..."
-	@echo "PWA static shell available at http://localhost:8080/agui/"
+	$(UV) run python -m tools.ai_sdlc.validate_environment
 
 evidence:
-	.venv/bin/python -m tools.ai_sdlc.cli evidence
+	$(UV) run python -m tools.ai_sdlc.cli evidence --verify
 
 release-check:
-	.venv/bin/python -m tools.ai_sdlc.cli release --report
+	$(UV) run python -m tools.ai_sdlc.cli release --report
 
-ai-sdlc-check: lint typecheck validate-schemas validate-translations validate-safety test
-	@echo "✅ All AI-SDLC pre-PR verification gates passed successfully!"
+ai-sdlc-check: lint typecheck validate-schemas validate-translations validate-safety coverage secret-scan dependency-scan sast evidence release-check

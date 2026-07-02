@@ -1,0 +1,9 @@
+{
+  "status": "NOT_EXECUTED",
+  "sourceTool": "trivy",
+  "generatedAt": "2026-07-02T19:06:46+00:00",
+  "commitSha": "361502aaa96ca38138a369e3df26b0e61611198a",
+  "reason": "trivy executable was not found",
+  "findingCount": 0,
+  "exitCode": 127
+}

@@ -1,134 +1,130 @@
-import json
 import os
+from pathlib import Path
+
+from tools.ai_sdlc.evidence import (
+    get_commit_sha,
+    register_artifact,
+    repo_path,
+    utc_now,
+    write_json,
+    write_text,
+)
+
+REQUIREMENTS = [
+    {
+        "id": "REQ-AAA-001",
+        "title": "Multilingual UI",
+        "adr": "docs/adr/ADR-AAA-001.md",
+        "source_files": ["ui/agui/translations.js", "ui/agui/index.html"],
+        "tests": ["tests/integration/test_localization.py"],
+        "security_controls": [],
+        "safety_controls": [],
+    },
+    {
+        "id": "REQ-AAA-002",
+        "title": "Offline-First Operation & Storage",
+        "adr": "docs/adr/ADR-AAA-002.md",
+        "source_files": ["ui/sw.js", "ui/agui/local_db.js"],
+        "tests": ["tests/integration/test_phase4.py"],
+        "security_controls": [],
+        "safety_controls": [],
+    },
+    {
+        "id": "REQ-AAA-005",
+        "title": "Agricultural Safety Kernel Advice Audit",
+        "adr": "docs/adr/ADR-AAA-005.md",
+        "source_files": ["app/fast_api_app.py", "ui/agui/dashboard.js"],
+        "tests": ["tests/integration/test_server_e2e.py"],
+        "security_controls": [],
+        "safety_controls": ["safety-validation"],
+    },
+]
 
 
-def generate_matrix():
-    matrix = {
-        "REQ-AAA-001": {
-            "title": "Multilingual UI (English, Hindi, Marathi, Telugu, Swahili)",
-            "adr": "ADR-AAA-001",
-            "source_files": [
-                "ui/agui/translations.js",
-                "ui/agui/index.html"
-            ],
-            "tests": [
-                "tests/integration/test_localization.py"
-            ],
-            "controls": "UX-Localization-Verification"
-        },
-        "REQ-AAA-002": {
-            "title": "Offline-First Operation & Storage",
-            "adr": "ADR-AAA-002",
-            "source_files": [
-                "ui/sw.js",
-                "ui/agui/local_db.js"
-            ],
-            "tests": [
-                "tests/integration/test_phase4.py"
-            ],
-            "controls": "Service-Worker-Verification"
-        },
-        "REQ-AAA-003": {
-            "title": "Voice-First Interaction & STT/TTS",
-            "adr": "ADR-AAA-003",
-            "source_files": [
-                "ui/agui/voice.js"
-            ],
-            "tests": [
-                "tests/integration/test_phase4.py"
-            ],
-            "controls": "Voice-AutoSpeak-Verification"
-        },
-        "REQ-AAA-004": {
-            "title": "Farmer Mode Dynamic Advisor & AI-Twin Profile",
-            "adr": "ADR-AAA-004",
-            "source_files": [
-                "agents/coordinator/agent.py",
-                "ui/agui/dashboard.js"
-            ],
-            "tests": [
-                "tests/integration/test_agent.py"
-            ],
-            "controls": "Ask-Prompt-Enforcement"
-        },
-        "REQ-AAA-005": {
-            "title": "Agricultural Safety Kernel Advice Audit",
-            "adr": "ADR-AAA-005",
-            "source_files": [
-                "app/fast_api_app.py"
-            ],
-            "tests": [
-                "tests/integration/test_server_e2e.py"
-            ],
-            "controls": "Safety-Kernel-Escalation"
-        },
-        "REQ-AAA-006": {
-            "title": "Regional Outbreak Intel Map Tracking",
-            "adr": "ADR-AAA-006",
-            "source_files": [
-                "ui/schemas/regional_risk_map.json",
-                "ui/agui/expert_dashboards.js"
-            ],
-            "tests": [
-                "tests/integration/test_collapsible_nav.py"
-            ],
-            "controls": "Outbreak-Triage-Queue"
-        },
-        "REQ-AAA-007": {
-            "title": "Reliable DLQ & Synchronization Queue",
-            "adr": "ADR-AAA-007",
-            "source_files": [
-                "ui/agui/local_db.js",
-                "ui/agui/dashboard.js"
-            ],
-            "tests": [
-                "tests/integration/test_phase5.py"
-            ],
-            "controls": "Sync-Retry-DLQ"
-        },
-        "REQ-AAA-008": {
-            "title": "observability Log Audit Trails",
-            "adr": "ADR-AAA-008",
-            "source_files": [
-                "app/fast_api_app.py",
-                "ui/agui/dashboard.js"
-            ],
-            "tests": [
-                "tests/integration/test_phase5.py"
-            ],
-            "controls": "Log-Audit-Correlation"
-        },
-        "REQ-AAA-009": {
-            "title": "Collapsible Left Navigation Layout",
-            "adr": "ADR-AAA-009",
-            "source_files": [
-                "ui/agui/index.html",
-                "ui/agui/dashboard.js"
-            ],
-            "tests": [
-                "tests/integration/test_collapsible_nav.py"
-            ],
-            "controls": "Layout-Responsive-Checks"
-        }
+def path_status(path: str) -> str:
+    return "OK" if repo_path(path).exists() else "GAP"
+
+
+def validate_duplicate_ids(requirements: list[dict]) -> list[str]:
+    seen: set[str] = set()
+    duplicates: list[str] = []
+    for req in requirements:
+        req_id = req["id"]
+        if req_id in seen:
+            duplicates.append(req_id)
+        seen.add(req_id)
+    return duplicates
+
+
+def generate_matrix() -> int:
+    generated_at = utc_now()
+    duplicates = validate_duplicate_ids(REQUIREMENTS)
+    rows = []
+    has_gap = bool(duplicates)
+    for req in REQUIREMENTS:
+        source_status = {path: path_status(path) for path in req["source_files"]}
+        test_status = {path: path_status(path) for path in req["tests"]}
+        adr_status = path_status(req["adr"])
+        gaps = []
+        if adr_status == "GAP":
+            gaps.append(f"missing ADR {req['adr']}")
+        gaps.extend(f"missing source {path}" for path, status in source_status.items() if status == "GAP")
+        gaps.extend(f"missing test {path}" for path, status in test_status.items() if status == "GAP")
+        if gaps:
+            has_gap = True
+        rows.append(
+            {
+                **req,
+                "adr_status": adr_status,
+                "source_status": source_status,
+                "test_status": test_status,
+                "status": "GAP" if gaps else "OK",
+                "gaps": gaps,
+            }
+        )
+
+    status = "FAIL" if has_gap and os.getenv("AI_SDLC_TRACEABILITY_STRICT") == "1" else ("WARNING" if has_gap else "PASS")
+    output = {
+        "status": status,
+        "generatedAt": generated_at,
+        "commitSha": get_commit_sha(),
+        "duplicateIds": duplicates,
+        "requirements": rows,
     }
+    json_path = repo_path(".ai-sdlc/reports/traceability-matrix.json")
+    md_path = repo_path(".ai-sdlc/reports/traceability-matrix.md")
+    write_json(json_path, output)
 
-    os.makedirs('.ai-sdlc/reports', exist_ok=True)
-    with open('.ai-sdlc/reports/traceability-matrix.json', 'w', encoding='utf-8') as f:
-        json.dump(matrix, f, indent=4, ensure_ascii=False)
+    lines = [
+        "# Requirements Traceability Matrix",
+        "",
+        f"Status: **{status}**",
+        "",
+        "| Req ID | Title | ADR | Sources | Tests | Safety Controls | Status | Gaps |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for row in rows:
+        lines.append(
+            f"| {row['id']} | {row['title']} | {row['adr']} ({row['adr_status']}) | "
+            f"{', '.join(f'{p} ({s})' for p, s in row['source_status'].items())} | "
+            f"{', '.join(f'{p} ({s})' for p, s in row['test_status'].items())} | "
+            f"{', '.join(row['safety_controls']) or 'none'} | {row['status']} | {', '.join(row['gaps']) or 'none'} |"
+        )
+    write_text(md_path, "\n".join(lines) + "\n")
+    register_artifact(
+        "traceability-matrix",
+        "traceability",
+        json_path,
+        "FAIL" if status == "FAIL" else ("WARNING" if status == "WARNING" else "PASS"),
+        "python -m tools.ai_sdlc.generate_traceability",
+        1 if status == "FAIL" else 0,
+        "traceability-validator",
+        generated_at=generated_at,
+        metadata={"markdown": str(md_path.relative_to(repo_path(".")))},
+    )
+    print(f"Traceability matrix generated with status: {status}")
+    return 1 if status == "FAIL" else 0
 
-    md = "# Requirements Traceability Matrix\n\n"
-    md += "| Req ID | Title | ADR | Source Files | Tests | Security & Safety Controls |\n"
-    md += "| --- | --- | --- | --- | --- | --- |\n"
-    for req_id, data in matrix.items():
-        sources = ", ".join(data['source_files'])
-        tests = ", ".join(data['tests'])
-        md += f"| {req_id} | {data['title']} | {data['adr']} | {sources} | {tests} | {data['controls']} |\n"
 
-    with open('.ai-sdlc/reports/traceability-matrix.md', 'w', encoding='utf-8') as f:
-        f.write(md)
-
-    print("✅ Traceability matrix reports successfully compiled.")
-    return True
-
-if __name__ == '__main__':
-    generate_matrix()
+if __name__ == "__main__":
+    raise SystemExit(generate_matrix())
