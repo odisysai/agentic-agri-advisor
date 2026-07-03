@@ -47,7 +47,7 @@ class CropCamera {
         console.log('[Camera] Default camera stream started successfully');
         return true;
       } catch (fallbackErr) {
-        console.error('[Camera] Critical error: could not open camera feed:', fallbackErr);
+        console.warn('[Camera] Camera feed unavailable; using upload fallback:', fallbackErr);
         return false;
       }
     }

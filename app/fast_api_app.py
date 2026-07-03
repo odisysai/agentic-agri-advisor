@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import tempfile
+import re
 
 import edge_tts
 import google.auth
@@ -21,6 +22,7 @@ from fastapi.responses import FileResponse
 from google.adk.cli.fast_api import get_fast_api_app
 from google.cloud import logging as google_cloud_logging
 from pydantic import BaseModel
+import asyncio
 
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
@@ -211,22 +213,27 @@ class TTSRequest(BaseModel):
     text: str
     lang: str = "English"
 
+# To prevent overlapping audio from simultaneous requests
+tts_lock = asyncio.Lock()
+
 @app.post("/api/tts")
 async def text_to_speech_endpoint(req: TTSRequest):
     voice = VOICE_MAP.get(req.lang, "en-US-GuyNeural")
-    clean_text = req.text.replace("**", "").replace("*", "").replace("#", "").strip()
+    # Improved cleaning: Remove markdown-like syntax and excessive whitespace
+    clean_text = re.sub(r'[#*_~`]', '', req.text).strip()
 
     # Save synthesized speech to a temp file
     temp_dir = tempfile.gettempdir()
     output_path = os.path.join(temp_dir, f"edge_tts_{abs(hash(clean_text))}.mp3")
 
-    try:
-        communicate = edge_tts.Communicate(clean_text, voice)
-        await communicate.save(output_path)
-        return FileResponse(output_path, media_type="audio/mpeg")
-    except Exception as e:
-        print(f"Edge TTS Synthesis Failed: {e}")
-        return {"error": str(e)}
+    async with tts_lock:
+        try:
+            communicate = edge_tts.Communicate(clean_text, voice)
+            await communicate.save(output_path)
+            return FileResponse(output_path, media_type="audio/mpeg")
+        except Exception as e:
+            print(f"Edge TTS Synthesis Failed: {e}")
+            return {"error": str(e)}
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
@@ -384,5 +391,5 @@ app.mount("/", StaticFiles(directory=ui_dir, html=True), name="ui")
 # Main execution
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 8009))
+    port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)

@@ -5,6 +5,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const sendBtn = document.getElementById('send-btn');
   const aguiCanvas = document.getElementById('agui-canvas');
 
+  function normalizeLanguageCode(language) {
+    const value = (language || 'en').toString().trim();
+    const aliases = {
+      English: 'en',
+      Hindi: 'hi',
+      Marathi: 'mr',
+      Telugu: 'te',
+      Swahili: 'sw'
+    };
+    return aliases[value] || value;
+  }
+
+  function farmerDisplayNameForLanguage(language) {
+    const code = normalizeLanguageCode(language);
+    if (code === 'hi' || code === 'mr') return 'माधव जी';
+    if (code === 'te') return 'మాధవ్ జీ';
+    return 'Madhav Ji';
+  }
+
+  function updateFarmerDisplayNames(language) {
+    const name = farmerDisplayNameForLanguage(language);
+    ['header-farmer-name', 'left-nav-profile-name'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = name;
+    });
+  }
+
+  function getActiveCanvas() {
+    return aguiCanvas || document.querySelector('.app-screen.active > div');
+  }
+
 
 
   // Close drawer button click listener
@@ -284,11 +315,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Active Screen / Tab Controller
-  window.switchTab = function(tabId, skipLoadSchema) {
+  window.switchTab = function(tabId, skipLoadSchema, persistRoute = true) {
     console.log(`[Navigation] Switching to screen tab: ${tabId}`);
     
     // Save route selection
-    localStorage.setItem('nav_route_user', tabId);
+    if (persistRoute) {
+      localStorage.setItem('nav_route_user', tabId);
+    }
 
     // Close the tablet drawer if open
     const leftNav = document.getElementById('left-nav');
@@ -685,6 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Appends a new message bubble to the chat timeline, complete with a client-side speaker button
   function appendMessage(sender, text, type = 'msg') {
+    if (!chatMessages) return null;
     const msg = document.createElement('div');
     msg.className = `message ${type}`;
 
@@ -774,7 +808,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const rawJson = repairJSON(match[1].trim());
         const data = JSON.parse(rawJson);
         if (data.type === 'card' && Array.isArray(data.components)) {
-          const currentLang = localStorage.getItem('aaa_preferred_language') || 'English';
+          const currentLang = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language'));
           translateSchemaData(data, currentLang);
 
           if (data.title && data.title.toLowerCase().includes('simulator')) {
@@ -795,7 +829,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const repaired = repairJSON(candidate);
         const data = JSON.parse(repaired);
         if (data.type === 'card' && Array.isArray(data.components)) {
-          const currentLang = localStorage.getItem('aaa_preferred_language') || 'English';
+          const currentLang = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language'));
           translateSchemaData(data, currentLang);
 
           if (data.title && data.title.toLowerCase().includes('simulator')) {
@@ -846,7 +880,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const deficit = Math.max(0, optimalMoisture - currentMoisture);
     const acres = activeField ? activeField.acres : 10;
     const waterNeededLitres = Math.max(0, deficit * 800 * acres);
-    const currentLang = localStorage.getItem('aaa_preferred_language') || 'English';
+    const currentLang = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language'));
 
     let healthStatus = 'optimal';
     if (simState.health < 60) healthStatus = 'danger';
@@ -1010,7 +1044,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const data = await response.json();
       
-      const currentLang = localStorage.getItem('aaa_preferred_language') || 'English';
+      const currentLang = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language'));
       translateSchemaData(data, currentLang);
 
       if (schemaName === 'simulation') {
@@ -1058,8 +1092,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const text = document.getElementById('agents-status-text');
     if (!indicator || !text) return;
     
-    const currentLang = localStorage.getItem('aaa_preferred_language') || 'English';
-    const dict = TRANSLATIONS[currentLang] || TRANSLATIONS['English'];
+    const currentLang = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language'));
+    const activeLangCode = window.currentLanguageState?.code || 'en';
+    const dict = TRANSLATIONS[currentLang] || TRANSLATIONS[activeLangCode] || TRANSLATIONS.en || {};
     
     if (navigator.onLine) {
       indicator.className = 'status-indicator online';
@@ -1085,8 +1120,11 @@ document.addEventListener('DOMContentLoaded', () => {
           console.log('[IndexedDB] Loaded cached profile offline:', cached);
           const languageSelector = document.getElementById('language-selector');
           if (languageSelector && cached.language) {
-            languageSelector.value = cached.language;
-            applyLanguageTranslation(cached.language);
+            const cachedLang = normalizeLanguageCode(cached.language);
+            languageSelector.value = cachedLang;
+            localStorage.setItem('aaa_preferred_language', cachedLang);
+            applyLanguageTranslation(cachedLang);
+            updateFarmerDisplayNames(cachedLang);
           }
           const savedFields = localStorage.getItem('aaa_fields_cached');
           if (savedFields) {
@@ -1113,9 +1151,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // Sync language selector with database value
       const languageSelector = document.getElementById('language-selector');
       if (languageSelector && profile.language) {
-        languageSelector.value = profile.language;
-        localStorage.setItem('aaa_preferred_language', profile.language);
-        applyLanguageTranslation(profile.language);
+        const profileLang = normalizeLanguageCode(profile.language);
+        languageSelector.value = profileLang;
+        localStorage.setItem('aaa_preferred_language', profileLang);
+        applyLanguageTranslation(profileLang);
+        updateFarmerDisplayNames(profileLang);
       }
       
       populateFieldSelector();
@@ -1197,12 +1237,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!navigator.onLine || !isComplex) {
       console.log(`[Triage] Routing "${text}" to client-side multi-agent edge skills.`);
-      const thinkingBubble = appendMessage('Coordinator', 'Thinking...', 'thinking-msg');
+      const thinkingBubble = appendMessage('Krishi Sastri', 'Thinking...', 'thinking-msg');
       handleOfflineSend(text, langCode, thinkingBubble);
       return;
     }
 
-    const thinkingBubble = appendMessage('Coordinator', 'Thinking...', 'thinking-msg');
+    const thinkingBubble = appendMessage('Krishi Sastri', 'Thinking...', 'thinking-msg');
 
     // Context Enrichment: Grab the saved profile and prepend it to the text payload!
     const savedProfile = localStorage.getItem('aaa_farmer_profile');
@@ -1246,8 +1286,9 @@ ${text}`;
 
       thinkingBubble.remove();
       
-      const responseMsg = appendMessage('Coordinator', '', 'agent-msg');
-      const textContainer = responseMsg.querySelector('.message-text');
+      const responseMsg = appendMessage('Krishi Sastri', '', 'agent-msg');
+      const textContainer = responseMsg ? responseMsg.querySelector('.message-text') : null;
+      if (!textContainer) return;
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -1276,9 +1317,7 @@ ${text}`;
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('
-
-');
+        const lines = buffer.split('\n\n');
         buffer = lines.pop();
 
         for (const line of lines) {
@@ -1368,36 +1407,82 @@ ${text}`;
   async function handleOfflineSend(text, preferredLang, thinkingBubble) {
     localDb.addChat({ role: 'user', text: text });
     
-    let profile = {};
-    try {
-      const saved = localStorage.getItem('aaa_farmer_profile');
-      if (saved) profile = JSON.parse(saved);
-    } catch (e) {}
+    if (thinkingBubble) thinkingBubble.remove();
 
-    const localContext = {
-      crop: profile.primary_crop || 'corn',
-      soil: profile.soil_type || 'clay',
-      language: preferredLang
+    const localReply = buildFarmerSafeOfflineReply(text, preferredLang);
+    appendMessage('Krishi Sastri', localReply, 'agent-msg');
+    localDb.addChat({ role: 'advisor', text: localReply });
+
+    speakText(localReply);
+
+    if (text.toLowerCase().includes('pest') || text.toLowerCase().includes('alert')) {
+      loadSchema('pest_alert');
+    } else if (text.toLowerCase().includes('water') || text.toLowerCase().includes('irrigation')) {
+      loadSchema('irrigation_planner');
+    }
+  }
+
+  function buildFarmerSafeOfflineReply(text, languageCode) {
+    const lower = text.toLowerCase();
+    const intent = lower.includes('water') || lower.includes('irrigat') || lower.includes('सिंच') || lower.includes('पानी') || lower.includes('నీరు') || lower.includes('maji')
+      ? 'irrigation'
+      : lower.includes('price') || lower.includes('market') || lower.includes('mandi') || lower.includes('भाव') || lower.includes('soko')
+        ? 'market'
+        : lower.includes('pest') || lower.includes('disease') || lower.includes('spray') || lower.includes('कीट') || lower.includes('रोग')
+          ? 'pest'
+          : 'general';
+
+    const replies = {
+      en: {
+        irrigation: 'Soil looks dry. Water in the early morning, then check if the top soil stays moist. If leaves wilt, ask an agronomist.',
+        market: 'Check the local mandi card before selling. Compare today price, crop quality, and transport cost. Do not use global futures as local price.',
+        pest: 'Do not spray yet. Take a clear leaf photo in daylight and isolate badly affected plants. Ask an agronomist if it spreads.',
+        general: 'I have noted this. Check the field once today and record what you see. If the sign is severe, consult an agronomist.'
+      },
+      hi: {
+        irrigation: 'मिट्टी सूखी लग रही है। सुबह जल्दी पानी दें, फिर ऊपर की मिट्टी नम है या नहीं देखें। पत्ते मुरझाएँ तो कृषि विशेषज्ञ से पूछें।',
+        market: 'बेचने से पहले स्थानीय मंडी कार्ड पाहा. आज का भाव, पिकाची गुणवत्ता आणि ढुलाई खर्च मिलाकर निर्णय लें।',
+        pest: 'अभी छिड़काव न करें। दिन की रोशनी में साफ पत्ती फोटो लें और ज्यादा प्रभावित पौधे अलग देखें। फैलने पर विशेषज्ञ से पूछें।',
+        general: 'मैंने बात नोट कर ली है। आज खेत पाहून लक्षणे लिहा। समस्या गंभीर लगे तो कृषि विशेषज्ञ से सलाह लें।'
+      },
+      mr: {
+        irrigation: 'माती कोरडी दिसते. सकाळी लवकर पाणी द्या आणि वरची माती ओलसर राहते का पाहा. पाने कोमेजली तर तज्ज्ञांचा सल्ला घ्या.',
+        market: 'विक्रीपूर्वी स्थानिक बाजार कार्ड पाहा. आजचा भाव, पिकाची गुणवत्ता आणि वाहतूक खर्च एकत्र तपासा.',
+        pest: 'आत्ताच फवारणी करू नका. उजेडात स्वच्छ पानाचा फोटो घ्या. प्रादुर्भाव वाढला तर कृषी तज्ज्ञांना विचारा.',
+        general: 'मी नोंद घेतली आहे. आज शेत पाहून लक्षणे लिहा. समस्या गंभीर वाटल्यास कृषी तज्ज्ञांचा सल्ला घ्या.'
+      },
+      te: {
+        irrigation: 'మట్టి పొడిగా ఉంది. ఉదయం తొందరగా నీరు పెట్టండి. పై మట్టి తడిగా ఉందో చూడండి. ఆకులు వాడితే నిపుణుడిని అడగండి.',
+        market: 'అమ్మే ముందు స్థానిక మార్కెట్ కార్డు చూడండి. ఈరోజు ధర, పంట నాణ్యత, రవాణా ఖర్చు కలిపి నిర్ణయం తీసుకోండి.',
+        pest: 'ఇప్పుడే స్ప్రే చేయవద్దు. వెలుతురులో స్పష్టమైన ఆకు ఫోటో తీయండి. సమస్య పెరిగితే వ్యవసాయ నిపుణుడిని అడగండి.',
+        general: 'నేను గమనించాను. ఈరోజు పొలం చూసి లక్షణాలు నమోదు చేయండి. సమస్య తీవ్రమైతే నిపుణుడిని సంప్రదించండి.'
+      },
+      sw: {
+        irrigation: 'Udongo unaonekana mkavu. Mwagilia asubuhi mapema, kisha angalia kama tabaka la juu linabaki na unyevu.',
+        market: 'Angalia kadi ya soko la karibu kabla ya kuuza. Linganisha bei ya leo, ubora wa zao, na gharama ya usafiri.',
+        pest: 'Usinyunyize dawa bado. Piga picha safi ya jani mchana. Tatizo likienea, muulize mtaalamu wa kilimo.',
+        general: 'Nimekuelewa. Kagua shamba leo na uandike dalili. Kama hali ni kali, wasiliana na mtaalamu wa kilimo.'
+      }
     };
 
-    localAi.generateText(text, localContext).then(localReply => {
-      if (thinkingBubble) thinkingBubble.remove();
-      
-      const responseMsg = appendMessage('Coordinator', localReply, 'agent-msg');
-      localDb.addChat({ role: 'coordinator', text: localReply });
-      
-      speakText(localReply);
+    const code = normalizeLanguageCode(languageCode);
+    return (replies[code] || replies.en)[intent];
+  }
 
-      if (text.toLowerCase().includes('pest') || text.toLowerCase().includes('alert')) {
-        loadSchema('pest_alert');
-      } else if (text.toLowerCase().includes('water') || text.toLowerCase().includes('irrigation')) {
-        loadSchema('irrigation_planner');
+  if (sendBtn) {
+    sendBtn.addEventListener('click', handleSend);
+  }
+  if (userInputField) {
+    userInputField.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        handleSend();
       }
     });
   }
 
   // Load default home screen schema on startup
-  window.switchTab('home');
+  window.switchTab('home', false, false);
   fetchFieldsAndProfile();
   initCropDiagnosisState();
   
@@ -1443,9 +1528,10 @@ ${text}`;
   // Hook up Language selector dropdown listener
   const languageSelector = document.getElementById('language-selector');
   if (languageSelector) {
-    const savedLang = localStorage.getItem('aaa_preferred_language') || 'en';
+    const savedLang = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language'));
     languageSelector.value = savedLang;
     applyLanguageTranslation(savedLang);
+    updateFarmerDisplayNames(savedLang);
     
     languageSelector.addEventListener('change', () => {
       const selectedLang = languageSelector.value;
@@ -1463,6 +1549,7 @@ ${text}`;
       
       // Apply UI translations
       applyLanguageTranslation(selectedLang);
+      updateFarmerDisplayNames(selectedLang);
       
       // Reload current active tab schema to translate the dynamic widget canvas!
       const activeTab = document.querySelector('.bottom-nav-bar .nav-tab.active');
@@ -1473,11 +1560,6 @@ ${text}`;
         else if (tabId === 'market') loadSchema('market_insights', 'market-canvas');
         else if (tabId === 'more') loadSchema('more_screen', 'more-canvas');
       }
-      
-      // Notify the agent in the chat in the target language only
-      const alertPrompt = languageAlerts[selectedLang] || languageAlerts["English"];
-      userInputField.value = alertPrompt;
-      handleSend();
     });
   }
 
@@ -1495,8 +1577,9 @@ ${text}`;
         window.speechSynthesis.cancel();
         if (audioPlayer) {
           audioPlayer.pause();
-          audioPlayer = null;
+          audioPlayer.currentTime = 0;
         }
+        // Don't set audioPlayer to null — just pause it so it works again when toggled back on
       }
     });
   }
@@ -1641,7 +1724,9 @@ ${text}`;
       }
       
       // Update DOM values of the active left panel simulator card
-      const metrics = aguiCanvas.querySelectorAll('.a2ui-metric');
+      const activeCanvas = getActiveCanvas();
+      if (!activeCanvas) return;
+      const metrics = activeCanvas.querySelectorAll('.a2ui-metric');
       metrics.forEach(m => {
         const labelText = m.textContent.toLowerCase();
         const valEl = m.querySelector('.metric-val');
@@ -1663,7 +1748,7 @@ ${text}`;
         }
       });
       
-      const stepBtn = aguiCanvas.querySelector('.a2ui-btn');
+      const stepBtn = activeCanvas.querySelector('.a2ui-btn');
       if (stepBtn && stepBtn.textContent.includes('Step Simulation')) {
         stepBtn.textContent = `🎮 Step Simulation (Day ${simState.day + 1})`;
       }
@@ -1696,7 +1781,9 @@ ${text}`;
       userInputField.value = statusPrompt;
       handleSend();
     } else if (action === 'save_farmer_profile') {
-      const form = aguiCanvas.querySelector('form') || aguiCanvas.querySelector('.a2ui-form');
+      const activeCanvas = getActiveCanvas();
+      if (!activeCanvas) return;
+      const form = activeCanvas.querySelector('form') || activeCanvas.querySelector('.a2ui-form');
       const profile = {};
       if (form) {
         const inputs = form.querySelectorAll('input, select');
@@ -1734,7 +1821,9 @@ ${text}`;
       handleSend();
     } else {
       // General Form Submission to Agent
-      const form = aguiCanvas.querySelector('form') || aguiCanvas.querySelector('.a2ui-form');
+      const activeCanvas = getActiveCanvas();
+      if (!activeCanvas) return;
+      const form = activeCanvas.querySelector('form') || activeCanvas.querySelector('.a2ui-form');
       const params = {};
       if (form) {
         const inputs = form.querySelectorAll('input, select');
@@ -2052,7 +2141,7 @@ ${text}`;
     // Translate profile labels in footer
     const profileName = document.getElementById('left-nav-profile-name');
     if (profileName) {
-      profileName.textContent = mode === 'expert' ? 'Dr. Agronomist' : 'माधव जी';
+      profileName.textContent = mode === 'expert' ? 'Dr. Agronomist' : farmerDisplayNameForLanguage(localStorage.getItem('aaa_preferred_language'));
     }
     
     // Render the new assistant info pane dynamically

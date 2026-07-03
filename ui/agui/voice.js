@@ -1,62 +1,63 @@
 (function() {
   let audioPlayer = null;
 
-  async function speakText(text) {
-    const ttsToggle = document.getElementById('tts-toggle');
-    if (ttsToggle && !ttsToggle.checked) return;
+  // Track active TTS source to prevent overlapping speech
+  let ttsSource = null; // 'browser' | 'backend' | null
+  let isSpeaking = false;
 
-    window.speechSynthesis.cancel();
+  async function speakText(text, lang) {
+    // Cancel all active speech before starting new utterance
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
     if (audioPlayer) {
       audioPlayer.pause();
-      audioPlayer = null;
+      audioPlayer.currentTime = 0;
+    }
+    ttsSource = null;
+    isSpeaking = false;
+
+    const language = (lang || currentLang || 'en');
+    const ttsToggle = document.getElementById('tts-toggle');
+    if (!ttsToggle || !ttsToggle.checked) {
+      const voiceBtn = document.getElementById('voice-btn');
+      if (voiceBtn) voiceBtn.style.display = 'none';
+      const badge = document.getElementById('tts-badge');
+      if (badge) badge.style.display = 'none';
+      return;
     }
 
-    const preferredLang = document.getElementById('language-selector')?.value || 'English';
-    const cleanText = text.replace(/```[\s\S]*?```/g, '').replace(/[*#_]/g, '');
+    let usedBrowserTTS = false;
 
-    const voiceLangMap = {
-      'Hindi': 'hi-IN',
-      'Marathi': 'mr-IN',
-      'Telugu': 'te-IN',
-      'Swahili': 'sw-KE',
-      'English': 'en-US'
-    };
-    const targetLangCode = voiceLangMap[preferredLang] || 'en-US';
-
-    const voices = window.speechSynthesis.getVoices();
-    const langVoices = voices.filter(v => v.lang.startsWith(targetLangCode));
-
-    const maleKeywords = ['male', 'david', 'mark', 'ravi', 'rishi', 'mohan', 'karan', 'madhur', 'hemant', 'alex', 'fred', 'daniel', 'nathan', 'oliver', 'george', 'microsoft'];
-    const femaleKeywords = ['samantha', 'siri', 'veena', 'heera', 'kalpana', 'neerja', 'zira', 'hazel', 'susan', 'linda', 'helen', 'zari', 'female'];
-
-    let preferredVoice = langVoices.find(v => {
-      const nameLower = v.name.toLowerCase();
-      return maleKeywords.some(kw => nameLower.includes(kw)) && !femaleKeywords.some(fw => nameLower.includes(fw));
-    });
-
-    if (preferredVoice) {
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = targetLangCode;
+    if (window.speechSynthesis && preferredVoice) {
+      ttsSource = 'browser';
+      isSpeaking = true;
+      usedBrowserTTS = true;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = language;
       utterance.voice = preferredVoice;
+      utterance.onend = () => { isSpeaking = false; ttsSource = null; };
+      utterance.onerror = () => { isSpeaking = false; ttsSource = null; };
       window.speechSynthesis.speak(utterance);
-    } else {
-      try {
-        const response = await fetch('/api/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lang: preferredLang, text: cleanText })
-        });
-        if (response.ok) {
-          const blob = await response.blob();
-          const audioUrl = URL.createObjectURL(blob);
-          audioPlayer = new Audio(audioUrl);
+    }
+
+    // Only play backend TTS if browser TTS was NOT used
+    if (!usedBrowserTTS) {
+      ttsSource = 'backend';
+      isSpeaking = true;
+      fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, language })
+      })
+        .then(res => res.blob())
+        .then(blob => {
+          if (ttsSource !== 'backend') return; // Another speakText call may have cancelled this
+          const url = URL.createObjectURL(blob);
+          audioPlayer.src = url;
           audioPlayer.play();
-        } else {
-          console.warn("Backend TTS responded with error status:", response.status);
-        }
-      } catch (err) {
-        console.warn("Backend TTS playback failed:", err);
-      }
+          audioPlayer.onended = () => { isSpeaking = false; ttsSource = null; URL.revokeObjectURL(url); };
+          audioPlayer.onerror = () => { isSpeaking = false; ttsSource = null; };
+        })
+        .catch(() => { isSpeaking = false; ttsSource = null; });
     }
   }
 
@@ -97,12 +98,54 @@
       };
       
       rec.onerror = (e) => {
-        console.warn("Speech error:", e.error);
+        console.warn("Speech recognition error:", e.error);
         if (mainVoiceBtn) mainVoiceBtn.classList.remove('listening');
         if (micWaveContainer) micWaveContainer.style.display = 'none';
         if (voiceStatusLabel) voiceStatusLabel.textContent = 'बोलकर पूछें';
+
+        const errorMessages = {
+          'no-speech': {
+            'English': 'No sound detected. Please try again.',
+            'Hindi': 'कोई आवाज़ नहीं मिली। कृपया फिर से कोशिश करें।',
+            'Marathi': 'काहीही आवाज आला नाही. कृपया पुन्हा प्रयत्न करा.',
+            'Telugu': 'ధ్వని ఏమీ వినిపించలేదు. దయచేసి మళ్ళీ ప్రయత్నించండి.',
+            'Swahili': 'Hakuna sauti iliyopatikana. Tafadhali jaribu tena.'
+          },
+          'audio-not-captured': {
+            'English': 'Microphone access denied. Please check your permissions.',
+            'Hindi': 'माइक्रोफ़ोन एक्सेस वर्जित है। कृपया अपनी अनुमति जाँचें।',
+            'Marathi': 'मायक्रोफोन प्रवेश नाकारला. कृपया तुमची परवानगी तपासा.',
+            'Telugu': 'మైక్రోఫోన్ యాక్సెస్ నిరాకరించబడింది. దయచేసి మీ అనుమతులను తనిఖీ చేయండి.',
+            'Swahili': 'Ufikiaji wa maikrofoni umekataliwa. Tafadhali angalia ruhusa zako.'
+          },
+          'not-allowed': {
+            'English': 'Microphone permission denied.',
+            'Hindi': 'माइक्रोफ़ोन अनुमति अस्वीकृत।',
+            'Marathi': 'मायक्रोफोन परवानगी नाकारली.',
+            'Telugu': 'మైక్రోఫోన్ అనుమతి నిరాకరించబడింది.',
+            'Swahili': 'Ruhusa ya maikrofoni imekataliwa.'
+          },
+          'network': {
+            'English': 'Network error. Please check your connection.',
+            'Hindi': 'नेटवर्क त्रुटि। कृपया अपना कनेक्शन जाँचें।',
+            'Marathi': 'नेटवर्क त्रुटी. कृपया तुमचे कनेक्शन तपासा.',
+            'Telugu': 'నెట్‌వర్క్ లోపం. దయచేసి మీ కనెక్షన్‌ని తనిఖీ చేయండి.',
+            'Swahili': 'Hitilafu ya mtandao. Tafadhali angalia muunganisho wako.'
+          },
+          'no-device-found': {
+            'English': 'No microphone found.',
+            'Hindi': 'कोई माइक्रोफ़ोन नहीं मिला।',
+            'Marathi': 'मायक्रोफोन सापडला नाही.',
+            'Telugu': 'మైక్రోఫోన్ దొరకలేదు.',
+            'Swahili': 'Hakuna maikrofoni iliyopatikana.'
+          }
+        };
+
+        const currentLang = localStorage.getItem('aaa_preferred_language') || 'English';
+        const friendlyMessage = (errorMessages[e.error] && errorMessages[e.error][currentLang]) || `Speech error: ${e.error}`;
+
         if (typeof window.showToast === 'function') {
-          window.showToast("Speech Error", `Could not recognize speech: ${e.error}`, "warning");
+          window.showToast("Speech Error", friendlyMessage, "warning");
         }
       };
       

@@ -292,15 +292,15 @@
         "irrigation.water.label": "Label",
         "photo.progress.analyzing": "Analyzing",
         "sim.fertilizer.label": "Label",
-        "farm.recommendation.hearAdvice": "Hearadvice",
+        "farm.recommendation.hearAdvice": "Hear Advice",
         "photo.result.alt2": "Alt2",
         "sim.cropSelector.label": "Label",
         "plan.task3.title": "Title",
         "photo.start.question": "Question",
         "irrigation.action.changeTime": "Changetime",
-        "farm.pestRisk.title": "Title",
+        "farm.pestRisk.title": "Pest Risk",
         "irrigation.reason2": "Reason2",
-        "market.title": "Title",
+        "market.title": "Market Insights",
         "irrigation.water.value": "Value",
         "timeline.item.earlier.desc": "act_1",
         "plan.task2.title": "Title",
@@ -314,7 +314,7 @@
         "feedback.subtitle": "Subtitle",
         "onboarding.subtitle": "Subtitle",
         "irrigation.duration.value": "Value",
-        "farm.recommendation.setReminder": "Setreminder",
+        "farm.recommendation.setReminder": "Set Reminder",
         "photo.result.hear": "Hear",
         "timeline.group.today": "Today",
         "market.local.soy": "Soy",
@@ -335,10 +335,13 @@
         "photo.safe.title": "Title",
         "irrigation.weatherStatus.cached": "Cached",
         "reminder.item2.title": "Title",
-        "profile.crop.label": "Label",
-        "profile.acres.label": "Label",
+        "profile.crop.label": "Crop",
+        "profile.crop.wheat": "Wheat",
+        "profile.crop.corn": "Corn",
+        "profile.crop.soybeans": "Soybeans",
+        "profile.acres.label": "Acres",
         "sim.stepAction": "Stepaction",
-        "farm.recommendation.alreadyWatered": "Alreadywatered",
+        "farm.recommendation.alreadyWatered": "I Watered Today",
         "sim.pest": "Pest",
         "timeline.subtitle": "Subtitle",
         "market.local.wheat.val": "₹2,450/quintal",
@@ -361,7 +364,7 @@
         "escalate.review.field.label": "Label",
         "onboarding.action.save": "Save",
         "photo.start.whole": "Whole",
-        "market.exportAnalysis": "Exportanalysis",
+        "market.exportAnalysis": "Export Analysis",
         "reminder.action.complete": "Complete",
         "irrigation.reason3": "Reason3",
         "pest.lateBlight.desc": "Desc",
@@ -371,7 +374,7 @@
         "irrigation.unitSelector.title": "Title",
         "escalate.review.confidence.label": "Label",
         "plan.task1.title": "Title",
-        "farm.nutrition.title": "Title",
+        "farm.nutrition.title": "Nutrition",
         "photo.safe.step1": "Step1",
         "photo.result.retake": "Retake",
         "farm.details.title": "Title",
@@ -388,7 +391,7 @@
         "feedback.outcome.nochange": "Nochange",
         "reminder.action.snooze": "Snooze",
         "escalate.review.diagnosis.label": "Label",
-        "market.mandi.label": "Label",
+        "market.mandi.label": "Mandi",
         "activity_confirm.subtitle": "Subtitle",
         "photo.start.notsure": "Notsure",
         "irrigation.unit.hours": "Hours",
@@ -403,7 +406,7 @@
         "reminder.action.hear": "Hear",
         "photo.result.safeSteps": "Safesteps",
         "photo.start.leaf": "Leaf",
-        "farm.details.button": "Button",
+        "farm.details.button": "Detailed Farm Data",
         "activity_confirm.grid.type.label": "Label",
         "profile.saveAction": "Saveaction",
         "onboarding.fields.language.label": "Label",
@@ -469,14 +472,14 @@
         "plan.task1.explain": "Explain",
         "photo.progress.info": "Info",
         "farm.nutrition.attention": "Attention",
-        "market.subtitle": "Subtitle",
+        "market.subtitle": "Local mandi prices and global reference prices",
         "feedback.outcome.label": "Label",
         "photo.guidance.step3": "Step3",
         "photo.start.title": "Title",
         "photo.quality.title": "Title",
         "sim.health": "Health",
         "activity_confirm.state.type": "Type",
-        "profile.region.label": "Label",
+        "profile.region.label": "Field",
         "photo.start.root": "Root",
         "escalate.response.solution.val": "Apply potassium-rich organic mulch; ensure balanced water drainage",
         "plan.action.explain": "Explain",
@@ -630,15 +633,15 @@
         "irrigation.water.label": "पानी",
         "photo.progress.analyzing": "Analyzing",
         "sim.fertilizer.label": "Label",
-        "farm.recommendation.hearAdvice": "Hearadvice",
+        "farm.recommendation.hearAdvice": "सलाह सुनें",
         "photo.result.alt2": "Alt2",
         "sim.cropSelector.label": "फसल",
         "plan.task3.title": "Title",
         "photo.start.question": "Question",
         "irrigation.action.changeTime": "Changetime",
-        "farm.pestRisk.title": "Title",
+        "farm.pestRisk.title": "कीट जोखिम",
         "irrigation.reason2": "Reason2",
-        "market.title": "Title",
+        "market.title": "मंडी जानकारी",
         "irrigation.water.value": "पानी",
         "timeline.item.earlier.desc": "act_1",
         "plan.task2.title": "Title",
@@ -652,7 +655,7 @@
         "feedback.subtitle": "पीछे",
         "onboarding.subtitle": "Subtitle",
         "irrigation.duration.value": "Value",
-        "farm.recommendation.setReminder": "Setreminder",
+        "farm.recommendation.setReminder": "याद दिलाएँ",
         "photo.result.hear": "Hear",
         "timeline.group.today": "Today",
         "market.local.soy": "Soy",
@@ -674,9 +677,12 @@
         "irrigation.weatherStatus.cached": "स्थिति",
         "reminder.item2.title": "Title",
         "profile.crop.label": "फसल",
-        "profile.acres.label": "Label",
+        "profile.crop.wheat": "गेहूँ",
+        "profile.crop.corn": "मक्का",
+        "profile.crop.soybeans": "सोयाबीन",
+        "profile.acres.label": "एकड़",
         "sim.stepAction": "Stepaction",
-        "farm.recommendation.alreadyWatered": "पानी",
+        "farm.recommendation.alreadyWatered": "आज पानी दे दिया",
         "sim.pest": "Pest",
         "timeline.subtitle": "Subtitle",
         "market.local.wheat.val": "₹2,450/quintal",
@@ -699,7 +705,7 @@
         "escalate.review.field.label": "खेत",
         "onboarding.action.save": "सहेजें",
         "photo.start.whole": "Whole",
-        "market.exportAnalysis": "Exportanalysis",
+        "market.exportAnalysis": "विश्लेषण निर्यात करें",
         "reminder.action.complete": "Complete",
         "irrigation.reason3": "Reason3",
         "pest.lateBlight.desc": "Desc",
@@ -709,7 +715,7 @@
         "irrigation.unitSelector.title": "Title",
         "escalate.review.confidence.label": "Label",
         "plan.task1.title": "Title",
-        "farm.nutrition.title": "Title",
+        "farm.nutrition.title": "पोषण",
         "photo.safe.step1": "Step1",
         "photo.result.retake": "Retake",
         "farm.details.title": "विवरण",
@@ -726,7 +732,7 @@
         "feedback.outcome.nochange": "नहीं",
         "reminder.action.snooze": "नहीं",
         "escalate.review.diagnosis.label": "नहीं",
-        "market.mandi.label": "Label",
+        "market.mandi.label": "मंडी",
         "activity_confirm.subtitle": "पुष्टि करें",
         "photo.start.notsure": "नहीं",
         "irrigation.unit.hours": "Hours",
@@ -807,14 +813,14 @@
         "plan.task1.explain": "Explain",
         "photo.progress.info": "Info",
         "farm.nutrition.attention": "Attention",
-        "market.subtitle": "Subtitle",
+        "market.subtitle": "स्थानीय मंडी भाव और वैश्विक संदर्भ मूल्य",
         "feedback.outcome.label": "पीछे",
         "photo.guidance.step3": "Step3",
         "photo.start.title": "Title",
         "photo.quality.title": "Title",
         "sim.health": "स्वास्थ्य",
         "activity_confirm.state.type": "पुष्टि करें",
-        "profile.region.label": "Label",
+        "profile.region.label": "खेत",
         "photo.start.root": "Root",
         "escalate.response.solution.val": "Apply potassium-rich organic mulch; ensure balanced water drainage",
         "plan.action.explain": "Explain",
@@ -926,7 +932,7 @@
         "photo.progress.analyzing": "Analyzing",
         "sim.fertilizer.label": "Label",
         "console.action.close": "बंद करा",
-        "farm.recommendation.hearAdvice": "Hearadvice",
+        "farm.recommendation.hearAdvice": "सल्ला ऐका",
         "photo.result.alt2": "Alt2",
         "privacy.location.label": "Approximate Location Sharing",
         "sim.cropSelector.label": "पीक",
@@ -936,9 +942,9 @@
         "irrigation.action.changeTime": "Changetime",
         "privacy.action.save": "जतन करा",
         "privacy.image.label": "Retain Uploaded Crop Images",
-        "farm.pestRisk.title": "Title",
+        "farm.pestRisk.title": "कीड धोका",
         "irrigation.reason2": "Reason2",
-        "market.title": "Title",
+        "market.title": "बाजार माहिती",
         "irrigation.water.value": "पाणी",
         "timeline.item.earlier.desc": "act_1",
         "plan.task2.title": "Title",
@@ -952,7 +958,7 @@
         "feedback.subtitle": "मागे",
         "onboarding.subtitle": "Subtitle",
         "irrigation.duration.value": "Value",
-        "farm.recommendation.setReminder": "Setreminder",
+        "farm.recommendation.setReminder": "आठवण ठेवा",
         "photo.result.hear": "Hear",
         "timeline.group.today": "Today",
         "market.local.soy": "Soy",
@@ -975,9 +981,12 @@
         "irrigation.weatherStatus.cached": "स्थिती",
         "reminder.item2.title": "Title",
         "profile.crop.label": "पीक",
-        "profile.acres.label": "Label",
+        "profile.crop.wheat": "गहू",
+        "profile.crop.corn": "मका",
+        "profile.crop.soybeans": "सोयाबीन",
+        "profile.acres.label": "एकर",
         "sim.stepAction": "Stepaction",
-        "farm.recommendation.alreadyWatered": "पाणी",
+        "farm.recommendation.alreadyWatered": "आज पाणी दिले",
         "sim.pest": "Pest",
         "timeline.subtitle": "Subtitle",
         "market.local.wheat.val": "₹2,450/quintal",
@@ -1003,7 +1012,7 @@
         "onboarding.action.save": "जतन करा",
         "photo.start.whole": "Whole",
         "console.title": "Agronomist Operations Console",
-        "market.exportAnalysis": "Exportanalysis",
+        "market.exportAnalysis": "विश्लेषण निर्यात करा",
         "reminder.action.complete": "Complete",
         "irrigation.reason3": "Reason3",
         "pest.lateBlight.desc": "Desc",
@@ -1014,7 +1023,7 @@
         "escalate.review.confidence.label": "Label",
         "outbreak.action.dismiss": "Dismiss Alert",
         "plan.task1.title": "Title",
-        "farm.nutrition.title": "Title",
+        "farm.nutrition.title": "पोषण",
         "photo.safe.step1": "Step1",
         "photo.result.retake": "Retake",
         "farm.details.title": "तपशील",
@@ -1032,7 +1041,7 @@
         "feedback.outcome.nochange": "नाही",
         "reminder.action.snooze": "नाही",
         "escalate.review.diagnosis.label": "नाही",
-        "market.mandi.label": "Label",
+        "market.mandi.label": "बाजार",
         "privacy.outbreak.label": "Participate in Anonymized Outbreak Analytics",
         "activity_confirm.subtitle": "पुष्टी करा",
         "photo.start.notsure": "नाही",
@@ -1137,7 +1146,7 @@
         "privacy.delete.action.trigger": "Yes, Purge Everything",
         "photo.progress.info": "Info",
         "farm.nutrition.attention": "Attention",
-        "market.subtitle": "Subtitle",
+        "market.subtitle": "स्थानिक बाजार भाव आणि जागतिक संदर्भ किंमती",
         "outbreak.review.item1.desc": "Signal strength: 4 report counts in 7 days.",
         "feedback.outcome.label": "मागे",
         "photo.guidance.step3": "Step3",
@@ -1147,7 +1156,7 @@
         "sim.health": "आरोग्य",
         "privacy.consent.title": "Outbreak Telemetry Participation",
         "activity_confirm.state.type": "पुष्टी करा",
-        "profile.region.label": "Label",
+        "profile.region.label": "शेत",
         "outbreak.details.symptoms.label": "तपशील",
         "photo.start.root": "Root",
         "escalate.response.solution.val": "Apply potassium-rich organic mulch; ensure balanced water drainage",
@@ -1264,7 +1273,7 @@
         "photo.progress.analyzing": "Analyzing",
         "sim.fertilizer.label": "Label",
         "console.action.close": "funga",
-        "farm.recommendation.hearAdvice": "Hearadvice",
+        "farm.recommendation.hearAdvice": "Sikiliza Ushauri",
         "photo.result.alt2": "Alt2",
         "privacy.location.label": "Approximate Location Sharing",
         "sim.cropSelector.label": "zao",
@@ -1274,9 +1283,9 @@
         "irrigation.action.changeTime": "Changetime",
         "privacy.action.save": "hifadhi",
         "privacy.image.label": "Retain Uploaded Crop Images",
-        "farm.pestRisk.title": "Title",
+        "farm.pestRisk.title": "Hatari ya Wadudu",
         "irrigation.reason2": "Reason2",
-        "market.title": "Title",
+        "market.title": "Taarifa za Soko",
         "irrigation.water.value": "maji",
         "timeline.item.earlier.desc": "act_1",
         "plan.task2.title": "Title",
@@ -1290,7 +1299,7 @@
         "feedback.subtitle": "nyuma",
         "onboarding.subtitle": "Subtitle",
         "irrigation.duration.value": "Value",
-        "farm.recommendation.setReminder": "Setreminder",
+        "farm.recommendation.setReminder": "Weka Kikumbusho",
         "photo.result.hear": "Hear",
         "timeline.group.today": "Today",
         "market.local.soy": "Soy",
@@ -1312,10 +1321,13 @@
         "photo.safe.title": "Title",
         "irrigation.weatherStatus.cached": "hali",
         "reminder.item2.title": "Title",
-        "profile.crop.label": "zao",
-        "profile.acres.label": "Label",
+        "profile.crop.label": "Zao",
+        "profile.crop.wheat": "Ngano",
+        "profile.crop.corn": "Mahindi",
+        "profile.crop.soybeans": "Soya",
+        "profile.acres.label": "Ekari",
         "sim.stepAction": "Stepaction",
-        "farm.recommendation.alreadyWatered": "maji",
+        "farm.recommendation.alreadyWatered": "Nimemwagilia Leo",
         "sim.pest": "Pest",
         "timeline.subtitle": "Subtitle",
         "market.local.wheat.val": "₹2,450/quintal",
@@ -1341,7 +1353,7 @@
         "onboarding.action.save": "hifadhi",
         "photo.start.whole": "Whole",
         "console.title": "Agronomist Operations Console",
-        "market.exportAnalysis": "Exportanalysis",
+        "market.exportAnalysis": "Hamisha Uchambuzi",
         "reminder.action.complete": "Complete",
         "irrigation.reason3": "Reason3",
         "pest.lateBlight.desc": "Desc",
@@ -1352,7 +1364,7 @@
         "escalate.review.confidence.label": "Label",
         "outbreak.action.dismiss": "Dismiss Alert",
         "plan.task1.title": "Title",
-        "farm.nutrition.title": "Title",
+        "farm.nutrition.title": "Lishe",
         "photo.safe.step1": "Step1",
         "photo.result.retake": "Retake",
         "farm.details.title": "maelezo",
@@ -1370,7 +1382,7 @@
         "feedback.outcome.nochange": "hapana",
         "reminder.action.snooze": "hapana",
         "escalate.review.diagnosis.label": "hapana",
-        "market.mandi.label": "Label",
+        "market.mandi.label": "Soko",
         "privacy.outbreak.label": "Participate in Anonymized Outbreak Analytics",
         "activity_confirm.subtitle": "thibitisha",
         "photo.start.notsure": "hapana",
@@ -1475,7 +1487,7 @@
         "privacy.delete.action.trigger": "Yes, Purge Everything",
         "photo.progress.info": "Info",
         "farm.nutrition.attention": "Attention",
-        "market.subtitle": "Subtitle",
+        "market.subtitle": "Bei za soko la karibu na bei za rejea duniani",
         "outbreak.review.item1.desc": "Signal strength: 4 report counts in 7 days.",
         "feedback.outcome.label": "nyuma",
         "photo.guidance.step3": "Step3",
@@ -1485,7 +1497,7 @@
         "sim.health": "afya",
         "privacy.consent.title": "Outbreak Telemetry Participation",
         "activity_confirm.state.type": "thibitisha",
-        "profile.region.label": "Label",
+        "profile.region.label": "Shamba",
         "outbreak.details.symptoms.label": "maelezo",
         "photo.start.root": "Root",
         "escalate.response.solution.val": "Apply potassium-rich organic mulch; ensure balanced water drainage",
@@ -1602,7 +1614,7 @@
         "photo.progress.analyzing": "Analyzing",
         "sim.fertilizer.label": "Label",
         "console.action.close": "మూసివేయి",
-        "farm.recommendation.hearAdvice": "Hearadvice",
+        "farm.recommendation.hearAdvice": "సలహా వినండి",
         "photo.result.alt2": "Alt2",
         "privacy.location.label": "Approximate Location Sharing",
         "sim.cropSelector.label": "పంట",
@@ -1612,9 +1624,9 @@
         "irrigation.action.changeTime": "Changetime",
         "privacy.action.save": "సేవ్ చేయి",
         "privacy.image.label": "Retain Uploaded Crop Images",
-        "farm.pestRisk.title": "Title",
+        "farm.pestRisk.title": "పురుగు ప్రమాదం",
         "irrigation.reason2": "Reason2",
-        "market.title": "Title",
+        "market.title": "మార్కెట్ సమాచారం",
         "irrigation.water.value": "నీరు",
         "timeline.item.earlier.desc": "act_1",
         "plan.task2.title": "Title",
@@ -1628,7 +1640,7 @@
         "feedback.subtitle": "వెనుకకు",
         "onboarding.subtitle": "Subtitle",
         "irrigation.duration.value": "Value",
-        "farm.recommendation.setReminder": "Setreminder",
+        "farm.recommendation.setReminder": "గుర్తు చేయి",
         "photo.result.hear": "Hear",
         "timeline.group.today": "Today",
         "market.local.soy": "Soy",
@@ -1651,9 +1663,12 @@
         "irrigation.weatherStatus.cached": "స్థితి",
         "reminder.item2.title": "Title",
         "profile.crop.label": "పంట",
-        "profile.acres.label": "Label",
+        "profile.crop.wheat": "గోధుమ",
+        "profile.crop.corn": "మొక్కజొన్న",
+        "profile.crop.soybeans": "సోయాబీన్స్",
+        "profile.acres.label": "ఎకరాలు",
         "sim.stepAction": "Stepaction",
-        "farm.recommendation.alreadyWatered": "నీరు",
+        "farm.recommendation.alreadyWatered": "ఈరోజు నీరు పెట్టాను",
         "sim.pest": "Pest",
         "timeline.subtitle": "Subtitle",
         "market.local.wheat.val": "₹2,450/quintal",
@@ -1679,7 +1694,7 @@
         "onboarding.action.save": "సేవ్ చేయి",
         "photo.start.whole": "Whole",
         "console.title": "Agronomist Operations Console",
-        "market.exportAnalysis": "Exportanalysis",
+        "market.exportAnalysis": "విశ్లేషణను ఎగుమతి చేయండి",
         "reminder.action.complete": "Complete",
         "irrigation.reason3": "Reason3",
         "pest.lateBlight.desc": "Desc",
@@ -1690,7 +1705,7 @@
         "escalate.review.confidence.label": "Label",
         "outbreak.action.dismiss": "Dismiss Alert",
         "plan.task1.title": "Title",
-        "farm.nutrition.title": "Title",
+        "farm.nutrition.title": "పోషణ",
         "photo.safe.step1": "Step1",
         "photo.result.retake": "Retake",
         "farm.details.title": "వివరాలు",
@@ -1708,7 +1723,7 @@
         "feedback.outcome.nochange": "కాదు",
         "reminder.action.snooze": "కాదు",
         "escalate.review.diagnosis.label": "కాదు",
-        "market.mandi.label": "Label",
+        "market.mandi.label": "మార్కెట్",
         "privacy.outbreak.label": "Participate in Anonymized Outbreak Analytics",
         "activity_confirm.subtitle": "ధృవీకరించు",
         "photo.start.notsure": "కాదు",
@@ -1813,7 +1828,7 @@
         "privacy.delete.action.trigger": "Yes, Purge Everything",
         "photo.progress.info": "Info",
         "farm.nutrition.attention": "Attention",
-        "market.subtitle": "Subtitle",
+        "market.subtitle": "స్థానిక మార్కెట్ ధరలు మరియు ప్రపంచ సూచిక ధరలు",
         "outbreak.review.item1.desc": "Signal strength: 4 report counts in 7 days.",
         "feedback.outcome.label": "వెనుకకు",
         "photo.guidance.step3": "Step3",
@@ -1823,7 +1838,7 @@
         "sim.health": "ఆరోగ్యం",
         "privacy.consent.title": "Outbreak Telemetry Participation",
         "activity_confirm.state.type": "ధృవీకరించు",
-        "profile.region.label": "Label",
+        "profile.region.label": "పొలం",
         "outbreak.details.symptoms.label": "వివరాలు",
         "photo.start.root": "Root",
         "escalate.response.solution.val": "Apply potassium-rich organic mulch; ensure balanced water drainage",
@@ -1862,23 +1877,42 @@
   window.currentLanguageState = LANGUAGE_CONFIGS['en']; // default initialization
 
   // Strict Translation Fallback Resolver
+  function humanizeTranslationKey(key) {
+    const parts = key.split('.');
+    const useful = parts.slice(-2).join(' ');
+    return useful
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/\b(step)(\d+)\b/gi, '$1 $2')
+      .replace(/[_-]/g, ' ')
+      .trim()
+      .replace(/\w\S*/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+  }
+
+  function isPlaceholderTranslation(value) {
+    return /^(Title|Subtitle|Desc|Label|Button|Placeholder|Opencamera|Choosephoto|Hearinstructions|Setreminder|Alreadywatered|Hearadvice|Changetime|Wateredtoday|Exportanalysis|Step\d+|Safesteps|Askexpert)$/i.test(String(value || ''));
+  }
+
   function getTranslation(key, langCode) {
     const code = langCode || 'en';
     
     // 1. Try selected language dictionary
     if (SCHEMA_TRANSLATIONS[code] && SCHEMA_TRANSLATIONS[code][key] !== undefined) {
-      return SCHEMA_TRANSLATIONS[code][key];
+      const value = SCHEMA_TRANSLATIONS[code][key];
+      return isPlaceholderTranslation(value) ? humanizeTranslationKey(key) : value;
     }
     if (TRANSLATIONS[code] && TRANSLATIONS[code][key] !== undefined) {
-      return TRANSLATIONS[code][key];
+      const value = TRANSLATIONS[code][key];
+      return isPlaceholderTranslation(value) ? humanizeTranslationKey(key) : value;
     }
     
     // 2. Try English default fallback
     if (SCHEMA_TRANSLATIONS['en'] && SCHEMA_TRANSLATIONS['en'][key] !== undefined) {
-      return SCHEMA_TRANSLATIONS['en'][key];
+      const value = SCHEMA_TRANSLATIONS['en'][key];
+      return isPlaceholderTranslation(value) ? humanizeTranslationKey(key) : value;
     }
     if (TRANSLATIONS['en'] && TRANSLATIONS['en'][key] !== undefined) {
-      return TRANSLATIONS['en'][key];
+      const value = TRANSLATIONS['en'][key];
+      return isPlaceholderTranslation(value) ? humanizeTranslationKey(key) : value;
     }
     
     // 3. Log warning and construct a clean human-readable string as final fallback
@@ -1887,13 +1921,7 @@
       language: code
     });
     
-    const parts = key.split('.');
-    const lastPart = parts[parts.length - 1];
-    return lastPart
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/[_-]/g, ' ')
-      .trim()
-      .replace(/^\w/, c => c.toUpperCase());
+    return humanizeTranslationKey(key);
   }
 
   function translateSchemaData(obj, langCode) {

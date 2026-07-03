@@ -263,8 +263,10 @@ document.addEventListener('DOMContentLoaded', () => {
           
           field.options.forEach(opt => {
             const o = document.createElement('option');
-            o.value = opt.toLowerCase();
-            o.textContent = opt;
+            const optionValue = typeof opt === 'object' ? opt.value : opt;
+            const optionLabel = typeof opt === 'object' ? (opt.label || opt.value) : opt;
+            o.value = String(optionValue).toLowerCase();
+            o.textContent = optionLabel;
             select.appendChild(o);
           });
           if (field.value !== undefined) {
