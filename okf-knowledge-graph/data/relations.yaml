@@ -1,0 +1,143 @@
+# OKF Relations Map
+# Maps relationships between entities in the knowledge graph
+
+# Disease → Crop Relations
+diseases:
+  wheat_rust:
+    affects: [wheat]
+    season: rabi
+    severity: high
+    treatments: [carbendazim, mancozeb, propiconazole]
+    organic_treatments: [neem_oil]
+    regions: [north_india, maharashtra, punjab, haryana, mp]
+  
+  wheat_powdery_mildew:
+    affects: [wheat]
+    season: rabi
+    severity: moderate
+    treatments: [sulfur, triadimefon, propiconazole]
+    organic_treatments: [baking_soda]
+    regions: [north_india, maharashtra, punjab, haryana]
+  
+  rice_blast:
+    affects: [rice]
+    season: kharif
+    severity: high
+    treatments: [isoprothiolane, tricyclazole, propiconazole]
+    organic_treatments: [neem_oil, copper_sulfate]
+    regions: [east_india, tamil_nadu, andhra_pradesh, odisha, west_bengal]
+  
+  rice_bacterial_leaf_blight:
+    affects: [rice]
+    season: kharif
+    severity: high
+    treatments: [copper_oxychloride, kasugamycin, streptomycin]
+    organic_treatments: [neem_leaf_extract]
+    regions: [east_india, tamil_nadu, andhra_pradesh, odisha]
+  
+  cotton_grey_mold:
+    affects: [cotton]
+    season: kharif
+    severity: moderate
+    treatments: [carbendazim, thiophanate_methyl, azoxystrobin]
+    regions: [maharashtra, gujarat, telangana, karnataka]
+
+# Pest → Crop Relations
+pests:
+  corn_stalk_borer:
+    affects: [corn, maize]
+    season: [kharif, summer]
+    severity: high
+    treatments: [chlorpyriphos, carbofuran, endosulfan]
+    organic_treatments: [neem_oil, chili_garlic, btk]
+    regions: [maharashtra, karnataka, tamil_nadu, mp, up]
+  
+  cotton_bollworm:
+    affects: [cotton]
+    season: kharif
+    severity: high
+    treatments: [spinosad, emamectin_benzoate, chlorantraniliprole]
+    organic_treatments: [neem_oil, btk]
+    methods: [pheromone_trap]
+    regions: [maharashtra, gujarat, telangana, karnataka, ap]
+  
+  rice_stem_borer:
+    affects: [rice]
+    season: kharif
+    severity: high
+    treatments: [cartap, chlorpyriphos, fipronil]
+    organic_treatments: [neem_oil, vermillion]
+    methods: [variety_mixing, water_management]
+    regions: [east_india, tamil_nadu, andhra_pradesh, odisha, karnataka]
+  
+  wheat_leaf_eater:
+    affects: [wheat]
+    season: rabi
+    severity: moderate
+    treatments: [carbaryl, chlorpyriphos, lambda_cyhalothrin]
+    organic_treatments: [btk, neem_oil]
+    methods: [weed_management]
+    regions: [north_india, punjab, haryana, up, mp]
+
+# Soil → Crop Suitability
+soil_crop_relations:
+  clay_soil:
+    suitable_crops: [rice, wheat, cotton, sugarcane, pomegranate, grapes]
+    challenging_crops: [carrot, beetroot, legumes, seedlings]
+    irrigation: drip_preferred
+    amendments: [organic_matter, gypsum, biochar]
+  
+  sandy_loam_soil:
+    suitable_crops: [cotton, groundnut, potato, onion, mango, pomegranate, grapes, wheat, corn, soybean]
+    challenging_crops: [rice, sugarcane]
+    irrigation: frequent_light
+    amendments: [organic_matter, mulching, biochar]
+  
+  alluvial_soil:
+    suitable_crops: [rice, wheat, sugarcane, maize, sorghum, pulses, vegetables, cotton]
+    irrigation: flexible
+    amendments: [maintain_organic_matter]
+
+# Safety Rules → Applicable Treatments
+safety_applicability:
+  pesticide_limits:
+    applies_to: all_treatments
+    required: true
+  
+  pre_harvest_intervals:
+    applies_to: chemical_treatments
+    required: true
+  
+  organic_standards:
+    applies_to: organic_treatments
+    required: false  # only if farmer is organic certified
+
+# Treatment → Safety Constraints
+treatment_safety:
+  carbendazim:
+    max_concentration: "1 g/liter"
+    max_rate: "2.5 L/hectare"
+    phi_days: 14
+    organic_allowed: false
+    escalation_threshold: "2x max dose"
+  
+  chlorpyriphos:
+    max_concentration: "0.5 ml/liter"
+    max_rate: "1.0 L/hectare"
+    phi_days: 21
+    organic_allowed: false
+    escalation_threshold: "2x max dose"
+  
+  neem_oil:
+    max_concentration: "5 ml/liter"
+    max_rate: "3.0 L/hectare"
+    phi_days: 0
+    organic_allowed: true
+    escalation_threshold: null
+  
+  copper_sulfate:
+    max_concentration: "2 g/liter"
+    max_rate: "1.5 L/hectare"
+    phi_days: 7
+    organic_allowed: true  # limited
+    escalation_threshold: "3x max dose"

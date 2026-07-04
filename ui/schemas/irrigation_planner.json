@@ -1,11 +1,11 @@
 {
   "type": "card",
-  "title": "Smart Irrigation Planner",
+  "titleKey": "irrigation.title",
   "theme": "info",
   "components": [
     {
       "type": "text",
-      "value": "Configure field settings to calculate optimized scheduling slots."
+      "valueKey": "irrigation.subtitle"
     },
     {
       "type": "grid",
@@ -13,13 +13,13 @@
       "items": [
         {
           "type": "metric",
-          "label": "Optimal Water Need",
+          "labelKey": "irrigation.water_need",
           "value": "15,000 Gallons",
           "status": "normal"
         },
         {
           "type": "metric",
-          "label": "Target Schedule",
+          "labelKey": "irrigation.schedule",
           "value": "Every 3 Days",
           "status": "normal"
         }
@@ -31,20 +31,20 @@
         {
           "type": "select",
           "name": "crop",
-          "label": "Select Crop Type",
+          "labelKey": "irrigation.select_crop",
           "options": ["Corn", "Wheat", "Soybeans", "Rice"]
         },
         {
           "type": "input",
           "name": "acres",
-          "label": "Field Size (Acres)",
-          "placeholder": "Enter acres (e.g. 50)"
+          "labelKey": "irrigation.field_size",
+          "placeholderKey": "irrigation.field_size_placeholder"
         }
       ]
     },
     {
       "type": "button",
-      "label": "Calculate Watering Volume",
+      "labelKey": "irrigation.calculate",
       "action": "calculate_irrigation"
     }
   ]

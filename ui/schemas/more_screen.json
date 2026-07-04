@@ -25,12 +25,6 @@
           "commandId": "FARM_HISTORY"
         },
         {
-          "labelKey": "more.items.support.label",
-          "icon": "📞",
-          "descriptionKey": "more.items.support.desc",
-          "commandId": "EXPERT_SUPPORT"
-        },
-        {
           "labelKey": "more.items.offline.label",
           "icon": "📥",
           "descriptionKey": "more.items.offline.desc",
@@ -61,15 +55,6 @@
           "commandId": "APP_HELP"
         }
       ]
-    },
-    {
-      "type": "action_card",
-      "titleKey": "more.expert.title",
-      "descriptionKey": "more.expert.desc",
-      "action": {
-        "commandId": "TOGGLE_EXPERT_MODE",
-        "labelKey": "more.expert.action.enable"
-      }
     }
   ]
 }

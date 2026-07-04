@@ -2,6 +2,9 @@ from google.adk.agents import Agent
 from google.adk.models import Gemini
 from google.genai import types
 
+# Import weather MCP tool directly from the MCP server module (not subprocess)
+from mcp_servers.weather.server import fetch_weather_forecast
+
 weather_advisor_agent = Agent(
     name="weather_advisor_agent",
     model=Gemini(
@@ -10,7 +13,11 @@ weather_advisor_agent = Agent(
     ),
     instruction=(
         "You are an agricultural meteorologist. Your task is to interpret local weather patterns "
-        "and forecasts, and issue crop-protection and planting window alerts based on weather data."
+        "and forecasts, and issue crop-protection and planting window alerts based on weather data.\n\n"
+        "TOOL USAGE: For any query about weather, rainfall, temperature, frost, humidity, or forecast, "
+        "you MUST call the fetch_weather_forecast tool with the farmer's location from their Digital Twin context. "
+        "Use the format 'city_name' for location (e.g., 'Pune', 'Nairobi'). "
+        "If no location is in context, ask the farmer for their nearest town. "
+        "Always base your response on the actual tool output, not on assumed weather data."
     ),
-    tools=[],
-)
+    tools=[fetch_weather_forecast],)

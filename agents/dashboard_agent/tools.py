@@ -128,22 +128,21 @@ def get_ui_schema(schema_name: str) -> str:
 def get_local_mandi_prices(region: str) -> dict:
     """Retrieve localized mandi commodity prices for the farmer's region.
 
+    Delegates to the market MCP server's fetch_mandi_prices tool which:
+    1. Uses data.gov.in API for real Indian mandi prices (if DATA_GOV_IN_API_KEY set)
+    2. Falls back to Yahoo Finance futures + currency conversion (INR/KES)
+
     Args:
-        region: The district or mandi region (e.g. 'Nagpur', 'Indore', 'Pune', 'Eldoret', 'Nakuru').
+        region: The district or mandi region (e.g. 'Nagpur', 'Pune', 'Eldoret', 'Nakuru').
 
     Returns:
-        dict: Localized crop prices.
+        dict: Localized crop prices in the farmer's local currency.
     """
-    region_str = region.lower() if region else ""
-    if "nagpur" in region_str:
-        return {"wheat": "₹2,450/quintal", "corn": "₹1,980/quintal", "soybeans": "₹4,200/quintal"}
-    elif "pune" in region_str:
-        return {"wheat": "₹2,600/quintal", "corn": "₹2,100/quintal", "soybeans": "₹4,400/quintal"}
-    elif "indore" in region_str:
-        return {"wheat": "₹2,380/quintal", "corn": "₹1,850/quintal", "soybeans": "₹4,100/quintal"}
-    elif "eldoret" in region_str or "nakuru" in region_str or "kenya" in region_str:
-        return {"wheat": "KES 3,800/bag", "corn": "KES 2,900/bag", "soybeans": "KES 5,500/bag"}
-    else:
-        # Default fallback
-        return {"wheat": "₹2,450/quintal", "corn": "₹1,980/quintal", "soybeans": "₹4,200/quintal"}
+    import asyncio as _asyncio
+    from mcp_servers.market.server import fetch_mandi_prices
+    try:
+        result = _asyncio.run(fetch_mandi_prices(region))
+        return result
+    except Exception as e:
+        return {"region": region, "source": f"Error: {e}", "prices": {}}
 

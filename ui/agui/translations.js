@@ -3,18 +3,11 @@
     farmer: [
       { id: 'home', icon: '🏠', trKey: 'nav_home' },
       { id: 'farm', icon: '🌱', trKey: 'nav_farm' },
-      { id: 'ask', icon: '🎙️', trKey: 'nav_ask' },
+      { id: 'ask', icon: '💬', trKey: 'nav_ask' },
+      { id: 'expert', icon: '☁️', trKey: 'nav_expert' },
+      { id: 'image', icon: '📷', trKey: 'nav_image' },
       { id: 'market', icon: '📈', trKey: 'nav_market' },
       { id: 'more', icon: '📋', trKey: 'nav_more' }
-    ],
-    expert: [
-      { id: 'console', icon: '💻', trKey: 'nav_console' },
-      { id: 'consultations', icon: '📥', trKey: 'nav_consultations' },
-      { id: 'outbreak', icon: '🚨', trKey: 'nav_outbreak' },
-      { id: 'governance', icon: '📖', trKey: 'nav_governance' },
-      { id: 'evaluation', icon: '📊', trKey: 'nav_evaluation' },
-      { id: 'audit', icon: '🔍', trKey: 'nav_audit' },
-      { id: 'settings', icon: '⚙️', trKey: 'nav_settings' }
     ]
   };
 
@@ -42,9 +35,17 @@
         "title_chat": "Krishi Sastri Chat Portal",
         "nav_home": "Home",
         "nav_farm": "My Farm",
-        "nav_ask": "Ask",
+        "nav_ask": "Ask Advisor",
+        "nav_expert": "Ask Expert",
+        "nav_image": "Ask Image",
         "nav_market": "Market",
-        "nav_more": "More"
+        "nav_more": "More",
+        "expert_title": "Krishi Sastri \u2014 Cloud Expert",
+        "expert_subtitle": "Powered by Gemini \u00b7 Deep Agronomic Intelligence",
+        "expert_welcome_label": "Cloud Expert:",
+        "expert_welcome_msg": " Ask your toughest farming questions. Krishi Sastri will consult Gemini cloud intelligence for you.",
+        "expert_placeholder": "Ask the cloud expert...",
+        "expert_thinking": "Consulting Gemini cloud..."
     },
     "hi": {
         "nav_console": "💻 कंसोल",
@@ -69,9 +70,17 @@
         "title_chat": "कृषि शास्त्री चैट पोर्टल",
         "nav_home": "होम",
         "nav_farm": "मेरा खेत",
-        "nav_ask": "पूछें",
+        "nav_ask": "सलाहकार पूछें",
+        "nav_expert": "विशेषज्ञ पूछें",
+        "nav_image": "फसल फोटो पूछें",
         "nav_market": "मंडी",
-        "nav_more": "अन्य"
+        "nav_more": "अन्य",
+        "expert_title": "कृषि शास्त्री \u2014 क्लाउड विशेषज्ञ",
+        "expert_subtitle": "Gemini द्वारा संचालित \u00b7 गहन कृषि बुद्धि",
+        "expert_welcome_label": "क्लाउड विशेषज्ञ:",
+        "expert_welcome_msg": " अपने सबसे कठिन खेती सवाल पूछें। कृषि शास्त्री Gemini क्लाउड से सलाह लेंगे।",
+        "expert_placeholder": "विशेषज्ञ से पूछें...",
+        "expert_thinking": "Gemini से परामर्श हो रहा है..."
     },
     "mr": {
         "nav_console": "💻 कन्सोल",
@@ -96,9 +105,17 @@
         "title_chat": "कृषि शास्त्री चॅट पोर्टल",
         "nav_home": "होम",
         "nav_farm": "माझा शेत",
-        "nav_ask": "विचारा",
+        "nav_ask": "सल्लागार विचारा",
+        "nav_expert": "विशेषज्ञ विचारा",
+        "nav_image": "पीक फोटो विचारा",
         "nav_market": "बाजार",
-        "nav_more": "इतर"
+        "nav_more": "इतर",
+        "expert_title": "कृषि शास्त्री \u2014 क्लाउड विशेषज्ञ",
+        "expert_subtitle": "Gemini द्वारे संचालित \u00b7 गहन कृषि बुद्धि",
+        "expert_welcome_label": "क्लाउड विशेषज्ञ:",
+        "expert_welcome_msg": " तुमचे सर्वात कठिण शेतीचे प्रश्न विचारा। कृषि शास्त्री Gemini क्लाउड सल्ला घेतील.\u201d",
+        "expert_placeholder": "विशेषज्ञांना विचारा...",
+        "expert_thinking": "Gemini कडून मार्गदर्शन घेत आहे..."
     },
     "sw": {
         "nav_console": "💻 Dashibodi",
@@ -123,9 +140,17 @@
         "title_chat": "Krishi Sastri Portal ya Mazungumzo",
         "nav_home": "Nyumbani",
         "nav_farm": "Shamba Langu",
-        "nav_ask": "Uliza",
+        "nav_ask": "Uliza Mshauri",
+        "nav_expert": "Uliza Mtaalamu",
+        "nav_image": "Uliza Picha",
         "nav_market": "Soko",
-        "nav_more": "Zaidi"
+        "nav_more": "Zaidi",
+        "expert_title": "Krishi Sastri \u2014 Mtaalamu wa Wingu",
+        "expert_subtitle": "Inayoendeshwa na Gemini \u00b7 Akili ya Kilimo ya Kina",
+        "expert_welcome_label": "Mtaalamu wa Wingu:",
+        "expert_welcome_msg": " Uliza maswali magumu ya kilimo. Krishi Sastri ataomba akili ya Gemini cloud kwa ajili yako.",
+        "expert_placeholder": "Uliza mtaalamu wa wingu...",
+        "expert_thinking": "Inashauriana na Gemini cloud..."
     },
     "te": {
         "nav_console": "💻 కన్సోల్",
@@ -150,7 +175,8 @@
         "title_chat": "సలహాదారు చాట్ పోర్టల్",
         "nav_home": "హోమ్",
         "nav_farm": "నా పొలం",
-        "nav_ask": "అడగండి",
+        "nav_ask": "కృషి శాస్త్రి అడగండి",
+        "nav_image": "పంట ఫోటో అడగండి",
         "nav_market": "మార్కెట్",
         "nav_more": "మరింత"
     }
@@ -370,8 +396,15 @@
         "pest.lateBlight.desc": "Desc",
         "photo.safe.step3": "Step3",
         "onboarding.fields.name.placeholder": "Placeholder",
-        "irrigation.title": "Title",
-        "irrigation.unitSelector.title": "Title",
+        "irrigation.title": "Smart Irrigation Planner",
+        "irrigation.subtitle": "Configure field settings to calculate optimized scheduling slots.",
+        "irrigation.water_need": "Optimal Water Need",
+        "irrigation.schedule": "Target Schedule",
+        "irrigation.select_crop": "Select Crop Type",
+        "irrigation.field_size": "Field Size (Acres)",
+        "irrigation.field_size_placeholder": "Enter acres (e.g. 50)",
+        "irrigation.calculate": "Calculate Watering Volume",
+        "irrigation.unitSelector.title": "Unit Selector",
         "escalate.review.confidence.label": "Label",
         "plan.task1.title": "Title",
         "farm.nutrition.title": "Nutrition",
@@ -1018,8 +1051,15 @@
         "pest.lateBlight.desc": "Desc",
         "photo.safe.step3": "Step3",
         "onboarding.fields.name.placeholder": "शेत",
-        "irrigation.title": "Title",
-        "irrigation.unitSelector.title": "Title",
+        "irrigation.title": "स्मार्ट सिंचाई योजना",
+        "irrigation.subtitle": "अनुकूलित सिंचाई समय की गणना के लिए खेत की जानकारी भरें।",
+        "irrigation.water_need": "पानी की आवश्यकता",
+        "irrigation.schedule": "सिंचाई का समय",
+        "irrigation.select_crop": "फसल चुनें",
+        "irrigation.field_size": "खेत का क्षेत्रफल (एकड़)",
+        "irrigation.field_size_placeholder": "एकड़ दर्ज करें (जैसे 50)",
+        "irrigation.calculate": "पानी की मात्रा गणना करें",
+        "irrigation.unitSelector.title": "इकाई चयनकर्ता",
         "escalate.review.confidence.label": "Label",
         "outbreak.action.dismiss": "Dismiss Alert",
         "plan.task1.title": "Title",
@@ -2056,18 +2096,6 @@
   }
 
   function updateActiveTabHighlight(schemaName) {
-    const currentMode = document.getElementById('user-mode-selector')?.value || 'farmer';
-    if (currentMode === 'expert') {
-      let tabId = 'console';
-      if (schemaName === 'expert_request_status') tabId = 'consultations';
-      else if (schemaName === 'regional_risk_map') tabId = 'outbreak';
-      else if (schemaName === 'privacy_preferences') tabId = 'settings';
-      else return;
-      
-      window.switchTab(tabId, true);
-      return;
-    }
-
     let tabId = 'home';
     if (schemaName === 'home_today') tabId = 'home';
     else if (schemaName === 'crop_dashboard' || schemaName === 'my_farm_summary' || schemaName === 'detailed_farm_data' || schemaName === 'irrigation_advice' || schemaName === 'pest_alert' || schemaName === 'irrigation_planner') tabId = 'farm';

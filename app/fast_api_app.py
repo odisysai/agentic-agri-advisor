@@ -14,10 +14,19 @@
 import os
 import tempfile
 import re
+from datetime import datetime
+
+# Load .env file early so GEMINI_API_KEY and other secrets are available
+try:
+    from dotenv import find_dotenv, load_dotenv
+    load_dotenv(find_dotenv(usecwd=True), override=False)
+except ImportError:
+    pass  # dotenv not installed; rely on environment variables being set externally
 
 import edge_tts
 import google.auth
 from fastapi import Body, FastAPI, Response
+from pydantic import BaseModel, Field
 from fastapi.responses import FileResponse
 from google.adk.cli.fast_api import get_fast_api_app
 from google.cloud import logging as google_cloud_logging
@@ -199,6 +208,129 @@ def collect_feedback(feedback: Feedback) -> dict[str, str]:
     return {"status": "success"}
 
 
+# ============================================================
+# Safety & Expert Escalation Endpoints
+# ============================================================
+
+from safety_kernel import (
+    validate_recommendation,
+    get_pending_escalations,
+    resolve_escalation,
+)
+
+
+class EscalationResolve(BaseModel):
+    """Agronomist resolution for an escalation case."""
+    escalation_id: str
+    resolution: str
+    resolved_by: str
+
+
+@app.post("/api/safety/validate")
+def safety_validate(payload: dict = Body(...)) -> dict:
+    """Validate an agricultural recommendation against safety rules.
+
+    Checks for banned chemicals, dosage violations, and PHI warnings.
+    Agents or the frontend can call this before showing advice to the farmer.
+
+    Request body:
+        {"text": "<recommendation text>", "farmer_name": "...", "query": "..."}
+    """
+    text = payload.get("text", "")
+    farmer_name = payload.get("farmer_name", "")
+    query = payload.get("query", "")
+    return validate_recommendation(text, farmer_name, query)
+
+
+@app.get("/api/escalations/pending")
+def list_pending_escalations() -> dict:
+    """List all pending expert escalation cases.
+
+    Used by an agronomist dashboard to review flagged cases.
+    """
+    escalations = get_pending_escalations()
+    return {"status": "success", "count": len(escalations), "escalations": escalations}
+
+
+@app.post("/api/escalations/resolve")
+def resolve_escalation_endpoint(resolve: EscalationResolve) -> dict:
+    """Resolve a pending escalation with expert advice.
+
+    Called by an agronomist after reviewing the case.
+    """
+    result = resolve_escalation(
+        escalation_id=resolve.escalation_id,
+        resolution=resolve.resolution,
+        resolved_by=resolve.resolved_by,
+    )
+    return result
+
+
+# ============================================================
+# OKF Knowledge Sync Endpoint (for PWA offline caching)
+# ============================================================
+
+@app.get("/api/okf/sync")
+def sync_okf_knowledge() -> dict:
+    """Return all OKF knowledge entities as JSON for PWA offline caching.
+
+    The PWA frontend calls this on first launch (when online) to download
+    and cache all OKF crop, disease, pest, soil, and safety data into
+    IndexedDB for offline querying.
+    """
+    import glob
+    import yaml
+
+    okf_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "okf")
+    legacy_okf = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "okf-knowledge-graph", "data")
+
+    def load_entities(base_dir, entity_type):
+        entities = []
+        entity_dir = os.path.join(base_dir, entity_type)
+        if not os.path.isdir(entity_dir):
+            return entities
+        for filepath in glob.glob(os.path.join(entity_dir, "*.md")):
+            try:
+                with open(filepath, encoding="utf-8") as f:
+                    content = f.read()
+                if content.startswith("---"):
+                    parts = content.split("---", 2)
+                    if len(parts) >= 3:
+                        meta = yaml.safe_load(parts[1]) or {}
+                        body = parts[2].strip()
+                        entities.append({
+                            "id": meta.get("id", os.path.basename(filepath).replace(".md", "")),
+                            "type": meta.get("type", entity_type),
+                            "metadata": meta,
+                            "body": body,
+                            "filename": os.path.basename(filepath),
+                        })
+                        continue
+                entities.append({
+                    "id": os.path.basename(filepath).replace(".md", ""),
+                    "type": entity_type,
+                    "body": content,
+                    "filename": os.path.basename(filepath),
+                })
+            except Exception:
+                continue
+        return entities
+
+    result = {
+        "status": "success",
+        "synced_at": datetime.now().isoformat() if 'datetime' in dir() else "",
+        "crops": load_entities(okf_dir, "crops"),
+        "diseases": load_entities(okf_dir, "diseases") + load_entities(legacy_okf, "diseases"),
+        "pests": load_entities(okf_dir, "pests") + load_entities(legacy_okf, "pests"),
+        "soil": load_entities(okf_dir, "soil") + load_entities(legacy_okf, "soil"),
+        "safety": load_entities(legacy_okf, "safety"),
+    }
+
+    total = sum(len(result[k]) for k in ["crops", "diseases", "pests", "soil", "safety"])
+    result["total_entities"] = total
+    return result
+
+
 
 # Edge Neural Text-To-Speech Endpoint
 VOICE_MAP = {
@@ -206,7 +338,18 @@ VOICE_MAP = {
     "Hindi": "hi-IN-MadhurNeural",
     "Marathi": "mr-IN-ManoharNeural",
     "Telugu": "te-IN-MohanNeural",
-    "Swahili": "sw-KE-RafikiNeural"
+    "Swahili": "sw-KE-RafikiNeural",
+    # BCP-47 code aliases (sent by the PWA frontend)
+    "en": "en-US-GuyNeural",
+    "en-US": "en-US-GuyNeural",
+    "hi": "hi-IN-MadhurNeural",
+    "hi-IN": "hi-IN-MadhurNeural",
+    "mr": "mr-IN-ManoharNeural",
+    "mr-IN": "mr-IN-ManoharNeural",
+    "te": "te-IN-MohanNeural",
+    "te-IN": "te-IN-MohanNeural",
+    "sw": "sw-KE-RafikiNeural",
+    "sw-KE": "sw-KE-RafikiNeural",
 }
 
 class TTSRequest(BaseModel):
@@ -381,6 +524,82 @@ def run_evaluation():
             "false_alert_rate": 0.02
         }
     }
+
+
+# ============================================================
+# Ask Expert — Cloud Gemini Streaming Endpoint
+# ============================================================
+
+class ExpertChatRequest(BaseModel):
+    """Request body for the Ask Expert cloud chat."""
+    message: str = Field(..., description="Farmer's question text")
+    language: str = Field("en", description="BCP-47 language code")
+    context: str = Field("", description="Optional farm context (crop, field, region)")
+
+EXPERT_SYSTEM_PROMPT = """You are Krishi Sastri, a wise and experienced agricultural expert consultant backed by cloud AI.
+You have deep knowledge of agronomy, soil science, integrated pest management, irrigation systems, market pricing, government schemes, and sustainable farming practices.
+You serve smallholder farmers across India and East Africa with empathetic, precise, and actionable guidance.
+
+Guidelines:
+- Greet the farmer warmly in their language with "Ram Ram" (Hindi/Marathi) or "Jambo" (Swahili) or "Hello" (English).
+- Always provide concise, practical advice that a farmer without formal education can act on immediately.
+- Include safety warnings if chemicals or pesticides are involved.
+- Cite organic/natural alternatives whenever possible.
+- Keep answers under 250 words unless the topic demands more depth.
+- If you are uncertain, say so clearly and suggest consulting a local agronomist.
+- Never recommend banned or restricted chemicals.
+"""
+
+@app.post("/api/expert/chat")
+async def expert_chat_stream(req: ExpertChatRequest):
+    """Stream an agricultural expert response from Gemini cloud."""
+    import json
+    from fastapi.responses import StreamingResponse
+
+    gemini_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not gemini_api_key:
+        async def no_key_gen():
+            yield json.dumps({"text": "⚠️ Cloud expert is unavailable: GEMINI_API_KEY not configured on the server.", "done": True}) + "\n"
+        return StreamingResponse(no_key_gen(), media_type="text/plain")
+
+    lang_greetings = {
+        "hi": "Ram Ram! ", "mr": "Ram Ram! ", "sw": "Jambo! ",
+        "te": "Namaste! ", "en": ""
+    }
+    greeting = lang_greetings.get(req.language, "")
+
+    user_message = req.message
+    if req.context:
+        user_message = f"[Farm context: {req.context}]\n\n{req.message}"
+
+    async def generate_stream():
+        try:
+            from google import genai
+            from google.genai import types as genai_types
+
+            # Pass api_key explicitly to avoid GOOGLE_API_KEY vs GEMINI_API_KEY conflict
+            client = genai.Client(api_key=gemini_api_key)
+
+            full_prompt = f"{greeting}{user_message}"
+
+            response = client.models.generate_content_stream(
+                model="gemini-2.5-flash",
+                contents=full_prompt,
+                config=genai_types.GenerateContentConfig(
+                    system_instruction=EXPERT_SYSTEM_PROMPT,
+                    temperature=0.4,
+                    max_output_tokens=1024
+                )
+            )
+            for chunk in response:
+                if chunk.text:
+                    yield json.dumps({"text": chunk.text, "done": False}) + "\n"
+            yield json.dumps({"text": "", "done": True}) + "\n"
+        except Exception as e:
+            yield json.dumps({"text": f"⚠️ Expert consultation failed: {e}", "done": True}) + "\n"
+
+    return StreamingResponse(generate_stream(), media_type="text/plain")
+
 
 # Mount static files under "/" to serve agui and a2ui frontends
 from fastapi.staticfiles import StaticFiles

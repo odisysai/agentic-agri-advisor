@@ -1,12 +1,17 @@
-const CACHE_NAME = 'krishi-sampark-cache-v1';
+const CACHE_NAME = 'krishi-sampark-cache-v3';
 const ASSETS_TO_CACHE = [
   '/agui/index.html',
   '/agui/styles.css',
   '/agui/dashboard.js',
   '/agui/panel_router.js',
   '/agui/camera.js',
+  '/agui/crop_classifier.js',
   '/agui/local_models.js',
   '/agui/local_db.js',
+  '/agui/pwa_config.js',
+  '/agui/voice.js',
+  '/agui/translations.js',
+  '/agui/expert_dashboards.js',
   '/a2ui/index.html',
   '/a2ui/styles.css',
   '/a2ui/app.js',
@@ -39,6 +44,68 @@ self.addEventListener('activate', event => {
         })
       );
     }).then(() => self.clients.claim())
+  );
+});
+
+// ============================================================
+// Background Sync — process pending IndexedDB actions when back online
+// ============================================================
+self.addEventListener('sync', event => {
+  if (event.tag === 'sync-pending-telemetry') {
+    event.waitUntil(
+      // Notify all clients to process their sync queues
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({ type: 'PROCESS_SYNC_QUEUE' });
+        });
+      })
+    );
+  }
+});
+
+// ============================================================
+// Push Notification Handler
+// ============================================================
+self.addEventListener('push', event => {
+  if (!event.data) return;
+  
+  let notification;
+  try {
+    notification = event.data.json();
+  } catch (e) {
+    notification = { title: 'Krishi Sampark', body: event.data.text() };
+  }
+
+  const options = {
+    body: notification.body || '',
+    icon: '/agui/icons/icon-192.png',
+    badge: '/agui/icons/icon-192.png',
+    vibrate: [100, 50, 100],
+    data: notification.data || {},
+    actions: notification.actions || []
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(notification.title || 'Krishi Sampark', options)
+  );
+});
+
+// Notification click handler — open the app
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window' }).then(clients => {
+      // Focus existing window if open
+      for (const client of clients) {
+        if (client.url.includes('/agui/') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Open new window
+      if (self.clients.openWindow) {
+        return self.clients.openWindow('/agui/index.html');
+      }
+    })
   );
 });
 

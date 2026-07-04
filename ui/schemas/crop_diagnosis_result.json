@@ -46,11 +46,6 @@
         },
         {
           "type": "button",
-          "labelKey": "photo.result.askExpert",
-          "action": "REQUEST_EXPERT_REVIEW"
-        },
-        {
-          "type": "button",
           "labelKey": "photo.result.hear",
           "action": "PLAY_DIAGNOSIS_RESULT"
         }

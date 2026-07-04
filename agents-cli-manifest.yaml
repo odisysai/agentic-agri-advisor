@@ -1,6 +1,6 @@
 name: "agentic-agri-advisor"
 acli_version: "0.5.0"
-agent_directory: "app"
+agent_directory: "agents"
 region: "us-east1"
 base_template: "adk"
 generated_at: "2026-06-28T01:25:16.244160+00:00"

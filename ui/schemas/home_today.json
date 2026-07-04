@@ -34,12 +34,6 @@
       "titleKey": "home.quickActions.title",
       "items": [
         {
-          "labelKey": "home.quickActions.photo.label",
-          "icon": "📷",
-          "descriptionKey": "home.quickActions.photo.desc",
-          "commandId": "TAKE_CROP_PHOTO"
-        },
-        {
           "labelKey": "home.quickActions.voice.label",
           "icon": "🎙️",
           "descriptionKey": "home.quickActions.voice.desc",

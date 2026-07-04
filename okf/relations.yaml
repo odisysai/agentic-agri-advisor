@@ -1,0 +1,225 @@
+# Open Knowledge Graph — Relations & Cross-References
+# This file defines how entities relate to each other for traversal.
+
+version: "1.0"
+updated: "2026-07-03"
+
+# ============================================================
+# CROP → DISEASE RELATIONS
+# For each disease, list the crops it affects.
+# ============================================================
+
+crop_disease_relations:
+
+  # --- Wheat Diseases ---
+  - disease: wheat_rust
+    affected_crops: [wheat]
+    severity: high
+    season_favorable: rabi
+    region: [north_india, maharashtra]
+
+  - disease: wheat_powdery_mildew
+    affected_crops: [wheat]
+    severity: moderate
+    season_favorable: rabi, rabi_end
+    region: [north_india]
+
+  - disease: wheat_leaf_eater_damage
+    affected_crops: [wheat, corn]
+    severity: moderate
+    season_favorable: rabi
+    region: [north_india, maharashtra]
+
+  # --- Rice Diseases ---
+  - disease: rice_blast
+    affected_crops: [rice]
+    severity: high
+    season_favorable: kharif, rabi_early
+    region: [east_india, tamil_nadu]
+
+  - disease: rice_bacterial_leaf_blight
+    affected_crops: [rice]
+    severity: moderate
+    season_favorable: kharif
+    region: [east_india, south_india]
+
+  # --- Cotton Diseases ---
+  - disease: cotton_grey_mold
+    affected_crops: [cotton]
+    severity: moderate
+    season_favorable: kharif, summer
+    region: [maharashtra, gujarat]
+
+  # --- Corn Diseases ---
+  - disease: corn_stalk_borer_damage
+    affected_crops: [corn]
+    severity: high
+    season_favorable: kharif
+    region: [maharashtra, punjab]
+
+# ============================================================
+# CROP → PEST RELATIONS
+# For each pest, list the crops it affects.
+# ============================================================
+
+crop_pest_relations:
+
+  # --- Corn Pests ---
+  - pest: corn_stalk_borer
+    affected_crops: [corn]
+    severity: high
+    damage_type: stem_borer, leaf_tyler
+
+  # --- Cotton Pests ---
+  - pest: cotton_bollworm
+    affected_crops: [cotton]
+    severity: high
+    damage_type: boll_looper, fruit_loser
+
+  # --- Rice Pests ---
+  - pest: rice_stem_borer
+    affected_crops: [rice]
+    severity: high
+    damage_type: white_head, stem_borer
+
+  # --- Wheat Pests ---
+  - pest: wheat_leaf_eater
+    affected_crops: [wheat, corn]
+    severity: moderate
+    damage_type: leaf_chewer
+
+# ============================================================
+# DISEASE → TREATMENT RELATIONS
+# Maps disease to treatment approach and safety constraints.
+# ============================================================
+
+disease_treatment_relations:
+
+  - disease: wheat_rust
+    treatments: [copper_fungicide, mancozeb_spray]
+    organic_alternatives: [neem_extract, sulfur_spray]
+    safety_rule: pesticide_limits, pre_harvest_intervals
+
+  - disease: wheat_powdery_mildew
+    treatments: [sulfur_spray]
+    organic_alternatives: [baking_soda_solution]
+    safety_rule: pesticide_limits
+
+  - disease: rice_blast
+    treatments: [tricyclazole_fungicide, copper_oxide]
+    organic_alternatives: [neem_oil_mix, potassium_permanganate]
+    safety_rule: pesticide_limits, pre_harvest_intervals
+
+  - disease: rice_bacterial_leaf_blotch
+    treatments: [copper_based_bactericide, aure_nomycin]
+    organic_alternatives: [neem_oil_soil_mix]
+    safety_rule: pesticide_limits
+
+  - disease: cotton_grey_mold
+    treatments: [carbendazim_fungicide, mancozeb_spray]
+    organic_alternatives: [neem_extract_soil_mix]
+    safety_rule: pesticide_limits, pre_harvest_intervals
+
+  - disease: corn_stalk_borer_damage
+    treatments: [chlorantraniliprole_liquid, bacillus_thuringiensis]
+    organic_alternatives: [bacillus_thuringiensis, neem_oil_spray]
+    safety_rule: pesticide_limits, pre_harvest_intervals
+
+# ============================================================
+# SOIL → CROP SUITABILITY
+# Which crops grow well on which soil types.
+# ============================================================
+
+soil_crop_suitability:
+
+  - soil_type: alluvial
+    suitable_crops: [wheat, rice, corn]
+    moisture_retention: high
+    drainage: medium
+    ph_range: "6.0-7.5"
+
+  - soil_type: clay
+    suitable_crops: [rice, cotton]
+    moisture_retention: very_high
+    drainage: low
+    ph_range: "6.5-8.0"
+
+  - soil_type: sandy_loam
+    suitable_crops: [cotton, sugarcane]
+    moisture_retention: low
+    drainage: good
+    ph_range: "5.5-7.0"
+
+  - soil_type: black_cotton
+    suitable_crops: [cotton, soybeans]
+    moisture_retention: very_high
+    drainage: low
+    ph_range: "6.0-8.5"
+
+# ============================================================
+# PEST → TREATMENT RELATIONS
+# Mapping pests to control approaches.
+# ============================================================
+
+pest_treatment_relations:
+
+  - pest: corn_stalk_borer
+    treatments: [chlorantraniliprole_liquid, bacillus_thuringiensis]
+    organic_alternatives: [neem_oil_spray, pheromone_traps]
+    safety_rule: pesticide_limits
+
+  - pest: cotton_bollworm
+    treatments: [emamectin_benzoate, spinosad]
+    organic_alternatives: [neem_oil_mix, pheromone_traps]
+    safety_rule: pesticide_limits
+
+  - pest: rice_stem_borer
+    treatments: [cartap_hydrochloride, fipronil_granules]
+    organic_alternatives: [neem_oil_spray, pheromone_traps]
+    safety_rule: pesticide_limits
+
+  - pest: wheat_leaf_eater
+    treatments: [deltamethrin_spray, lambda_cyhalothrin]
+    organic_alternatives: [neem_oil_mix, hand_picking]
+    safety_rule: pesticide_limits
+
+# ============================================================
+# TREATMENT → SAFETY RULE
+# Every treatment that uses chemicals must reference safety rules.
+# ============================================================
+
+treatment_safety_relations:
+
+  - treatment_group: fungicide_application
+    safety_rules: [pesticide_limits, pre_harvest_intervals]
+
+  - treatment_group: insecticide_application
+    safety_rules: [pesticide_limits, pre_harvest_intervals]
+
+  - treatment_group: pesticide_application
+    safety_rules: [pesticide_limits, pre_harvest_intervals]
+
+# ============================================================
+# CROP → PRACTICE RELATIONS
+# Standard agricultural practices per crop.
+# ============================================================
+
+crop_practice_relations:
+
+  - crop: wheat
+    practices: [winter_sowing, drip_irrigation_rabi, nitrogen_split_3x]
+
+  - crop: rice
+    practices: [transplanting_rainy_season, flood_irrigation_kharif]
+
+  - crop: cotton
+    practices: [summer_sowing, drip_irrigation_kharif]
+
+  - crop: corn
+    practices: [summer_rainy_sowing, drip_irrigation_kharif]
+
+  - crop: sugarcane
+    practices: [tuber_planting, drip_irrigation_summer]
+
+  - crop: soybeans
+    practices: [monsoon_sowing, sprinkler_irrigation_kharif]

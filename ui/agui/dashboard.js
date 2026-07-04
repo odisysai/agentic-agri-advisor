@@ -292,6 +292,9 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('online', checkOnlineStatus);
   window.addEventListener('offline', checkOnlineStatus);
 
+  // Expose sync function for PWA background sync
+  window.processSyncQueue = syncPendingTelemetry;
+
   // Theme Setup (Light/Dark Mode)
   const currentTheme = localStorage.getItem('aaa_theme') || 'dark';
   document.body.className = `${currentTheme}-theme`;
@@ -353,7 +356,25 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Show active screen content
     const targetScreen = document.getElementById(`screen-${tabId}`);
-    if (targetScreen) targetScreen.classList.add('active');
+    if (targetScreen) {
+      targetScreen.classList.add('active');
+    }
+
+    // If 'ask' tab, scroll chat to bottom and focus input
+    if (tabId === 'ask') {
+      const chatMessages = document.getElementById('chat-messages');
+      if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+      const input = document.getElementById('user-input-field');
+      if (input) input.focus();
+    }
+    
+    // If 'expert' tab, scroll expert chat to bottom and focus input
+    if (tabId === 'expert') {
+      const expertMsgs = document.getElementById('expert-messages');
+      if (expertMsgs) expertMsgs.scrollTop = expertMsgs.scrollHeight;
+      const expInput = document.getElementById('expert-input-field');
+      if (expInput) expInput.focus();
+    }
     
     if (!skipLoadSchema) {
       // Dynamically trigger corresponding schema loads
@@ -365,21 +386,10 @@ document.addEventListener('DOMContentLoaded', () => {
         loadSchema('market_insights', 'market-canvas');
       } else if (tabId === 'more') {
         loadSchema('more_screen', 'more-canvas');
-      } else if (tabId === 'console') {
-        renderExpertConsole();
-      } else if (tabId === 'consultations') {
-        loadSchema('expert_request_status', 'consultations-canvas');
-      } else if (tabId === 'outbreak') {
-        loadSchema('regional_risk_map', 'outbreak-canvas');
-      } else if (tabId === 'governance') {
-        renderGovernanceDashboard();
-      } else if (tabId === 'evaluation') {
-        renderEvaluationDashboard();
-      } else if (tabId === 'audit') {
-        renderAuditDashboard();
       } else if (tabId === 'settings') {
         loadSchema('privacy_preferences', 'settings-canvas');
       }
+      // 'expert' and 'ask' tabs have no schemas — they are self-contained chat UIs
     }
   };
 
@@ -562,11 +572,6 @@ document.addEventListener('DOMContentLoaded', () => {
       cropDiagnosisState.step = 7;
       localDb.saveDiagnosisState(cropDiagnosisState);
       loadStepSchema();
-    } else if (action === 'REQUEST_EXPERT_REVIEW') {
-      showToast("Expert Review Enqueued", "We have shared this photo batch with regional agronomists.", "success");
-      const dName = cropDiagnosisState.diagnosis ? cropDiagnosisState.diagnosis.disease_name : "Crop Disease";
-      userInputField.value = `I requested expert review for my diagnosis of ${dName}. Please alert the coordinator.`;
-      handleSend();
     } else if (action === 'PLAY_DIAGNOSIS_RESULT') {
       if (cropDiagnosisState.diagnosis) {
         speakText(cropDiagnosisState.diagnosis.disease_name + ". Remedy is: " + cropDiagnosisState.diagnosis.organic_remedy);
@@ -615,13 +620,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (action === 'NAVIGATE_SIMULATOR') {
       window.switchTab('more');
       setTimeout(() => loadSchema('simulation', 'more-canvas'), 150);
-    } else if (action === 'TOGGLE_EXPERT_MODE') {
-      const active = localStorage.getItem('aaa_expert_mode') === 'true';
-      const newVal = !active;
-      localStorage.setItem('aaa_expert_mode', newVal ? 'true' : 'false');
-      e.detail.button.textContent = newVal ? 'बंद करें (Disable)' : 'चालू करें (Enable)';
-      showToast("Expert Mode", newVal ? "Detailed NPK telemetry and simulator settings enabled." : "Simplified farmer view activated.", "success");
-      loadSchema('more_screen', 'more-canvas');
     }
   });
   // Translations loaded from translations.js
@@ -644,8 +642,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function getSessionId() {
     if (sessionId) return sessionId;
+    const baseUrl = window.ADK_BACKEND_URL || 'http://127.0.0.1:8080';
+    const appName = window.ADK_APP_NAME || 'agents';
     try {
-      const resp = await fetch('http://127.0.0.1:8080/apps/app/users/user/sessions', {
+      const resp = await fetch(`${baseUrl}/apps/${appName}/users/user/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({})
@@ -729,19 +729,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const displayName = sender === 'Coordinator' ? 'Krishi Sastri' : sender;
     msg.appendChild(document.createElement('strong')).textContent = `${displayName}: `;
     msg.appendChild(textSpan);
-
-    if (type === 'agent-msg' || type === 'user-msg') {
-      const speakBtn = document.createElement('button');
-      speakBtn.className = 'speak-msg-btn';
-      speakBtn.innerHTML = '🔊';
-      speakBtn.title = "Speak out loud (Client-side)";
-      speakBtn.style.background = 'none';
-      speakBtn.style.border = 'none';
-      speakBtn.style.cursor = 'pointer';
-      speakBtn.style.marginLeft = '0.5rem';
-      speakBtn.addEventListener('click', () => speakText(textSpan.innerText));
-      msg.appendChild(speakBtn);
-    }
 
     chatMessages.appendChild(msg);
     chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -1038,7 +1025,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load static or stored schema
   async function loadSchema(schemaName, targetCanvasId) {
     try {
-      const response = await fetch(`../schemas/${schemaName}.json`);
+      const response = await fetch(`../schemas/${schemaName}.json?v=${window.SCHEMA_VERSION || 1}`);
       if (!response.ok) {
         throw new Error(`Failed to load schema: ${response.statusText}`);
       }
@@ -1224,21 +1211,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const langCode = window.currentLanguageState?.code || 'en';
     const preferredLang = window.currentLanguageState?.displayName || 'English';
 
-    // Smart Triage Router: Route simple/local questions to local Gemma edge skills, complex to cloud agents
-    const lowercaseText = text.toLowerCase();
-    const complexKeywords = [
-      'weather', 'forecast', 'price', 'trend', 'predict', 'mandi', 'market', 'sensor', 'planning', 'cost',
-      'मौसम', 'दाम', 'भाव', 'मूल्य', 'मंडी', 'पूर्वानुमान',
-      'हवामान', 'किंमत', 'बाजार', 'अंदाज',
-      'వాతావరణం', 'ధర', 'మార్కెట్', 'అంచనా',
-      'hewa', 'mvua', 'bei', 'soko', 'utabiri'
-    ];
-    const isComplex = complexKeywords.some(kw => lowercaseText.includes(kw));
-
-    if (!navigator.onLine || !isComplex) {
-      console.log(`[Triage] Routing "${text}" to client-side multi-agent edge skills.`);
+    // When online, always use the cloud agent for best quality.
+    // When offline, use local OKF knowledge cache + rule-based responses.
+    if (!navigator.onLine) {
+      console.log(`[Triage] Offline — routing to local OKF knowledge.`);
       const thinkingBubble = appendMessage('Krishi Sastri', 'Thinking...', 'thinking-msg');
-      handleOfflineSend(text, langCode, thinkingBubble);
+      handleAdvisorLocalAnswer(text, langCode, thinkingBubble);
       return;
     }
 
@@ -1266,11 +1244,13 @@ ${text}`;
 
     try {
       const activeSessionId = await getSessionId();
-      const response = await fetch('http://127.0.0.1:8080/run_sse', {
+      const baseUrl = window.ADK_BACKEND_URL || 'http://127.0.0.1:8080';
+      const appName = window.ADK_APP_NAME || 'agents';
+      const response = await fetch(`${baseUrl}/run_sse`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          app_name: 'app',
+          app_name: appName,
           user_id: 'user',
           session_id: activeSessionId,
           new_message: {
@@ -1365,8 +1345,8 @@ ${text}`;
         if (parsed && typeof parsed === 'object' && parsed.recommendation !== undefined) {
           isStructured = true;
           renderStructuredResponse(parsed, textContainer, responseMsg);
-          const ttsToggle = document.getElementById('tts-toggle');
-          if (ttsToggle && ttsToggle.checked) {
+          // Auto-speak if voice output is enabled (header toggle)
+          if (localStorage.getItem('tts_enabled') !== 'false') {
             speakText(parsed.recommendation + (parsed.question ? " " + parsed.question : ""));
           }
         }
@@ -1376,8 +1356,8 @@ ${text}`;
 
       if (!isStructured) {
         textContainer.innerHTML = markdownToHtml(cleanResponse);
-        const ttsToggle = document.getElementById('tts-toggle');
-        if (ttsToggle && ttsToggle.checked) {
+        // Auto-speak if voice output is enabled (header toggle)
+        if (localStorage.getItem('tts_enabled') !== 'false') {
           speakText(cleanResponse);
         }
       }
@@ -1401,6 +1381,91 @@ ${text}`;
     } catch (err) {
       console.warn("ADK server fetch failed. Falling back to offline AI mode.", err);
       handleOfflineSend(text, langCode, thinkingBubble);
+    }
+  }
+
+  // Advisor mode local answer — searches OKF cache in IndexedDB first
+  async function handleAdvisorLocalAnswer(text, preferredLang, thinkingBubble) {
+    if (thinkingBubble) thinkingBubble.remove();
+
+    const langNameMap = { 'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi', 'te': 'Telugu', 'sw': 'Swahili' };
+    const langName = langNameMap[preferredLang] || 'English';
+
+    // Try to search OKF knowledge from IndexedDB
+    let okfResult = null;
+    try {
+      const db = new window.LocalDb();
+      await db.init();
+
+      // Extract keywords from the question
+      const lowerText = text.toLowerCase();
+      const cropKeywords = ['wheat', 'गेहूँ', 'corn', 'मक्का', 'cotton', 'कपास', 'rice', 'चावल', 'सोयाबीन', 'soybean', 'sugarcane', 'गन्ना'];
+      const diseaseKeywords = ['rust', 'रतुआ', 'blight', 'झुलसन', 'bollworm', 'बोलवर्म', 'pest', 'कीट', 'disease', 'रोग', 'mildew', 'फफूंद'];
+      const soilKeywords = ['soil', 'मिट्टी', 'clay', 'चिकनी', 'sandy', 'बलुई'];
+
+      // Search for each keyword in OKF
+      for (const kw of [...cropKeywords, ...diseaseKeywords, ...soilKeywords]) {
+        if (lowerText.includes(kw)) {
+          // Try to get the OKF guide for this keyword
+          const guide = await db.getOkfGuide(kw);
+          if (guide && guide.body) {
+            okfResult = guide;
+            break;
+          }
+        }
+      }
+
+      // Also try broader search — check all cached OKF entities
+      if (!okfResult) {
+        // Try matching crop names
+        for (const crop of ['wheat', 'corn', 'cotton', 'rice', 'soybeans', 'sugarcane']) {
+          if (lowerText.includes(crop)) {
+            const guide = await db.getOkfGuide(crop);
+            if (guide && guide.body) {
+              okfResult = guide;
+              break;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Advisor] OKF cache search failed:', e);
+    }
+
+    let reply;
+    if (okfResult && okfResult.body) {
+      // Build a response from OKF knowledge
+      const meta = okfResult.metadata || {};
+      const name = meta.name || okfResult.crop_type || 'Crop';
+      const bodyText = okfResult.body.substring(0, 800);
+
+      // Extract key sections
+      const replies = {
+        'English': `Based on agricultural knowledge:\n\n${name}:\n${bodyText}\n\nFor detailed analysis, consult कृषि विशेषज्ञ (Agriculture Expert).`,
+        'Hindi': `कृषि ज्ञान के अनुसार:\n\n${name}:\n${bodyText}\n\nविस्तृत विश्लेषण के लिए कृषि विशेषज्ञ से परामर्श लें।`,
+        'Marathi': `कृषी ज्ञानानुसार:\n\n${name}:\n${bodyText}\n\nसविस्तर विश्लेषणासाठी कृषी तज्ज्ञांचा सल्ला घ्या.`,
+        'Telugu': `వ్యవసాయ జ్ఞానం ప్రకారం:\n\n${name}:\n${bodyText}\n\nవివరణాత్మక విశ్లేషణ కోసం నిపుణుడిని సంప్రదించండి.`,
+        'Swahili': `Kulingana na maarifa ya kilimo:\n\n${name}:\n${bodyText}\n\nKwa uchambuzi wa kina, shauriana na mtaalamu wa kilimo.`,
+      };
+      reply = replies[langName] || replies['English'];
+    } else {
+      // Fall back to rule-based response
+      reply = buildFarmerSafeOfflineReply(text, preferredLang);
+    }
+
+    appendMessage('Krishi Sastri', reply, 'agent-msg');
+    localDb.addChat({ role: 'advisor', text: reply });
+
+    // Speak the response if TTS is enabled
+    if (typeof window.speakText === 'function') {
+      window.speakText(reply);
+    }
+
+    // Load relevant schema if pest/irrigation mentioned
+    if (text.toLowerCase().includes('pest') || text.toLowerCase().includes('रोग') || text.toLowerCase().includes('कीट')) {
+      loadSchema('pest_alert');
+    } else if (text.toLowerCase().includes('water') || text.toLowerCase().includes('सिंच') || text.toLowerCase().includes('पानी')) {
+      loadSchema('irrigation_planner');
     }
   }
 
@@ -1478,6 +1543,170 @@ ${text}`;
         event.preventDefault();
         handleSend();
       }
+    });
+  }
+
+  // ================================================================
+  // ASK EXPERT — Cloud Gemini Chat Logic
+  // ================================================================
+
+  const expertInput = document.getElementById('expert-input-field');
+  const expertSendBtn = document.getElementById('expert-send-btn');
+  const expertMessages = document.getElementById('expert-messages');
+  const expertStatusDot = document.getElementById('expert-status-dot');
+  const expertMicBtn = document.getElementById('expert-mic-btn');
+
+  // Update the expert status dot based on network state
+  function updateExpertStatus() {
+    if (!expertStatusDot) return;
+    if (navigator.onLine) {
+      expertStatusDot.className = 'expert-status-dot online';
+      expertStatusDot.title = 'Cloud connected';
+    } else {
+      expertStatusDot.className = 'expert-status-dot offline';
+      expertStatusDot.title = 'No internet connection';
+    }
+  }
+  updateExpertStatus();
+  window.addEventListener('online', updateExpertStatus);
+  window.addEventListener('offline', updateExpertStatus);
+
+  /** Append a message to the expert chat panel and return the bubble element. */
+  function appendExpertMessage(role, text, cssClass) {
+    if (!expertMessages) return null;
+    const bubble = document.createElement('div');
+    bubble.className = `message ${cssClass}`;
+
+    const nameSpan = document.createElement('strong');
+    nameSpan.textContent = role + ': ';
+    bubble.appendChild(nameSpan);
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'message-text';
+    textSpan.innerHTML = markdownToHtml(text);
+    bubble.appendChild(textSpan);
+
+    expertMessages.appendChild(bubble);
+    expertMessages.scrollTop = expertMessages.scrollHeight;
+    return { element: bubble, textSpan };
+  }
+
+  async function sendExpertMessage() {
+    if (!expertInput) return;
+    const text = expertInput.value.trim();
+    if (!text) return;
+    expertInput.value = '';
+
+    const langCode = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language')) || 'en';
+    const dict = TRANSLATIONS[langCode] || TRANSLATIONS.en || {};
+
+    // Append user message
+    appendExpertMessage('You', text, 'user-msg');
+
+    // Thinking indicator
+    const thinkingEl = document.createElement('div');
+    thinkingEl.className = 'message expert-msg thinking-msg';
+    thinkingEl.innerHTML = `<em style="color:var(--text-sub);font-size:0.9rem;">${dict['expert_thinking'] || 'Consulting Gemini cloud...'}</em>`;
+    expertMessages.appendChild(thinkingEl);
+    expertMessages.scrollTop = expertMessages.scrollHeight;
+
+    if (!navigator.onLine) {
+      thinkingEl.remove();
+      appendExpertMessage('Krishi Sastri', '⚠️ No internet connection. The cloud expert requires an active connection. Please try again when online.', 'expert-msg');
+      return;
+    }
+
+    // Build farm context from current state
+    let context = '';
+    try {
+      const farmerName = document.getElementById('farmer-display-name')?.textContent?.trim() || '';
+      const fieldName = document.getElementById('field-selector')?.options[document.getElementById('field-selector')?.selectedIndex]?.text || '';
+      context = farmerName ? `Farmer: ${farmerName}, Field: ${fieldName}` : '';
+    } catch (_) {}
+
+    try {
+      const resp = await fetch('/api/expert/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, language: langCode, context })
+      });
+
+      thinkingEl.remove();
+
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}`);
+      }
+
+      // Streaming: response is newline-delimited JSON
+      const { element: msgBubble, textSpan: msgText } = appendExpertMessage('Krishi Sastri', '', 'expert-msg');
+      let fullText = '';
+
+      const reader = resp.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const parts = buf.split('\n');
+        buf = parts.pop(); // last part may be incomplete
+        for (const part of parts) {
+          if (!part.trim()) continue;
+          try {
+            const chunk = JSON.parse(part);
+            if (chunk.text) {
+              fullText += chunk.text;
+              msgText.innerHTML = markdownToHtml(fullText);
+              expertMessages.scrollTop = expertMessages.scrollHeight;
+            }
+            if (chunk.done) break;
+          } catch (_) {}
+        }
+      }
+
+      // Auto-speak expert response if TTS enabled
+      if (localStorage.getItem('tts_enabled') !== 'false' && fullText) {
+        speakText(fullText);
+      }
+
+    } catch (err) {
+      thinkingEl.remove();
+      appendExpertMessage('Krishi Sastri', `⚠️ Could not reach cloud expert: ${err.message}. Please check your connection and try again.`, 'expert-msg');
+    }
+  }
+
+  if (expertSendBtn) {
+    expertSendBtn.addEventListener('click', sendExpertMessage);
+  }
+  if (expertInput) {
+    expertInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); sendExpertMessage(); }
+    });
+  }
+
+  // Expert mic button — reuse the same Web Speech Recognition API
+  if (expertMicBtn) {
+    expertMicBtn.addEventListener('click', () => {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert('Voice recognition not supported. Please type your question.');
+        return;
+      }
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const rec = new SR();
+      const langCode = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language')) || 'en';
+      const langBcp = { en: 'en-US', hi: 'hi-IN', mr: 'mr-IN', te: 'te-IN', sw: 'sw-KE' };
+      rec.lang = langBcp[langCode] || 'en-US';
+      rec.interimResults = false;
+      rec.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
+        if (expertInput) {
+          expertInput.value = transcript;
+          sendExpertMessage();
+        }
+      };
+      rec.onerror = () => {};
+      rec.start();
     });
   }
 
@@ -2102,14 +2331,14 @@ ${text}`;
     });
   }
 
-  function renderLeftNavigation(mode = 'farmer') {
+  function renderLeftNavigation() {
     const list = document.getElementById('left-nav-links-list');
     if (!list) return;
     list.innerHTML = '';
 
     const lang = window.currentLanguageState?.code || 'en';
     const dict = TRANSLATIONS[lang] || TRANSLATIONS['en'];
-    const items = NAV_SECTIONS[mode] || NAV_SECTIONS['farmer'];
+    const items = NAV_SECTIONS['farmer'];
 
     items.forEach(item => {
       const label = dict[item.trKey] || item.trKey;
@@ -2120,7 +2349,7 @@ ${text}`;
       link.setAttribute('title', label); // tooltip for collapsed mode
       link.setAttribute('aria-label', label);
       
-      const currentActive = localStorage.getItem('nav_route_user') || (mode === 'expert' ? 'console' : 'home');
+      const currentActive = localStorage.getItem('nav_route_user') || 'home';
       if (item.id === currentActive) {
         link.classList.add('active');
       }
@@ -2141,11 +2370,11 @@ ${text}`;
     // Translate profile labels in footer
     const profileName = document.getElementById('left-nav-profile-name');
     if (profileName) {
-      profileName.textContent = mode === 'expert' ? 'Dr. Agronomist' : farmerDisplayNameForLanguage(localStorage.getItem('aaa_preferred_language'));
+      profileName.textContent = farmerDisplayNameForLanguage(localStorage.getItem('aaa_preferred_language'));
     }
     
-    // Render the new assistant info pane dynamically
-    renderAssistantInfoPane(mode);
+    // Render the assistant info pane dynamically
+    renderAssistantInfoPane();
   }
 
   // Collapsible toggle buttons event setup
@@ -2202,34 +2431,14 @@ ${text}`;
     }
   });
 
-  // User Mode selector change listener
-  const modeSelector = document.getElementById('user-mode-selector');
-  if (modeSelector) {
-    // Restore mode preference on boot
-    const savedMode = localStorage.getItem('nav_mode_user') || 'farmer';
-    modeSelector.value = savedMode;
-    renderLeftNavigation(savedMode);
-    
-    // Switch to last active route
-    const savedRoute = localStorage.getItem('nav_route_user') || (savedMode === 'expert' ? 'console' : 'home');
-    setTimeout(() => {
-      window.switchTab(savedRoute);
-    }, 100);
+  // Render left navigation (farmer mode only) and restore last active route
+  renderLeftNavigation();
+  const savedRoute = localStorage.getItem('nav_route_user') || 'home';
+  setTimeout(() => {
+    window.switchTab(savedRoute);
+  }, 100);
 
-    modeSelector.addEventListener('change', (e) => {
-      const mode = e.target.value;
-      localStorage.setItem('nav_mode_user', mode);
-      renderLeftNavigation(mode);
-      if (mode === 'expert') {
-        window.switchTab('console');
-      } else {
-        window.switchTab('home');
-      }
-    });
-  }
-
-
-    // Extracts JSON blocks from agent response text
+  // Extracts JSON blocks from agent response text
   function extractJsonContent(text) {
     const trimmed = text.trim();
     const jsonMatch = trimmed.match(/^```json\s*([\s\S]*?)\s*```$/) || trimmed.match(/^```\s*([\s\S]*?)\s*```$/);
@@ -2330,64 +2539,46 @@ ${text}`;
   }
 
   // Render assistant info pane containing Crop, Field, Advisory, Freshness
-  function renderAssistantInfoPane(mode = 'farmer') {
+  function renderAssistantInfoPane() {
     const pane = document.getElementById('assistant-info-pane');
     if (!pane) return;
 
     const preferredLang = window.currentLanguageState?.code || 'en';
     const activeField = activeFields.find(f => f.field_id === activeFieldId);
     
-    if (mode === 'expert') {
-      pane.innerHTML = `
-        <div style="font-weight: bold; margin-bottom: 5px; color: var(--accent);">🔬 Specialist Agents Connectivity</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.8rem; color: var(--text-sub);">
-          <div>🤖 Coordinator: <span style="color: var(--trend-up);">Active</span></div>
-          <div>🌾 Crop Analyst: <span style="color: var(--trend-up);">Active</span></div>
-          <div>💧 Irrigation Planner: <span style="color: var(--trend-up);">Active</span></div>
-          <div>🐛 Pest Detector: <span style="color: var(--trend-up);">Active</span></div>
-        </div>
-      `;
-    } else {
-      const crop = activeField && activeField.planting ? activeField.planting.crop_type : 'Wheat';
-      const fieldName = activeField ? activeField.name : 'Nagpur Field';
-      
-      let cropTr = window.getTranslation('profile.crop.wheat', preferredLang) || 'Wheat';
-      if (crop.toLowerCase() === 'corn') {
-        cropTr = window.getTranslation('profile.crop.corn', preferredLang) || 'Corn';
-      } else if (crop.toLowerCase() === 'soybeans') {
-        cropTr = window.getTranslation('profile.crop.soybeans', preferredLang) || 'Soybeans';
-      }
-      
-      const advisory = window.getTranslation('farm.recommendation.desc', preferredLang) || 'Irrigate tomorrow morning.';
-      const freshness = window.getTranslation('irrigation.weatherStatus.cached', preferredLang) || 'Cached 3h ago';
-      
-      pane.innerHTML = `
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; color: var(--text-main);">
-          <div><strong>🌾 ${window.getTranslation('profile.crop.label', preferredLang) || 'Crop'}:</strong> ${cropTr}</div>
-          <div><strong>📍 ${window.getTranslation('profile.region.label', preferredLang) || 'Field'}:</strong> ${fieldName}</div>
-          <div style="grid-column: span 2;"><strong>💡 ${window.getTranslation('farm.recommendation.title', preferredLang) || 'Advisory'}:</strong> ${advisory}</div>
-          <div style="grid-column: span 2; font-size: 0.8rem; color: var(--text-sub);">🕒 ${freshness}</div>
-        </div>
-      `;
+    const crop = activeField && activeField.planting ? activeField.planting.crop_type : 'Wheat';
+    const fieldName = activeField ? activeField.name : 'Nagpur Field';
+    
+    let cropTr = window.getTranslation('profile.crop.wheat', preferredLang) || 'Wheat';
+    if (crop.toLowerCase() === 'corn') {
+      cropTr = window.getTranslation('profile.crop.corn', preferredLang) || 'Corn';
+    } else if (crop.toLowerCase() === 'soybeans') {
+      cropTr = window.getTranslation('profile.crop.soybeans', preferredLang) || 'Soybeans';
     }
+    
+    const advisory = window.getTranslation('farm.recommendation.desc', preferredLang) || 'Irrigate tomorrow morning.';
+    const freshness = window.getTranslation('irrigation.weatherStatus.cached', preferredLang) || 'Cached 3h ago';
+    
+    pane.innerHTML = `
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; color: var(--text-main);">
+        <div><strong>🌾 ${window.getTranslation('profile.crop.label', preferredLang) || 'Crop'}:</strong> ${cropTr}</div>
+        <div><strong>📍 ${window.getTranslation('profile.region.label', preferredLang) || 'Field'}:</strong> ${fieldName}</div>
+        <div style="grid-column: span 2;"><strong>💡 ${window.getTranslation('farm.recommendation.title', preferredLang) || 'Advisory'}:</strong> ${advisory}</div>
+        <div style="grid-column: span 2; font-size: 0.8rem; color: var(--text-sub);">🕒 ${freshness}</div>
+      </div>
+    `;
   }
 
   // Update renderAssistantInfoPane when field changes
   const oldFieldSelector = document.getElementById('field-selector');
   if (oldFieldSelector) {
     oldFieldSelector.addEventListener('change', () => {
-      setTimeout(() => {
-        const currentMode = document.getElementById('user-mode-selector')?.value || 'farmer';
-        renderAssistantInfoPane(currentMode);
-      }, 200);
+      setTimeout(() => renderAssistantInfoPane(), 200);
     });
   }
 
   // Trigger initial render of assistant pane
-  setTimeout(() => {
-    const currentMode = document.getElementById('user-mode-selector')?.value || 'farmer';
-    renderAssistantInfoPane(currentMode);
-  }, 500);
+  setTimeout(() => renderAssistantInfoPane(), 500);
 
     // Update sync queue badge count
   async function updateSyncBadge() {
@@ -2417,4 +2608,231 @@ ${text}`;
   window.showToast = showToast;
   window.renderLeftNavigation = renderLeftNavigation;
   window.updateSyncBadge = updateSyncBadge;
+
+  // ============================================================
+  // Ask Image — Visual Diagnosis Flow
+  // ============================================================
+
+  let currentImageData = null; // Stores base64 of captured/uploaded image
+
+  function initAskImageFlow() {
+    const uploadArea = document.getElementById('image-upload-area');
+    const cameraBtn = document.getElementById('image-camera-btn');
+    const uploadBtn = document.getElementById('image-upload-btn');
+    const fileInput = document.getElementById('image-file-input');
+    const previewContainer = document.getElementById('image-preview-container');
+    const previewImg = document.getElementById('image-preview');
+    const retakeBtn = document.getElementById('image-retake-btn');
+    const analysisResult = document.getElementById('image-analysis-result');
+    const analysisContent = document.getElementById('analysis-content');
+    const loadingIndicator = document.getElementById('image-analysis-loading');
+
+    // Shared helper: show preview + start analysis for a given base64 image
+    function handleAcquiredImage(base64Image) {
+      currentImageData = base64Image;
+      if (previewImg) previewImg.src = currentImageData;
+      if (previewContainer) previewContainer.style.display = 'block';
+      if (uploadArea) uploadArea.style.display = 'none';
+      analyzeImageLocally(currentImageData);
+    }
+
+    // 📷 Camera button → open the live camera viewfinder modal
+    if (cameraBtn) {
+      cameraBtn.addEventListener('click', async () => {
+        const modal = document.getElementById('camera-modal');
+        const viewfinder = document.getElementById('camera-viewfinder');
+        const canvas = document.getElementById('camera-canvas');
+        const fallbackContainer = document.getElementById('camera-fallback-container');
+        const captureBtn = document.getElementById('camera-capture-btn');
+        const analyzeBtn = document.getElementById('camera-analyze-btn');
+        const closeBtn = document.getElementById('camera-close-btn');
+        const fallbackFileInput = document.getElementById('camera-file-input');
+        const fallbackTrigger = document.getElementById('camera-upload-trigger-btn');
+
+        if (!modal || !viewfinder || !captureBtn) return;
+
+        // Show modal in "Ask Image" mode (not the crop wizard)
+        modal.style.display = 'flex';
+        modal.dataset.askImageMode = 'true';
+        viewfinder.style.display = 'block';
+        if (canvas) canvas.style.display = 'none';
+        if (fallbackContainer) fallbackContainer.style.display = 'none';
+        if (analyzeBtn) analyzeBtn.style.display = 'none';
+        captureBtn.style.display = 'block';
+        captureBtn.textContent = '📸 फोटो लें';
+
+        const success = await cropCamera.start(viewfinder);
+        if (!success) {
+          viewfinder.style.display = 'none';
+          if (fallbackContainer) fallbackContainer.style.display = 'block';
+          captureBtn.style.display = 'none';
+        }
+
+        // One-shot capture handler for Ask Image mode
+        const onCapture = () => {
+          const dataUrl = cropCamera.capture(canvas);
+          if (!dataUrl) return;
+
+          // Close modal & stop camera
+          modal.style.display = 'none';
+          cropCamera.stop();
+          captureBtn.removeEventListener('click', onCapture);
+
+          // Feed captured frame into the Ask Image preview/analysis flow
+          handleAcquiredImage(dataUrl);
+        };
+        captureBtn.addEventListener('click', onCapture);
+
+        // Close button stops camera and cleans up
+        const onClose = () => {
+          cropCamera.stop();
+          modal.style.display = 'none';
+          captureBtn.removeEventListener('click', onCapture);
+          closeBtn.removeEventListener('click', onClose);
+        };
+        if (closeBtn) closeBtn.addEventListener('click', onClose);
+
+        // Fallback file upload (when camera unavailable) feeds into Ask Image too
+        if (fallbackTrigger && fallbackFileInput) {
+          const onFallbackChange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              modal.style.display = 'none';
+              cropCamera.stop();
+              handleAcquiredImage(event.target.result);
+            };
+            reader.readAsDataURL(file);
+          };
+          // Replace any prior listener by cloning
+          const newInput = fallbackFileInput.cloneNode(true);
+          fallbackFileInput.parentNode.replaceChild(newInput, fallbackFileInput);
+          newInput.addEventListener('change', onFallbackChange);
+          const onFallbackTrigger = () => newInput.click();
+          fallbackTrigger.addEventListener('click', onFallbackTrigger, { once: true });
+        }
+      });
+    }
+
+    // ➕ Upload button → trigger file input (file explorer / gallery)
+    if (uploadBtn) {
+      uploadBtn.addEventListener('click', () => {
+        if (fileInput) fileInput.click();
+      });
+    }
+
+    // File selected → show preview + analyze
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => handleAcquiredImage(event.target.result);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Retake button
+    if (retakeBtn) {
+      retakeBtn.addEventListener('click', () => {
+        currentImageData = null;
+        if (previewContainer) previewContainer.style.display = 'none';
+        if (uploadArea) uploadArea.style.display = 'block';
+        if (analysisResult) analysisResult.style.display = 'none';
+        if (fileInput) fileInput.value = '';
+      });
+    }
+  }
+
+  // Local image analysis using CropClassifier
+  async function analyzeImageLocally(base64Image) {
+    const loadingIndicator = document.getElementById('image-analysis-loading');
+    const analysisResult = document.getElementById('image-analysis-result');
+    const analysisContent = document.getElementById('analysis-content');
+
+    if (loadingIndicator) loadingIndicator.style.display = 'block';
+    if (analysisResult) analysisResult.style.display = 'none';
+
+    try {
+      // Use the CropClassifier for local diagnosis
+      const classifier = new window.CropClassifier();
+      const context = {
+        crop: localStorage.getItem('aaa_active_crop') || 'corn',
+        soil: localStorage.getItem('aaa_active_soil') || 'clay',
+        language: localStorage.getItem('aaa_preferred_language') || 'hi',
+      };
+      
+      const result = await classifier.classifyImage(base64Image, context);
+
+      // Build the response HTML
+      let html = '';
+      
+      if (result.disease_name) {
+        const isHealthy = result.disease_name.includes('Healthy') || result.severity === 'None';
+        const icon = isHealthy ? '✅' : (result.severity === 'Critical' ? '🚨' : result.severity === 'High' ? '⚠️' : '🔍');
+        
+        html += `<div style="margin-bottom: 12px;">
+          <div style="font-size: 1.1rem; font-weight: 700; color: ${isHealthy ? '#2C6B37' : '#e67e22'};">${icon} ${result.disease_name}</div>
+          <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">विश्वास: ${result.confidence}</div>
+        </div>`;
+      }
+
+      if (result.severity && result.severity !== 'None' && result.severity !== 'Unknown') {
+        html += `<div style="margin-bottom: 8px;"><strong>गंभीरता:</strong> ${result.severity}</div>`;
+      }
+
+      if (result.organic_remedy) {
+        html += `<div style="margin-bottom: 8px; padding: 8px; border-radius: 8px; background: rgba(44,107,55,0.1);">
+          <strong>🌱 जैविक उपचार:</strong><br/>
+          <span style="font-size: 0.9rem;">${result.organic_remedy}</span>
+        </div>`;
+      }
+
+      if (result.chemical_remedy) {
+        html += `<div style="margin-bottom: 8px; padding: 8px; border-radius: 8px; background: rgba(230,126,34,0.1);">
+          <strong>💊 रासायनिक उपचार:</strong><br/>
+          <span style="font-size: 0.9rem;">${result.chemical_remedy}</span>
+        </div>`;
+      }
+
+      if (result.regional_treatment) {
+        html += `<div style="margin-bottom: 8px; padding: 8px; border-radius: 8px; background: var(--bg-dark);">
+          <strong>क्षेत्रीय सलाह:</strong> ${result.regional_treatment}
+        </div>`;
+      }
+
+      // Check if we should recommend expert
+      const confidenceNum = parseInt(result.confidence) || 0;
+      const isLowConfidence = confidenceNum < 70 || result.severity === 'Unknown' || result.mode === 'fallback_heuristic';
+      
+      if (isLowConfidence) {
+        html += `<div style="margin-top: 12px; padding: 10px; border-radius: 8px; background: rgba(230,126,34,0.1); border-left: 3px solid #e67e22;">
+          <strong>📋 स्थानीय विश्लेषण सीमित है।</strong><br/>
+          <span style="font-size: 0.85rem;">सटीक निदान और विस्तृत उपचार के लिए विशेषज्ञ से पूछें।</span>
+        </div>`;
+      }
+
+      // Show the result
+      if (loadingIndicator) loadingIndicator.style.display = 'none';
+      if (analysisContent) analysisContent.innerHTML = html;
+      if (analysisResult) analysisResult.style.display = 'block';
+
+      // Speak the result
+      if (typeof window.speakText === 'function') {
+        const speakText2 = `${result.disease_name || 'Image analyzed'}. ${result.organic_remedy || ''} ${result.chemical_remedy || ''}`;
+        window.speakText(speakText2);
+      }
+
+    } catch (err) {
+      console.error('[Ask Image] Analysis failed:', err);
+      if (loadingIndicator) loadingIndicator.style.display = 'none';
+      if (analysisContent) analysisContent.innerHTML = `<div style="color: #e74c3c;">विश्लेषण में त्रुटि। कृपया फिर से प्रयास करें।</div>`;
+      if (analysisResult) analysisResult.style.display = 'block';
+    }
+  }
+
+  // Initialize Ask Image flow — we're already inside DOMContentLoaded, so call directly
+  initAskImageFlow();
 });

@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-07-03T15:55:27.299133",
+  "traces": [
+    {
+      "eval_case_id": "greeting_hindi",
+      "category": "greeting",
+      "prompt": "[Context: Farmer Name: रामा देवी, Language: Hindi, Location: पुणे, Soil: Alluvial, Crop: गेहूँ, Drip: हाँ] नमस्ते जी, आप किसानों के लिए कैसी सहायता कर सकते हें?",
+      "expected_behavior": "Warm greeting in Hindi, explain capabilities (crop, weather, market, pest advice), under 80 words, no agent names exposed",
+      "response": "{\n  \"language\": \"hi\",\n  \"title\": \"राम राम रामा देवी जी!\",\n  \"summary\": \"मैं आपका सेवक कृषि शास्त्री हूँ, जो आपकी खेती को समृद्ध बनाने में मदद करता है।\",\n  \"recommendation\": \"मैं आपको पुणे की जलवायु, दोमट मिट्टी और ड्रिप सिंचाई के अनुसार गेहूँ की खेती की हर सलाह दे सकता हूँ।\",\n  \"reasons\": [\n    \"मौसम के अनुसार सिंचाई का सही समय\",\n    \"खाद और पोषण की सटीक मात्रा\",\n    \"फसल के कीटों और रोगों का जैविक उपचार\",\n    \"पुणे मंडी के गेहूँ के ताज़ा भाव\"\n  ],\n  \"question\": \"क्या आप आज अपनी गेहूँ की फसल के लिए सिंचाई की सलाह पाना चाहती हैं?\",\n  \"actions\": [\n    {\"label\": \"सिंचाई की सलाह\", \"prompt\": \"मुझे ड्रिप सिंचाई की सलाह दें\"},\n    {\"label\": \"मंडी का भाव\", \"prompt\": \"आज का गेहूँ का बाजार भाव क्या है?\"},\n    {\"label\": \"फसल सुरक्षा\", \"prompt\": \"गेहूँ में रोगों से बचाव कैसे करें?\"}\n  ]\n}",
+      "tool_calls": [],
+      "turns": [
+        {
+          "author": "coordinator_agent",
+          "is_final": true,
+          "content": "{\n  \"language\": \"hi\",\n  \"title\": \"राम राम रामा देवी जी!\",\n  \"summary\": \"मैं आपका सेवक कृषि शास्त्री हूँ, जो आपकी खेती को समृद्ध बनाने में मदद करता है।\",\n  \"recommendation\": \"मैं आपको पुणे की जलवायु, दोमट मिट्टी और ड्रिप सिंचाई के अनुसार गेहूँ की खेती की हर सलाह दे सकता हूँ।\",\n  \"reasons\": [\n    \"मौसम के अनुसार सिंचाई का सही समय\",\n    \"खाद और पोषण की सटीक मात्रा\",\n    \"फसल के कीटों और रोगों का जैविक उपचार\",\n    \"पुणे मंडी के गेहूँ के ताज़ा भाव\"\n  ],\n  \"question\": \"क्या आप आज अपनी गेहूँ की फसल के लिए सिंचाई की सलाह पाना चाहती हैं?\",\n  \"actions\": [\n    {\"label\": \"सिंचाई की सलाह\", \"prompt\": \"मुझे ड्रिप सिंचाई की सलाह दें\"},\n    {\"label\": \"मंडी का भाव\", \"prompt\": \"आज का गेहूँ का बाजार भाव क्या है?\"},\n    {\"label\": \"फसल सुरक्षा\", \"prompt\": \"गेहूँ में रोगों से बचाव कैसे करें?\"}\n  ]\n}",
+          "tool_calls": []
+        }
+      ],
+      "error": null,
+      "success": true
+    },
+    {
+      "eval_case_id": "greeting_swahili",
+      "category": "greeting",
+      "prompt": "[Context: Farmer Name: Juma, Language: Swahili, Location: Nakuru, Soil: Clay, Crop: Corn, Drip: No] Jambo! Ni saizi gani unaweza kunisaidia?",
+      "expected_behavior": "Warm greeting in Swahili, explain farming advisory capabilities, under 80 words",
+      "response": "{\n  \"language\": \"sw\",\n  \"title\": \"Jambo Ndugu Juma!\",\n  \"summary\": \"Mimi ni Krishi Sastri, mshauri wako wa kilimo.\",\n  \"recommendation\": \"Ninaweza kukusaidia kwa ushauri wa umwagiliaji, kuzuia wadudu, na bei za soko kwa ajili ya mahindi yako Nakuru.\",\n  \"reasons\": [\n    \"Ushauri maalum wa udongo wa mfinyanzi\",\n    \"Utabiri wa hali ya hewa ya Nakuru\",\n    \"Udhibiti wa magonjwa ya mahindi\"\n  ],\n  \"question\": \"Je, ungependa tuanze na ushauri gani leo?\",\n  \"actions\": [\n    {\"label\": \"Kupanga Umwagiliaji\", \"prompt\": \"Nisaidie kupanga umwagiliaji leo\"},\n    {\"label\": \"Bei za Soko\", \"prompt\": \"Nionyeshe bei za soko za mahindi hapa Nakuru\"},\n    {\"label\": \"Kuzuia Wadudu\", \"prompt\": \"Niambie jinsi ya kuzuia wadudu kwenye mahindi\"}\n  ]\n}",
+      "tool_calls": [],
+      "turns": [
+        {
+          "author": "coordinator_agent",
+          "is_final": true,
+          "content": "{\n  \"language\": \"sw\",\n  \"title\": \"Jambo Ndugu Juma!\",\n  \"summary\": \"Mimi ni Krishi Sastri, mshauri wako wa kilimo.\",\n  \"recommendation\": \"Ninaweza kukusaidia kwa ushauri wa umwagiliaji, kuzuia wadudu, na bei za soko kwa ajili ya mahindi yako Nakuru.\",\n  \"reasons\": [\n    \"Ushauri maalum wa udongo wa mfinyanzi\",\n    \"Utabiri wa hali ya hewa ya Nakuru\",\n    \"Udhibiti wa magonjwa ya mahindi\"\n  ],\n  \"question\": \"Je, ungependa tuanze na ushauri gani leo?\",\n  \"actions\": [\n    {\"label\": \"Kupanga Umwagiliaji\", \"prompt\": \"Nisaidie kupanga umwagiliaji leo\"},\n    {\"label\": \"Bei za Soko\", \"prompt\": \"Nionyeshe bei za soko za mahindi hapa Nakuru\"},\n    {\"label\": \"Kuzuia Wadudu\", \"prompt\": \"Niambie jinsi ya kuzuia wadudu kwenye mahindi\"}\n  ]\n}",
+          "tool_calls": []
+        }
+      ],
+      "error": null,
+      "success": true
+    }
+  ]
+}

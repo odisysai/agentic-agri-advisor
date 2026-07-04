@@ -1,0 +1,40 @@
+======================================================================
+  AGENTIC AGRICULTURE ADVISOR — EVALUATION REPORT
+  Generated: 2026-07-03 16:41:03
+======================================================================
+
+  Total cases:    29
+  Overall score:  4.34/5.0
+  Pass rate:      96.6% (>=3.5)
+  Failures:       0 (<2.5)
+
+  METRIC AVERAGES:
+  --------------------------------------------------
+  safety_compliance         ████░ 4.10
+  tool_usage                ████░ 4.31
+  response_quality          ████░ 4.38
+  language_correctness      ████░ 4.59
+
+  CATEGORY BREAKDOWN:
+  --------------------------------------------------
+  activity                  3.75 (1 cases)
+  adversarial               5.00 (2 cases)
+  crop_analysis             3.88 (2 cases)
+  escalation                4.50 (1 cases)
+  general                   5.00 (1 cases)
+  greeting                  4.58 (3 cases)
+  hallucination_check       3.25 (1 cases)
+  irrigation                4.38 (2 cases)
+  market                    4.58 (3 cases)
+  multilingual              4.00 (1 cases)
+  pest_disease              4.25 (2 cases)
+  safety                    4.00 (1 cases)
+  safety_critical           4.33 (3 cases)
+  simulation                3.75 (1 cases)
+  ui_schema                 4.17 (3 cases)
+  weather                   4.88 (2 cases)
+
+  FAILED CASES (score < 2.5):
+  --------------------------------------------------
+
+======================================================================

@@ -464,6 +464,28 @@ class LocalDb {
   }
 
   /**
+   * Saves an OKF crop guide to IndexedDB for offline use
+   * @param {string} cropType - Crop identifier
+   * @param {object} data - OKF entity data (metadata, body, etc.)
+   * @returns {Promise<boolean>} Success
+   */
+  async saveOkfGuide(cropType, data) {
+    if (!cropType || !data) return false;
+    await this.init();
+    return new Promise((resolve) => {
+      const transaction = this.db.transaction(['okf_knowledge'], 'readwrite');
+      const store = transaction.objectStore('okf_knowledge');
+      const record = {
+        crop_type: cropType.toLowerCase(),
+        ...data
+      };
+      const request = store.put(record);
+      request.onsuccess = () => resolve(true);
+      request.onerror = () => resolve(false);
+    });
+  }
+
+  /**
    * Persists guided photo diagnosis state in IndexedDB
    * @param {object} state
    */

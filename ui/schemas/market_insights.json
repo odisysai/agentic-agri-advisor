@@ -16,10 +16,22 @@
           "name": "mandi_selector",
           "labelKey": "market.mandi.label",
           "options": [
-            {"value": "Nagpur District", "label": "Nagpur Mandi"},
-            {"value": "Pune District", "label": "Pune Mandi"},
-            {"value": "Indore District", "label": "Indore Mandi"},
-            {"value": "Rift Valley Region", "label": "Eldoret Mandi (Kenya)"}
+            {
+              "value": "Nagpur District",
+              "label": "Nagpur Mandi"
+            },
+            {
+              "value": "Pune District",
+              "label": "Pune Mandi"
+            },
+            {
+              "value": "Indore District",
+              "label": "Indore Mandi"
+            },
+            {
+              "value": "Rift Valley Region",
+              "label": "Eldoret Mandi (Kenya)"
+            }
           ]
         }
       ]
@@ -31,21 +43,21 @@
         {
           "type": "metric",
           "labelKey": "market.local.wheat",
-          "value": "₹2,450/quintal",
+          "value": "\u20b92,450/quintal",
           "valueKey": "market.local.wheat.val",
           "status": "optimal"
         },
         {
           "type": "metric",
           "labelKey": "market.local.corn",
-          "value": "₹1,980/quintal",
+          "value": "\u20b91,980/quintal",
           "valueKey": "market.local.corn.val",
           "status": "optimal"
         },
         {
           "type": "metric",
           "labelKey": "market.local.soy",
-          "value": "₹4,200/quintal",
+          "value": "\u20b94,200/quintal",
           "valueKey": "market.local.soy.val",
           "status": "warning"
         }
@@ -74,11 +86,6 @@
           "status": "optimal"
         }
       ]
-    },
-    {
-      "type": "button",
-      "labelKey": "market.exportAnalysis",
-      "action": "export_market"
     }
   ]
 }

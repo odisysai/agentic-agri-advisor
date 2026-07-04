@@ -3,10 +3,15 @@
   "short_name": "Krishi Sampark",
   "description": "Multi-agent agricultural intelligence and local edge diagnostics for smallholder farmers.",
   "start_url": "/agui/index.html",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#F3F7F2",
   "theme_color": "#2C6B37",
   "orientation": "portrait-primary",
+  "categories": ["agriculture", "education", "productivity"],
+  "lang": "en",
+  "dir": "auto",
   "icons": [
     {
       "src": "/agui/icons/icon-192.png",
@@ -24,13 +29,33 @@
   "shortcuts": [
     {
       "name": "Diagnose Crop",
+      "short_name": "Diagnose",
+      "description": "Take a photo of your crop to identify diseases",
       "url": "/agui/index.html?action=diagnose",
       "icons": [{ "src": "/agui/icons/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Irrigation Planner",
+      "short_name": "Irrigation",
+      "description": "Plan your watering schedule",
       "url": "/agui/index.html?action=irrigation",
       "icons": [{ "src": "/agui/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Ask Krishi Sastri",
+      "short_name": "Ask",
+      "description": "Voice or text chat with your AI advisor",
+      "url": "/agui/index.html?action=ask",
+      "icons": [{ "src": "/agui/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Mandi Prices",
+      "short_name": "Mandi",
+      "description": "Check today's crop market prices",
+      "url": "/agui/index.html?action=market",
+      "icons": [{ "src": "/agui/icons/icon-192.png", "sizes": "192x192" }]
     }
-  ]
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
 }

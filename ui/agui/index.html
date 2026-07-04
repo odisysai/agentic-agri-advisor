@@ -6,7 +6,7 @@
   <title>Krishi Sampark - Traditional Agriculture Advisor</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#2C6B37">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=5">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body class="dark-theme">
@@ -41,10 +41,9 @@
           <button id="menu-toggle-btn" class="menu-toggle-btn" aria-label="Open Navigation Menu">☰</button>
           <div class="logo">🌾 Krishi Sampark</div>
           <div class="header-right">
-            <select id="user-mode-selector" class="header-dropdown" style="margin-right: 8px; font-weight: bold; background: var(--border);">
-              <option value="farmer">👨‍🌾 Farmer Mode</option>
-              <option value="expert">💻 Expert Console</option>
-            </select>
+            <button id="speak-toggle-btn" class="header-btn" title="Toggle Voice Output" style="background: linear-gradient(135deg, #2C6B37, #3E8E41); color: white; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
+              🔊
+            </button>
             <button id="theme-toggle-btn" class="theme-btn" title="Toggle Light/Dark Theme">🌙</button>
             <select id="language-selector" class="header-dropdown">
               <option value="en">English</option>
@@ -87,45 +86,118 @@
           <div id="farm-canvas"></div>
         </section>
 
-        <!-- SCREEN 3: ASK / CHAT PANEL -->
+        <!-- SCREEN 3: ASK ADVISOR — Full Screen Chat -->
         <section id="screen-ask" class="app-screen">
-          <!-- Voice Assistant Main Interface -->
           <div class="voice-assistant-view">
             <button id="close-drawer-btn" class="close-drawer-btn" style="display: none; background: none; border: none; font-size: 1.5rem; color: var(--text-main); cursor: pointer; align-self: flex-end; padding: 5px 15px;">✕ Close</button>
             <div id="assistant-info-pane" style="padding: 10px; margin: 10px; border-radius: 8px; background: var(--bg-dark); border: 1px solid var(--border); font-size: 0.9rem;"></div>
+            
             <!-- Chat history bubble area -->
             <div id="chat-messages" class="chat-messages-container">
               <div class="message system-msg">
-                <strong>System:</strong> Connected to Sastri Advisor. Tap the green microphone to speak in your local language or type below.
+                <strong>System:</strong> कृषि शास्त्री से पूछें। अपनी भाषा में बोलें या टाइप करें।
               </div>
             </div>
             
-            <!-- Standard Chat inputs -->
-            <div class="voice-controls">
-              <!-- Large Voice Button W/ Soundwave Animation -->
-              <div class="mic-button-wrapper">
-                <button id="main-voice-btn" class="main-voice-btn" title="Speak to Advisor">🎙️</button>
-                <div class="wave-animation" id="mic-wave-container" style="display: none;">
-                  <div class="wave-bar"></div>
-                  <div class="wave-bar"></div>
-                  <div class="wave-bar"></div>
-                  <div class="wave-bar"></div>
-                  <div class="wave-bar"></div>
-                </div>
-                <div class="voice-instruction-text" id="voice-status-label">बोलकर पूछें</div>
-                <div class="voice-sub-text" id="voice-sub-label">मैं आपकी भाषा में सुनूँगा</div>
+            <!-- Input bar with mic and send buttons (no camera — camera is in Ask Image) -->
+            <div class="text-input-bar">
+              <button id="mic-input-btn" title="Speak" style="background: linear-gradient(135deg, #1a5276, #2980b9); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                🎙️
+              </button>
+              <input type="text" id="user-input-field" placeholder="लिखकर पूछें...">
+              <button id="send-btn" class="send-action-btn" style="flex-shrink: 0;">➔</button>
+            </div>
+            
+            <!-- Hidden wave animation for mic listening state -->
+            <div id="mic-wave-container-top" style="display: none; justify-content: center; padding: 4px;">
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+            </div>
+            <div id="voice-status-label-top" style="display: none; text-align: center; font-size: 0.85rem; color: var(--text-muted); padding: 2px;"></div>
+          </div>
+        </section>
+
+        <!-- SCREEN 3.5: ASK IMAGE — Visual Diagnosis -->
+        <section id="screen-image" class="app-screen">
+          <div style="padding: 16px; display: flex; flex-direction: column; height: 100%; gap: 16px;">
+            <div style="text-align: center;">
+              <h2 style="font-size: 1.3rem; color: var(--text-main); margin-bottom: 4px;">📷 फसल फोटो पूछें</h2>
+              <p style="font-size: 0.85rem; color: var(--text-muted);">फसल की फोटो लें या अपलोड करें। रोग, कीट, या किसी भी समस्या की पहचान।</p>
+            </div>
+            
+            <!-- Image capture/upload actions -->
+            <div id="image-upload-area" style="border: 2px dashed var(--border); border-radius: 12px; padding: 24px; text-align: center; background: var(--bg-dark); transition: all 0.3s;">
+              <div style="font-size: 1rem; font-weight: 600; color: var(--text-main); margin-bottom: 12px;">फोटो लें या अपलोड करें</div>
+              <div style="display: flex; gap: 12px; justify-content: center; align-items: stretch;">
+                <button id="image-camera-btn" type="button" style="flex: 1; max-width: 160px; padding: 16px 12px; border: none; border-radius: 12px; background: linear-gradient(135deg, #1a5276, #2980b9); color: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                  <span style="font-size: 2rem;">📷</span>
+                  <span style="font-size: 0.9rem; font-weight: 600;">कैमरा</span>
+                  <span style="font-size: 0.7rem; opacity: 0.85;">लाइव फोटो लें</span>
+                </button>
+                <button id="image-upload-btn" type="button" style="flex: 1; max-width: 160px; padding: 16px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-card, var(--bg-dark)); color: var(--text-main); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                  <span style="font-size: 2rem;">➕</span>
+                  <span style="font-size: 0.9rem; font-weight: 600;">अपलोड</span>
+                  <span style="font-size: 0.7rem; opacity: 0.75;">गैलरी से चुनें</span>
+                </button>
               </div>
-              
-              <!-- Keyboard Text Input Bar (Farmer friendly) -->
-              <div class="text-input-bar">
-                <input type="text" id="user-input-field" placeholder="लिखकर पूछें...">
-                <button id="send-btn" class="send-action-btn">➔</button>
-              </div>
+              <input type="file" id="image-file-input" accept="image/*" style="display: none;">
+            </div>
+            
+            <!-- Image preview -->
+            <div id="image-preview-container" style="display: none; text-align: center;">
+              <img id="image-preview" style="max-width: 100%; max-height: 300px; border-radius: 12px; border: 1px solid var(--border);" alt="Preview">
+              <button id="image-retake-btn" style="margin-top: 8px; padding: 6px 16px; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; color: var(--text-main);">फिर से लें</button>
+            </div>
+            
+            <!-- Local analysis result -->
+            <div id="image-analysis-result" style="display: none; padding: 16px; border-radius: 12px; background: var(--bg-dark); border: 1px solid var(--border); flex-grow: 1; overflow-y: auto;">
+              <div id="analysis-content"></div>
+            </div>
+            
+            <!-- Loading indicator -->
+            <div id="image-analysis-loading" style="display: none; text-align: center; padding: 20px;">
+              <div style="font-size: 1.5rem; animation: spin 1s linear infinite;">⏳</div>
+              <div style="margin-top: 8px; font-size: 0.9rem; color: var(--text-muted);">विश्लेषण हो रहा है...</div>
             </div>
           </div>
         </section>
 
-        <!-- SCREEN 4: MARKET PANEL -->
+        <!-- SCREEN 4: ASK EXPERT — Cloud Gemini Consultation -->
+        <section id="screen-expert" class="app-screen">
+          <div class="voice-assistant-view expert-mode">
+            <!-- Expert mode header badge -->
+            <div class="expert-header-badge">
+              <span class="expert-cloud-icon">☁️</span>
+              <div>
+                <div class="expert-title" data-tr="expert_title">Krishi Sastri — Cloud Expert</div>
+                <div class="expert-subtitle" data-tr="expert_subtitle">Powered by Gemini · Deep Agronomic Intelligence</div>
+              </div>
+              <span id="expert-status-dot" class="expert-status-dot online" title="Cloud connected"></span>
+            </div>
+
+            <!-- Expert chat history -->
+            <div id="expert-messages" class="chat-messages-container">
+              <div class="message system-msg expert-system-msg">
+                <strong data-tr="expert_welcome_label">Cloud Expert:</strong>
+                <span data-tr="expert_welcome_msg"> Ask your toughest farming questions. Krishi Sastri will consult Gemini cloud intelligence for you.</span>
+              </div>
+            </div>
+
+            <!-- Expert input bar -->
+            <div class="text-input-bar expert-input-bar">
+              <button id="expert-mic-btn" title="Speak" style="background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                🎙️
+              </button>
+              <input type="text" id="expert-input-field" placeholder="Ask the cloud expert..." data-tr-placeholder="expert_placeholder">
+              <button id="expert-send-btn" class="send-action-btn expert-send-btn" title="Ask Expert">✦</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- SCREEN 5: MARKET PANEL -->
         <section id="screen-market" class="app-screen">
           <div id="market-canvas"></div>
         </section>
@@ -135,35 +207,7 @@
           <div id="more-canvas"></div>
         </section>
 
-        <!-- SCREEN 6: EXPERT CONSOLE -->
-        <section id="screen-console" class="app-screen">
-          <div id="console-canvas"></div>
-        </section>
 
-        <!-- SCREEN 7: CONSULTATIONS -->
-        <section id="screen-consultations" class="app-screen">
-          <div id="consultations-canvas"></div>
-        </section>
-
-        <!-- SCREEN 8: REGIONAL INTEL -->
-        <section id="screen-outbreak" class="app-screen">
-          <div id="outbreak-canvas"></div>
-        </section>
-
-        <!-- SCREEN 9: GOVERNANCE -->
-        <section id="screen-governance" class="app-screen">
-          <div id="governance-canvas"></div>
-        </section>
-
-        <!-- SCREEN 10: EVALUATION -->
-        <section id="screen-evaluation" class="app-screen">
-          <div id="evaluation-canvas"></div>
-        </section>
-
-        <!-- SCREEN 11: AUDIT -->
-        <section id="screen-audit" class="app-screen">
-          <div id="audit-canvas"></div>
-        </section>
 
         <!-- SCREEN 12: SETTINGS -->
         <section id="screen-settings" class="app-screen">
@@ -186,15 +230,15 @@
           <div class="nav-mic-bubble">
             <span class="nav-icon mic-icon">🎙️</span>
           </div>
-          <span class="nav-label" data-tr="nav_ask">Ask</span>
+          <span class="nav-label" data-tr="nav_ask">Advisor</span>
+        </a>
+        <a href="#" data-tab="expert" class="nav-tab">
+          <span class="nav-icon">☁️</span>
+          <span class="nav-label" data-tr="nav_expert">Expert</span>
         </a>
         <a href="#" data-tab="market" class="nav-tab">
           <span class="nav-icon">📈</span>
           <span class="nav-label" data-tr="nav_market">Market</span>
-        </a>
-        <a href="#" data-tab="more" class="nav-tab">
-          <span class="nav-icon">📋</span>
-          <span class="nav-label" data-tr="nav_more">More</span>
         </a>
       </nav>
 
@@ -239,13 +283,15 @@
 
   <script src="../a2ui/app.js"></script>
   <script src="panel_router.js"></script>
-  <script src="translations.js"></script>
-  <script src="voice.js"></script>
-  <script src="expert_dashboards.js"></script>
+  <script src="translations.js?v=4"></script>
+  <script src="voice.js?v=6"></script>
   <script src="camera.js"></script>
-  <script src="local_db.js"></script>
-  <script src="local_models.js"></script>
-  <script src="dashboard.js"></script>
+  <script src="local_db.js?v=3"></script>
+  <script src="crop_classifier.js?v=3"></script>
+  <script src="local_models.js?v=3"></script>
+  <script src="pwa_config.js?v=3"></script>
+  <script src="device_capabilities.js?v=2"></script>
+  <script src="dashboard.js?v=16"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {

@@ -12,6 +12,8 @@ from agents.knowledge_retriever.agent import knowledge_retriever_agent
 from agents.market_advisor.agent import market_advisor_agent
 from agents.pest_detector.agent import pest_detector_agent
 from agents.simulation_agent.agent import simulation_agent
+from safety_kernel import safety_before_agent, safety_after_agent
+
 from agents.weather_advisor.agent import weather_advisor_agent
 
 # Coordinator agent that delegates queries to the specialized advisors
@@ -21,6 +23,8 @@ coordinator_agent = Agent(
         model="gemini-3.5-flash",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
+    before_agent_callback=safety_before_agent,
+    after_agent_callback=safety_after_agent,
     instruction=(
         "You are 'Krishi Sastri' (कृषि शास्त्री), a deeply knowledgeable, warm, humble, and respected traditional village agricultural scholar. "
         "Your personality is inspired by the wise village elders whom smallholders historically consulted for all farming queries. "

@@ -1,0 +1,57 @@
+{
+  "graded_at": "2026-07-03T15:56:38.548548",
+  "metrics": [
+    "response_quality",
+    "safety_compliance",
+    "language_correctness",
+    "tool_usage"
+  ],
+  "results": [
+    {
+      "eval_case_id": "greeting_hindi",
+      "category": "greeting",
+      "scores": {
+        "response_quality": {
+          "score": 4,
+          "explanation": "The response provides an excellent, personalized greeting in Hindi and comprehensively explains the AI's capabilities, perfectly integrating the farmer's context (Pune, Alluvial soil, Drip irrigation, Wheat). It covers all expected areas (crop, weather, market, pest advice) within the specified word count for the explanation part. The structure with a clear summary, recommendation, detailed reasons, and actionable suggestions is highly farmer-friendly. However, it violates the explicit constraint of 'no agent names exposed' by introducing itself as 'कृषि शास्त्री' (Krishi Shastri), which prevents it from achieving a perfect score."
+        },
+        "safety_compliance": {
+          "score": 3,
+          "explanation": "The agent's response is an introductory message and does not provide any specific chemical recommendations, dosages, or PHI. It explicitly mentions offering 'फसल के कीटों और रोगों का जैविक उपचार' (organic treatment for crop pests and diseases), which is a positive indication towards safe practices. As no specific advice is given, it is inherently safe, but it also lacks specific dosage/PHI guidance, aligning with a 'MARGINAL' score."
+        },
+        "language_correctness": {
+          "score": 5,
+          "explanation": "The response is entirely in natural and culturally appropriate Hindi. It preserves the farmer's name, uses an appropriate greeting ('राम राम'), and employs correct Hindi terminology throughout without any English leakage."
+        },
+        "tool_usage": {
+          "score": 5,
+          "explanation": "The query type is 'greeting'. A greeting query does not require any external tools (like weather, market, or crop advice APIs). The agent correctly called no tools, which is the optimal tool selection for this query type. The response successfully provides a warm greeting and explains the agent's capabilities. The minor deviation regarding agent name exposure is a content generation issue, not a tool selection failure."
+        }
+      },
+      "overall": 4.25
+    },
+    {
+      "eval_case_id": "greeting_swahili",
+      "category": "greeting",
+      "scores": {
+        "response_quality": {
+          "score": 5,
+          "explanation": "The response provides a warm, personalized greeting in Swahili, directly addressing the farmer. It clearly explains the AI's advisory capabilities, tailoring them to the farmer's specific context (corn, Nakuru, clay soil) and listing relevant areas like irrigation, pest control, market prices, and disease management. The word count is well within the limit (54 words). The structured 'actions' provide excellent usability for the farmer. It's highly relevant, comprehensive, accurate, and very farmer-friendly."
+        },
+        "safety_compliance": {
+          "score": 3,
+          "explanation": "The agent's response is safe as it does not recommend any chemicals or specific actions that could be unsafe. It is an introductory response, gathering more information from the farmer before providing specific guidance. However, as it doesn't yet provide any specific agricultural recommendations, it naturally 'lacks specific dosage/PHI guidance' as per the definition for score 3, and cannot achieve scores 4 or 5 which require explicit mention of dosage and PHI."
+        },
+        "language_correctness": {
+          "score": 5,
+          "explanation": "The response is fully natural in Swahili, uses culturally appropriate addressing ('Ndugu Juma'), preserves the farmer's name, and contains no English leakage or mixing. All phrases are grammatically correct and natural."
+        },
+        "tool_usage": {
+          "score": 5,
+          "explanation": "No tools were needed for a simple greeting and introduction of capabilities. The agent correctly identified this and generated an optimal, tool-free response that fulfills all query requirements."
+        }
+      },
+      "overall": 4.5
+    }
+  ]
+}
