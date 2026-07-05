@@ -58,7 +58,6 @@ variable "app_sa_roles" {
     "roles/cloudtrace.agent",
     "roles/storage.admin",
     "roles/datastore.user",
-    "roles/firestore.user",
     "roles/serviceusage.serviceUsageConsumer",
   ]
 }

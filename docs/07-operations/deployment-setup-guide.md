@@ -217,6 +217,11 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --role="roles/bigquery.admin" \
   --condition=None
 
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${GITHUB_ACTIONS_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/logging.configWriter" \
+  --condition=None
+
 # Create and download the key
 gcloud iam service-accounts keys create github-actions-key.json \
   --iam-account="${GITHUB_ACTIONS_SA}@${PROJECT_ID}.iam.gserviceaccount.com"

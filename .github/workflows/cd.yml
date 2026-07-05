@@ -399,6 +399,43 @@ jobs:
           fi
         fi
 
+        # Logging sinks
+        if ! terraform state show google_logging_project_sink.genai_logs_to_bq > /dev/null 2>&1; then
+          if gcloud logging sinks describe "agentic-agri-advisor-genai-logs" --project="$PROJECT_ID" > /dev/null 2>&1; then
+            echo "Importing existing GenAI logging sink..."
+            terraform import -input=false google_logging_project_sink.genai_logs_to_bq "projects/${PROJECT_ID}/sinks/agentic-agri-advisor-genai-logs" || true
+          fi
+        fi
+
+        if ! terraform state show google_logging_project_sink.feedback_logs_to_bq > /dev/null 2>&1; then
+          if gcloud logging sinks describe "agentic-agri-advisor-feedback" --project="$PROJECT_ID" > /dev/null 2>&1; then
+            echo "Importing existing feedback logging sink..."
+            terraform import -input=false google_logging_project_sink.feedback_logs_to_bq "projects/${PROJECT_ID}/sinks/agentic-agri-advisor-feedback" || true
+          fi
+        fi
+
+        # BigQuery tables
+        if ! terraform state show google_bigquery_table.genai_logs_table > /dev/null 2>&1; then
+          if bq --project_id="$PROJECT_ID" show "${PROJECT_ID}:agentic_agri_advisor_telemetry.gen_ai_client_inference_operation_details" > /dev/null 2>&1; then
+            echo "Importing existing GenAI logs table..."
+            terraform import -input=false google_bigquery_table.genai_logs_table "projects/${PROJECT_ID}/datasets/agentic_agri_advisor_telemetry/tables/gen_ai_client_inference_operation_details" || true
+          fi
+        fi
+
+        if ! terraform state show google_bigquery_table.completions_external_table > /dev/null 2>&1; then
+          if bq --project_id="$PROJECT_ID" show "${PROJECT_ID}:agentic_agri_advisor_telemetry.completions" > /dev/null 2>&1; then
+            echo "Importing existing completions external table..."
+            terraform import -input=false google_bigquery_table.completions_external_table "projects/${PROJECT_ID}/datasets/agentic_agri_advisor_telemetry/tables/completions" || true
+          fi
+        fi
+
+        if ! terraform state show google_bigquery_table.completions_view > /dev/null 2>&1; then
+          if bq --project_id="$PROJECT_ID" show "${PROJECT_ID}:agentic_agri_advisor_telemetry.completions_view" > /dev/null 2>&1; then
+            echo "Importing existing completions view..."
+            terraform import -input=false google_bigquery_table.completions_view "projects/${PROJECT_ID}/datasets/agentic_agri_advisor_telemetry/tables/completions_view" || true
+          fi
+        fi
+
         # Cloud Build SA role binding on default compute SA (if already exists)
         if ! terraform state show google_project_iam_member.default_compute_sa_storage_object_creator > /dev/null 2>&1; then
           MEMBER="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
