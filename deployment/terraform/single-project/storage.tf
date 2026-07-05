@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-provider "google" {
-  project               = var.project_id
-  region                = var.region
-  user_project_override = true
-}
-
 resource "google_storage_bucket" "logs_data_bucket" {
   name                        = "${var.project_id}-${var.project_name}-logs"
   location                    = var.region
@@ -42,7 +36,7 @@ resource "google_firestore_database" "database" {
   name                            = "(default)"
   location_id                     = var.region == "us-east1" ? "nam5" : var.region
   type                            = "FIRESTORE_NATIVE"
-  point_in_time_recovery_enable   = false
+  point_in_time_recovery_enablement = "POINT_IN_TIME_RECOVERY_DISABLED"
   delete_protection_state         = "DELETE_PROTECTION_DISABLED"
 
   depends_on = [resource.google_project_service.services]

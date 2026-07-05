@@ -75,36 +75,33 @@
 # 1. Set your GCP project ID
 export GCP_PROJECT_ID="your-project-id"
 
-# 2. Update env.tfvars with your project ID
-cd deployment/terraform/single-project/vars
-# Edit env.tfvars: project_id = "your-project-id"
-
-# 3. Set Gemini API key
+# 2. Set Terraform runtime variables
+export TF_VAR_project_id="$GCP_PROJECT_ID"
 export TF_VAR_gemini_api_key="your-gemini-api-key"
 
-# 4. Initialize Terraform
+# 3. Initialize Terraform
 cd deployment/terraform/single-project
 terraform init
 
-# 5. Plan
-terraform plan -var-file=vars/env.tfvars
+# 4. Plan
+terraform plan -var="region=us-east1"
 
-# 6. Apply (creates Firestore, GCS, Cloud Run)
-terraform apply -var-file=vars/env.tfvars
+# 5. Apply (creates Firestore, GCS, Cloud Run)
+terraform apply -var="region=us-east1"
 
-# 7. Build Docker image
+# 6. Build Docker image
 docker build -t us-east1-docker.pkg.dev/$GCP_PROJECT_ID/agentic-agri-advisor/krishi-sampark:latest .
 
-# 8. Push to Artifact Registry
+# 7. Push to Artifact Registry
 gcloud auth configure-docker us-east1-docker.pkg.dev
 docker push us-east1-docker.pkg.dev/$GCP_PROJECT_ID/agentic-agri-advisor/krishi-sampark:latest
 
-# 9. Update Cloud Run to use the new image
+# 8. Update Cloud Run to use the new image
 gcloud run services update agentic-agri-advisor \
   --image=us-east1-docker.pkg.dev/$GCP_PROJECT_ID/agentic-agri-advisor/krishi-sampark:latest \
   --region=us-east1
 
-# 10. Get the URL
+# 9. Get the URL
 terraform output cloud_run_service_url
 ```
 

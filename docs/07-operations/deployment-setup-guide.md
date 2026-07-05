@@ -250,16 +250,16 @@ Quality Gate runs ──→ Security Gate runs ──→ Deploy job starts
 
 **Without this configuration**, the deploy job will fail with an environment error. You **must** configure the `pilot` environment with at least one required reviewer.
 
-### Step 5: Update Project ID in Terraform
+### Step 5: Set Terraform Runtime Variables
 
-Edit `deployment/terraform/single-project/vars/env.tfvars`:
+Set Terraform variables at runtime instead of using a committed tfvars file:
 
-```hcl
-project_id = "your-gcp-project-id"
-region = "us-east1"
+```bash
+export TF_VAR_project_id="your-gcp-project-id"
+export TF_VAR_gemini_api_key="your-gemini-api-key"
 ```
 
-This file is committed to the repo (it's not a secret — the project ID is public). The actual secret values (`GEMINI_API_KEY`, `GCP_SA_KEY`) come from GitHub Secrets at runtime.
+Region is passed during plan/apply (`-var="region=us-east1"`) in CI. Secrets (`GEMINI_API_KEY`, `GCP_SA_KEY`) should remain in GitHub Secrets for pipeline runs.
 
 ---
 
