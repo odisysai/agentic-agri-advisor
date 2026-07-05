@@ -14,6 +14,11 @@
 import os
 import re
 import tempfile
+import base64
+import hashlib
+import hmac
+import json
+import time
 from datetime import datetime
 
 # Load .env file early so GEMINI_API_KEY and other secrets are available
@@ -28,10 +33,12 @@ import asyncio
 
 import edge_tts
 import google.auth
-from fastapi import Body, FastAPI, Response
+from fastapi import Body, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from google.adk.cli.fast_api import get_fast_api_app
+from google.auth.transport.requests import Request as GoogleAuthRequest
 from google.cloud import logging as google_cloud_logging
+from google.oauth2 import id_token as google_id_token
 from pydantic import BaseModel, Field
 
 from app.app_utils.telemetry import setup_telemetry
@@ -95,6 +102,168 @@ app.title = "agentic-agri-advisor"
 app.description = "API for interacting with the Agent agentic-agri-advisor"
 
 
+GOOGLE_OIDC_CLIENT_ID = os.getenv("GOOGLE_OIDC_CLIENT_ID", "").strip()
+SESSION_COOKIE_NAME = "aaa_session"
+SESSION_SECRET = os.getenv("APP_SESSION_SECRET", "dev-only-change-me")
+SESSION_MAX_AGE_SECONDS = int(os.getenv("SESSION_MAX_AGE_SECONDS", "43200"))
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "1") in {
+    "1",
+    "true",
+    "True",
+}
+
+
+def _is_google_login_required() -> bool:
+    return os.getenv("REQUIRE_GOOGLE_LOGIN", "0") in {"1", "true", "True"}
+
+
+def _b64url_encode(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode("utf-8").rstrip("=")
+
+
+def _b64url_decode(value: str) -> bytes:
+    padding = "=" * (-len(value) % 4)
+    return base64.urlsafe_b64decode((value + padding).encode("utf-8"))
+
+
+def _sign_payload(payload_b64: str) -> str:
+    digest = hmac.new(
+        SESSION_SECRET.encode("utf-8"), payload_b64.encode("utf-8"), hashlib.sha256
+    ).digest()
+    return _b64url_encode(digest)
+
+
+def _create_session_cookie(user_payload: dict) -> str:
+    body = {
+        "sub": user_payload.get("sub", ""),
+        "email": user_payload.get("email", ""),
+        "name": user_payload.get("name", ""),
+        "picture": user_payload.get("picture", ""),
+        "iat": int(time.time()),
+        "exp": int(time.time()) + SESSION_MAX_AGE_SECONDS,
+    }
+    payload_b64 = _b64url_encode(
+        json.dumps(body, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    )
+    signature = _sign_payload(payload_b64)
+    return f"{payload_b64}.{signature}"
+
+
+def _read_session_cookie(cookie_value: str | None) -> dict | None:
+    if not cookie_value or "." not in cookie_value:
+        return None
+    try:
+        payload_b64, signature = cookie_value.split(".", 1)
+        expected = _sign_payload(payload_b64)
+        if not hmac.compare_digest(signature, expected):
+            return None
+
+        payload = json.loads(_b64url_decode(payload_b64).decode("utf-8"))
+        if int(payload.get("exp", 0)) < int(time.time()):
+            return None
+        if not payload.get("email"):
+            return None
+        return payload
+    except Exception:
+        return None
+
+
+def _farmer_id_from_email(email: str) -> str:
+    base = email.strip().lower()
+    return re.sub(r"[^a-z0-9_]+", "_", base)[:64] or "user"
+
+
+def _current_user_from_request(request: Request) -> dict | None:
+    return _read_session_cookie(request.cookies.get(SESSION_COOKIE_NAME))
+
+
+def _resolve_farmer_id(request: Request, fallback_farmer_id: str) -> str:
+    current_user = _current_user_from_request(request)
+    if _is_google_login_required() and not current_user:
+        raise HTTPException(status_code=401, detail="Login required")
+    if current_user and current_user.get("email"):
+        return _farmer_id_from_email(current_user["email"])
+    return fallback_farmer_id
+
+
+class GoogleLoginBody(BaseModel):
+    credential: str = Field(..., min_length=16)
+
+
+@app.get("/api/auth/config")
+def auth_config() -> dict:
+    enabled = bool(GOOGLE_OIDC_CLIENT_ID)
+    return {
+        "enabled": enabled,
+        "required": _is_google_login_required(),
+        "client_id": GOOGLE_OIDC_CLIENT_ID if enabled else None,
+    }
+
+
+@app.post("/api/auth/google")
+def login_with_google(payload: GoogleLoginBody, response: Response) -> dict:
+    if not GOOGLE_OIDC_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Google OIDC is not configured")
+
+    try:
+        token_info = google_id_token.verify_oauth2_token(
+            payload.credential, GoogleAuthRequest(), GOOGLE_OIDC_CLIENT_ID
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="Invalid Google credential") from exc
+
+    issuer = token_info.get("iss", "")
+    if issuer not in {"accounts.google.com", "https://accounts.google.com"}:
+        raise HTTPException(status_code=401, detail="Invalid token issuer")
+
+    if not token_info.get("email_verified", False):
+        raise HTTPException(status_code=401, detail="Email is not verified")
+
+    session_cookie = _create_session_cookie(token_info)
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=session_cookie,
+        httponly=True,
+        secure=SESSION_COOKIE_SECURE,
+        samesite="lax",
+        max_age=SESSION_MAX_AGE_SECONDS,
+        path="/",
+    )
+    return {
+        "authenticated": True,
+        "user": {
+            "email": token_info.get("email", ""),
+            "name": token_info.get("name", ""),
+            "picture": token_info.get("picture", ""),
+            "farmer_id": _farmer_id_from_email(token_info.get("email", "user")),
+        },
+    }
+
+
+@app.get("/api/auth/me")
+def auth_me(request: Request) -> dict:
+    current_user = _current_user_from_request(request)
+    if not current_user:
+        if _is_google_login_required():
+            raise HTTPException(status_code=401, detail="Login required")
+        return {"authenticated": False}
+    return {
+        "authenticated": True,
+        "user": {
+            "email": current_user.get("email", ""),
+            "name": current_user.get("name", ""),
+            "picture": current_user.get("picture", ""),
+            "farmer_id": _farmer_id_from_email(current_user.get("email", "user")),
+        },
+    }
+
+
+@app.post("/api/auth/logout")
+def auth_logout(response: Response) -> dict:
+    response.delete_cookie(key=SESSION_COOKIE_NAME, path="/")
+    return {"status": "success"}
+
+
 @app.get("/api/run_diagnostic_tests")
 def run_diagnostic_tests():
     from tests.integration.test_localization import (
@@ -130,13 +299,7 @@ def get_v1_models():
     return {"data": []}
 
 
-@app.get("/api/profile/{farmer_id}")
-def get_profile(farmer_id: str):
-    return db_manager.get_profile_data(farmer_id)
-
-
-@app.post("/api/profile/{farmer_id}")
-def save_profile(farmer_id: str, payload: dict = Body(...)):
+def _save_profile_impl(farmer_id: str, payload: dict) -> dict:
     name = payload.get("farmer_name") or "New Field"
     soil_type = payload.get("soil_type") or "Alluvial"
     acres = payload.get("acres") or 5.0
@@ -155,8 +318,7 @@ def save_profile(farmer_id: str, payload: dict = Body(...)):
     return {"status": "success", "field": res}
 
 
-@app.post("/api/profile/{farmer_id}/language")
-def save_language(farmer_id: str, payload: dict = Body(...)):
+def _save_language_impl(farmer_id: str, payload: dict) -> dict:
     language = payload.get("language") or "English"
     conn = db_manager.get_connection()
     cursor = conn.cursor()
@@ -168,6 +330,42 @@ def save_language(farmer_id: str, payload: dict = Body(...)):
     finally:
         conn.close()
     return {"status": "success"}
+
+
+@app.get("/api/profile/user")
+def get_current_profile(request: Request):
+    farmer_id = _resolve_farmer_id(request, "user")
+    return db_manager.get_profile_data(farmer_id)
+
+
+@app.post("/api/profile/user")
+def save_current_profile(request: Request, payload: dict = Body(...)):
+    farmer_id = _resolve_farmer_id(request, "user")
+    return _save_profile_impl(farmer_id, payload)
+
+
+@app.post("/api/profile/user/language")
+def save_current_language(request: Request, payload: dict = Body(...)):
+    farmer_id = _resolve_farmer_id(request, "user")
+    return _save_language_impl(farmer_id, payload)
+
+
+@app.get("/api/profile/{farmer_id}")
+def get_profile(farmer_id: str, request: Request):
+    resolved_farmer_id = _resolve_farmer_id(request, farmer_id)
+    return db_manager.get_profile_data(resolved_farmer_id)
+
+
+@app.post("/api/profile/{farmer_id}")
+def save_profile(farmer_id: str, request: Request, payload: dict = Body(...)):
+    resolved_farmer_id = _resolve_farmer_id(request, farmer_id)
+    return _save_profile_impl(resolved_farmer_id, payload)
+
+
+@app.post("/api/profile/{farmer_id}/language")
+def save_language(farmer_id: str, request: Request, payload: dict = Body(...)):
+    resolved_farmer_id = _resolve_farmer_id(request, farmer_id)
+    return _save_language_impl(resolved_farmer_id, payload)
 
 
 @app.post("/api/telemetry/{planting_id}")

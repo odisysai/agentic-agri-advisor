@@ -32,6 +32,76 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  async function ensureGoogleAuthIfRequired() {
+    const authSlot = document.getElementById('google-auth-slot');
+    try {
+      const configResponse = await fetch('/api/auth/config', { credentials: 'include' });
+      if (!configResponse.ok) return true;
+      const config = await configResponse.json();
+      if (!config || !config.enabled) return true;
+
+      const meResponse = await fetch('/api/auth/me', { credentials: 'include' });
+      if (meResponse.ok) {
+        const me = await meResponse.json();
+        if (me?.authenticated && authSlot) {
+          authSlot.textContent = 'Signed In';
+          authSlot.style.fontSize = '0.8rem';
+          authSlot.style.opacity = '0.8';
+        }
+        return true;
+      }
+
+      if (!config.required) return true;
+
+      if (!authSlot) {
+        alert('Login required, but login UI is missing.');
+        return false;
+      }
+
+      authSlot.innerHTML = '<span style="font-size:0.8rem;opacity:0.8;">Sign in required</span><div id="google-signin-btn" style="margin-top:4px;"></div>';
+      const buttonContainer = document.getElementById('google-signin-btn');
+
+      if (!window.google?.accounts?.id || !buttonContainer || !config.client_id) {
+        alert('Google login is required but Google Sign-In is unavailable.');
+        return false;
+      }
+
+      google.accounts.id.initialize({
+        client_id: config.client_id,
+        callback: async (googleResp) => {
+          try {
+            const loginResponse = await fetch('/api/auth/google', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ credential: googleResp.credential })
+            });
+            if (!loginResponse.ok) {
+              const txt = await loginResponse.text();
+              throw new Error(txt || `HTTP ${loginResponse.status}`);
+            }
+            window.location.reload();
+          } catch (e) {
+            console.error('Google sign-in failed:', e);
+            alert('Google login failed. Please try again.');
+          }
+        }
+      });
+
+      google.accounts.id.renderButton(buttonContainer, {
+        theme: 'filled_blue',
+        size: 'small',
+        shape: 'pill',
+        text: 'signin_with',
+        width: 160
+      });
+      return false;
+    } catch (e) {
+      console.warn('Auth config check failed; continuing without forced login.', e);
+      return true;
+    }
+  }
+
   function getActiveCanvas() {
     return aguiCanvas || document.querySelector('.app-screen.active > div');
   }
@@ -1713,9 +1783,13 @@ ${text}`;
   }
 
   // Load default home screen schema on startup
-  window.switchTab('home', false, false);
-  fetchFieldsAndProfile();
-  initCropDiagnosisState();
+  (async () => {
+    const canStartApp = await ensureGoogleAuthIfRequired();
+    if (!canStartApp) return;
+    window.switchTab('home', false, false);
+    fetchFieldsAndProfile();
+    initCropDiagnosisState();
+  })();
 
   // Clean up any stale local AI mode flags in localStorage
   localStorage.setItem('aaa_local_ai_enabled', 'false');
