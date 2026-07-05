@@ -45,9 +45,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (me?.authenticated) {
         const displayName = me.user?.name || me.user?.email || 'Logged In';
+        const modeLabel = me.profile_mode === 'guest_user' ? 'Guest' : 'Signed In';
         authSlot.innerHTML = `
           <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:0.78rem;opacity:0.85;">${displayName}</span>
+            <span style="font-size:0.78rem;opacity:0.85;">${modeLabel}: ${displayName}</span>
             <button id="google-logout-btn" style="border:1px solid rgba(255,255,255,0.35);background:transparent;color:inherit;border-radius:12px;padding:2px 8px;font-size:0.75rem;cursor:pointer;">Logout</button>
           </div>
         `;
@@ -65,55 +66,98 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
       }
 
-      if (!config.enabled) {
-        authSlot.textContent = 'Guest Mode';
-        authSlot.style.fontSize = '0.78rem';
-        authSlot.style.opacity = '0.85';
-        return true;
-      }
+      authSlot.textContent = 'Not Logged In';
+      authSlot.style.fontSize = '0.78rem';
+      authSlot.style.opacity = '0.85';
 
-      authSlot.innerHTML = `<span style="font-size:0.78rem;opacity:0.85;">${config.required ? 'Sign in required' : 'Guest mode (optional sign-in)'}</span><div id="google-signin-btn" style="margin-top:4px;"></div>`;
-      const buttonContainer = document.getElementById('google-signin-btn');
+      const existingGate = document.getElementById('auth-gate-overlay');
+      if (existingGate) existingGate.remove();
 
-      if (!window.google?.accounts?.id || !buttonContainer || !config.client_id) {
-        if (config.required) {
-          alert('Google login is required but Google Sign-In is unavailable.');
-          return false;
-        }
-        return true;
-      }
+      const gate = document.createElement('div');
+      gate.id = 'auth-gate-overlay';
+      gate.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#0f2f1a,#173f26);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+      gate.innerHTML = `
+        <div style="width:min(460px,95vw);background:#fff;border-radius:16px;padding:20px;box-shadow:0 16px 40px rgba(0,0,0,0.25);font-family:Outfit,sans-serif;">
+          <h2 style="margin:0 0 8px;color:#16381f;">Welcome to Krishi Sampark</h2>
+          <p style="margin:0 0 14px;color:#445;line-height:1.45;">Sign in with Google or continue as guest by entering your email. This helps track your profile and farm context.</p>
+          <label style="display:block;font-size:0.85rem;color:#333;margin-bottom:6px;">Guest Email</label>
+          <input id="guest-email-input" type="email" placeholder="name@example.com" style="width:100%;padding:10px;border:1px solid #ccd;border-radius:10px;font-size:0.95rem;" />
+          <button id="guest-login-btn" style="margin-top:10px;width:100%;padding:10px;border:none;border-radius:10px;background:#2f7c47;color:#fff;font-weight:600;cursor:pointer;">Continue as Guest</button>
+          <div style="display:flex;align-items:center;gap:10px;margin:14px 0 10px;color:#666;font-size:0.85rem;"><span style="flex:1;height:1px;background:#e3e6eb;"></span><span>OR</span><span style="flex:1;height:1px;background:#e3e6eb;"></span></div>
+          <div id="google-signin-btn" style="display:flex;justify-content:center;"></div>
+          <div id="auth-gate-status" style="margin-top:10px;min-height:18px;font-size:0.82rem;color:#b00020;"></div>
+        </div>
+      `;
+      document.body.appendChild(gate);
 
-      google.accounts.id.initialize({
-        client_id: config.client_id,
-        callback: async (googleResp) => {
+      const emailInput = document.getElementById('guest-email-input');
+      const guestBtn = document.getElementById('guest-login-btn');
+      const status = document.getElementById('auth-gate-status');
+
+      if (guestBtn && emailInput) {
+        guestBtn.addEventListener('click', async () => {
+          const email = (emailInput.value || '').trim().toLowerCase();
+          if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            if (status) status.textContent = 'Please enter a valid email address.';
+            return;
+          }
+          guestBtn.disabled = true;
+          guestBtn.textContent = 'Signing in...';
           try {
-            const loginResponse = await fetch('/api/auth/google', {
+            const r = await fetch('/api/auth/guest', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
-              body: JSON.stringify({ credential: googleResp.credential })
+              body: JSON.stringify({ email, name: 'Guest' })
             });
-            if (!loginResponse.ok) {
-              const txt = await loginResponse.text();
-              throw new Error(txt || `HTTP ${loginResponse.status}`);
+            if (!r.ok) {
+              const txt = await r.text();
+              throw new Error(txt || `HTTP ${r.status}`);
             }
             window.location.reload();
-          } catch (e) {
-            console.error('Google sign-in failed:', e);
-            alert('Google login failed. Please try again.');
+          } catch (err) {
+            if (status) status.textContent = 'Guest login failed. Please try again.';
+            guestBtn.disabled = false;
+            guestBtn.textContent = 'Continue as Guest';
           }
-        }
-      });
+        });
+      }
 
-      google.accounts.id.renderButton(buttonContainer, {
-        theme: 'filled_blue',
-        size: 'small',
-        shape: 'pill',
-        text: 'signin_with',
-        width: 170
-      });
+      const buttonContainer = document.getElementById('google-signin-btn');
+      if (config.enabled && window.google?.accounts?.id && buttonContainer && config.client_id) {
+        google.accounts.id.initialize({
+          client_id: config.client_id,
+          callback: async (googleResp) => {
+            try {
+              const loginResponse = await fetch('/api/auth/google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ credential: googleResp.credential })
+              });
+              if (!loginResponse.ok) {
+                const txt = await loginResponse.text();
+                throw new Error(txt || `HTTP ${loginResponse.status}`);
+              }
+              window.location.reload();
+            } catch (e) {
+              if (status) status.textContent = 'Google login failed. Please try again.';
+            }
+          }
+        });
 
-      return !config.required;
+        google.accounts.id.renderButton(buttonContainer, {
+          theme: 'filled_blue',
+          size: 'large',
+          shape: 'pill',
+          text: 'signin_with',
+          width: 220
+        });
+      } else if (config.required && status) {
+        status.textContent = 'Google sign-in is required but currently unavailable.';
+      }
+
+      return false;
     } catch (e) {
       console.warn('Auth config check failed; continuing without forced login.', e);
       return true;
