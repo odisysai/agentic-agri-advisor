@@ -72,6 +72,83 @@ skillRegistry:
   - name: threat-modeling
     id: SKILL-SEC-01
 
+skillContractMatrix:
+  - name: localization-validation
+    id: SKILL-LOC-01
+    skillPath: .ai-sdlc/skills/localization-validation/SKILL.md
+    tool: validate-translations
+    command: python -m tools.ai_sdlc.cli validate --translations
+    inputSchema:
+      changedFiles: list
+    outputSchema:
+      status: str
+      missingKeys: list
+    evidencePath: .ai-sdlc/evidence/safety/safety.json
+    evaluationMetrics:
+      - translation_completeness
+      - script_purity
+
+  - name: a2ui-schema-validation
+    id: SKILL-A2UI-01
+    skillPath: .ai-sdlc/skills/a2ui-schema-validation/SKILL.md
+    tool: validate-schemas
+    command: python -m tools.ai_sdlc.cli validate --schemas
+    inputSchema:
+      schemaFiles: list
+    outputSchema:
+      status: str
+      violations: list
+    evidencePath: .ai-sdlc/evidence/safety/safety.json
+    evaluationMetrics:
+      - schema_validity
+      - ui_contract_compliance
+
+  - name: agricultural-safety-review
+    id: SKILL-SAFE-01
+    skillPath: .ai-sdlc/skills/agricultural-safety-review/SKILL.md
+    tool: validate-safety
+    command: python -m tools.ai_sdlc.cli validate --safety
+    inputSchema:
+      recommendations: list
+    outputSchema:
+      safety_status: str
+      kernel_passed: bool
+    evidencePath: .ai-sdlc/evidence/safety/agricultural-safety-evidence.json
+    evaluationMetrics:
+      - safety_kernel_compliance
+      - escalation_correctness
+
+  - name: codebase-understanding
+    id: SKILL-CODE-01
+    skillPath: .ai-sdlc/skills/codebase-understanding/SKILL.md
+    tool: codebase-understanding
+    command: "echo Codebase scan: use agents-cli lint"
+    inputSchema:
+      scope: str
+    outputSchema:
+      findings: list
+      riskAreas: list
+    evidencePath: .ai-sdlc/reports/traceability-matrix.json
+    evaluationMetrics:
+      - coverage_of_relevant_components
+      - false_positive_rate
+
+  - name: threat-modeling
+    id: SKILL-SEC-01
+    skillPath: .ai-sdlc/skills/threat-modeling/SKILL.md
+    tool: threat-modeling
+    command: "echo Threat model at docs/06-devsecops/threat-model.md"
+    inputSchema:
+      architecture: str
+      dataFlows: list
+    outputSchema:
+      threats: list
+      mitigations: list
+    evidencePath: .ai-sdlc/evidence/security/security-summary.md
+    evaluationMetrics:
+      - stride_coverage
+      - mitigation_completeness
+
 toolRegistry:
   - name: validate-schemas
     command: python -m tools.ai_sdlc.cli validate --schemas
@@ -79,6 +156,8 @@ toolRegistry:
     command: python -m tools.ai_sdlc.cli validate --translations
   - name: validate-safety
     command: python -m tools.ai_sdlc.cli validate --safety
+  - name: validate-skills
+    command: python -m tools.ai_sdlc.cli validate --skills
   - name: validate-all
     command: python -m tools.ai_sdlc.cli validate --all
   - name: test-execution

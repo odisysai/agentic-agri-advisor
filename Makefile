@@ -1,4 +1,4 @@
-.PHONY: setup lint typecheck test test-integration coverage validate-schemas validate-translations validate-safety security secret-scan dependency-scan sast container-scan build smoke-test evidence release-check ai-sdlc-check run-agent run-agents firestore-start firestore-stop serve serve-firestore
+.PHONY: setup lint typecheck test test-integration coverage validate-schemas validate-translations validate-safety validate-skills security secret-scan dependency-scan sast container-scan build smoke-test evidence release-check ai-sdlc-check run-agent run-agents firestore-start firestore-stop serve serve-firestore
 
 PYTHON ?= .venv/bin/python
 UV ?= uv
@@ -30,6 +30,9 @@ validate-translations:
 validate-safety:
 	$(UV) run python -m tools.ai_sdlc.cli validate --safety
 
+validate-skills:
+	$(UV) run python -m tools.ai_sdlc.cli validate --skills
+
 security:
 	$(UV) run python -m tools.ai_sdlc.cli security --all
 
@@ -57,7 +60,7 @@ evidence:
 release-check:
 	$(UV) run python -m tools.ai_sdlc.cli release --report
 
-ai-sdlc-check: lint typecheck validate-schemas validate-translations validate-safety coverage secret-scan dependency-scan sast evidence release-check
+ai-sdlc-check: lint typecheck validate-schemas validate-translations validate-safety validate-skills coverage secret-scan dependency-scan sast evidence release-check
 
 # Run lifecycle agents (declarative → executable)
 run-agent:
