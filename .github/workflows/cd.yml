@@ -311,6 +311,68 @@ jobs:
           echo "No existing Firestore default database found; Terraform will create it."
         fi
 
+    - name: Import existing Terraform resources if present
+      working-directory: deployment/terraform/single-project
+      run: |
+        set -euo pipefail
+
+        PROJECT_ID="${{ secrets.GCP_PROJECT_ID }}"
+        PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"
+        APP_SA_EMAIL="agentic-agri-advisor-app@${PROJECT_ID}.iam.gserviceaccount.com"
+
+        # Service account
+        if ! terraform state show google_service_account.app_sa > /dev/null 2>&1; then
+          if gcloud iam service-accounts describe "$APP_SA_EMAIL" --project="$PROJECT_ID" > /dev/null 2>&1; then
+            echo "Importing existing app service account..."
+            terraform import google_service_account.app_sa "projects/${PROJECT_ID}/serviceAccounts/${APP_SA_EMAIL}" || true
+          fi
+        fi
+
+        # Logs bucket
+        if ! terraform state show google_storage_bucket.logs_data_bucket > /dev/null 2>&1; then
+          if gcloud storage buckets describe "gs://${PROJECT_ID}-agentic-agri-advisor-logs" > /dev/null 2>&1; then
+            echo "Importing existing logs bucket..."
+            terraform import google_storage_bucket.logs_data_bucket "${PROJECT_ID}-agentic-agri-advisor-logs" || true
+          fi
+        fi
+
+        # Assets bucket
+        if ! terraform state show google_storage_bucket.assets_bucket > /dev/null 2>&1; then
+          if gcloud storage buckets describe "gs://${PROJECT_ID}-agentic-agri-advisor-assets" > /dev/null 2>&1; then
+            echo "Importing existing assets bucket..."
+            terraform import google_storage_bucket.assets_bucket "${PROJECT_ID}-agentic-agri-advisor-assets" || true
+          fi
+        fi
+
+        # BigQuery dataset
+        if ! terraform state show google_bigquery_dataset.telemetry_dataset > /dev/null 2>&1; then
+          if bq --project_id="$PROJECT_ID" show --dataset "${PROJECT_ID}:agentic_agri_advisor_telemetry" > /dev/null 2>&1; then
+            echo "Importing existing telemetry dataset..."
+            terraform import google_bigquery_dataset.telemetry_dataset "projects/${PROJECT_ID}/datasets/agentic_agri_advisor_telemetry" || true
+          fi
+        fi
+
+        # BigQuery connection
+        if ! terraform state show google_bigquery_connection.genai_telemetry_connection > /dev/null 2>&1; then
+          if bq --project_id="$PROJECT_ID" show --connection --location=us-east1 "${PROJECT_ID}.us-east1.agentic-agri-advisor-genai-telemetry" > /dev/null 2>&1; then
+            echo "Importing existing telemetry connection..."
+            terraform import google_bigquery_connection.genai_telemetry_connection "projects/${PROJECT_ID}/locations/us-east1/connections/agentic-agri-advisor-genai-telemetry" || true
+          fi
+        fi
+
+        # Cloud Build SA role binding on default compute SA (if already exists)
+        if ! terraform state show google_project_iam_member.default_compute_sa_storage_object_creator > /dev/null 2>&1; then
+          MEMBER="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+          ROLE="roles/cloudbuild.builds.builder"
+          if gcloud projects get-iam-policy "$PROJECT_ID" \
+              --flatten="bindings[]" \
+              --filter="bindings.role:${ROLE} AND bindings.members:${MEMBER}" \
+              --format="value(bindings.role)" | grep -q "${ROLE}"; then
+            echo "Importing existing project IAM member binding..."
+            terraform import google_project_iam_member.default_compute_sa_storage_object_creator "${PROJECT_ID} ${ROLE} ${MEMBER}" || true
+          fi
+        fi
+
     - name: Download Terraform plan (from plan job)
       uses: actions/download-artifact@v4
       with:
