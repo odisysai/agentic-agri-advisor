@@ -93,3 +93,12 @@ resource "google_cloud_run_v2_service" "app" {
     resource.google_project_service.services,
   ]
 }
+
+# Allow public browser access to the web app.
+resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
+  project  = var.project_id
+  location = var.region
+  name     = google_cloud_run_v2_service.app.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
