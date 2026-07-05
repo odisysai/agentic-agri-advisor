@@ -355,16 +355,35 @@ jobs:
         USE_FIRESTORE: "1"
         FIRESTORE_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       run: |
+        set -euo pipefail
         echo "🚀 Deploying app via agents-cli deploy..."
-        agents-cli deploy --region=us-east1
+        agents-cli deploy --region=us-east1 2>&1 | tee agents_cli_deploy.log
+
+    - name: Upload agents-cli deploy log
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: agents-cli-deploy-log
+        path: agents_cli_deploy.log
+        retention-days: 7
 
     # --- Verify ---
     - name: Health Check
       working-directory: deployment/terraform/single-project
       run: |
+        set -euo pipefail
         SERVICE_URL=$(terraform output -raw cloud_run_service_url)
         echo "Waiting for service to warm up..."
         sleep 15
         echo "Checking: ${SERVICE_URL}/api/profile/user"
-        curl -sf "${SERVICE_URL}/api/profile/user" | python3 -m json.tool | head -10 || echo "⚠️ Health check failed (may need warm-up time)"
+
+        http_code=$(curl -sS -o /tmp/health_response.json -w "%{http_code}" "${SERVICE_URL}/api/profile/user")
+        if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+          echo "::error::Health check failed with HTTP ${http_code}"
+          echo "Response body:"
+          cat /tmp/health_response.json || true
+          exit 1
+        fi
+
+        python3 -m json.tool /tmp/health_response.json | head -10
         echo "::notice::Deployed to ${SERVICE_URL}"
