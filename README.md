@@ -1,111 +1,77 @@
-# Agentic Agriculture Advisor (AAA)
+# Krishi Sampark: Agentic Agriculture Advisor
 
-Agentic Agriculture Advisor (AAA) is a multi-agent agriculture intelligence project built using the Google ADK and Antigravity SDK conventions.
+[![CD](https://github.com/girinalin/agentic-agri-advisor/actions/workflows/cd.yml/badge.svg)](https://github.com/girinalin/agentic-agri-advisor/actions/workflows/cd.yml)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/girinalin/agentic-agri-advisor?style=social)](https://github.com/girinalin/agentic-agri-advisor/stargazers)
 
-It coordinates multiple specialized agents, MCP servers, a knowledge graph (OKF), a RAG document search pipeline, and a simulation environment, and exposes both standard agent interfaces and web-based UI tools.
+Krishi Sampark is an offline-first, voice-first, multi-agent agriculture advisor built with Google ADK + FastAPI + A2UI/AGUI. It supports farmer guidance, safety validation, expert escalation, telemetry, and hybrid local/cloud AI execution.
 
-## Project Structure
+## Why This Project
 
-```
-agentic-agri-advisor/
-├── agents/                  # Python ADK agents
-│   ├── coordinator/         # Orchestrates task routing to specialists
-│   ├── crop_analyst/        # Soil chemistry and crop health analysis
-│   ├── weather_advisor/     # Weather impact modeling
-│   ├── market_advisor/      # Commodity price trends and advisory
-│   └── agent_registry.yaml   # Registry mapping Python agent details
-├── ui_agents/               # JS/TS ADK UI agents
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── src/                 # JS/TS agent source code
-├── mcp_servers/             # Model Context Protocol (MCP) servers
-│   ├── okf/                 # Open Knowledge Graph database interface
-│   ├── rag/                 # RAG document search index
-│   ├── weather/             # Weather API connector
-│   ├── market/              # Commodity market API connector
-│   ├── image_analysis/      # Multi-modal crop photo analyzer
-│   ├── tts/                 # Text-To-Speech for farmer audio feedback
-│   ├── stt/                 # Speech-To-Text for farmer voice queries
-│   └── mcp_registry.json    # MCP server configuration and definitions
-├── okf-knowledge-graph/     # OKF knowledge graph assets & ingestion
-│   ├── schema/              # Ontology definitions (Turtle, JSON-LD)
-│   ├── data/                # Entity/relation files
-│   └── scripts/             # Ingestion and query scripts
-├── rag-pipeline/            # RAG data retrieval pipeline
-│   ├── config.yaml          # Chunking & model settings
-│   ├── documents/           # Source agronomy manuals
-│   ├── embeddings/          # Vector index and generator script
-│   └── retriever/           # Retrieval & search script
-├── ui/                      # A2UI & AGUI UI components
-│   ├── a2ui/                # Agent-to-User Interface (declarative layout parser)
-│   └── agui/                # Antigravity visual client dashboard
-├── simulation/              # Farm simulation sandbox environment
-│   ├── config.yaml          # Simulated weather & crop dynamics parameters
-│   ├── env.py               # Sandbox environment logic
-│   └── run_simulation.py    # Main script to run simulator steps
-├── config/                  # Configuration files
-│   ├── dev.yaml
-│   ├── prod.yaml
-│   └── secrets.template.env
-├── pyproject.toml           # Python dependencies
-├── agents-cli-manifest.yaml # agents-cli manifest
-└── GEMINI.md                # AI-assisted development instructions
-```
+- Multi-agent agronomy orchestration (crop, irrigation, market, weather, diagnostics)
+- Farmer-friendly web UI with multilingual support
+- Offline-capable local data twin and sync workflow
+- Evidence-driven AI-SDLC validation and release checks
 
-## Quick Start (Prototype Mode)
+## Live Demo
 
-Install `agents-cli` and setup skills:
+- Cloud Run URL: configure and publish from your deployment output
+- Local dashboard: `http://localhost:8000/agui/index.html`
+
+## Quick Start
+
 ```bash
-uvx google-agents-cli setup
+make setup
+uv run agents-cli playground
+uv run python -m app.fast_api_app
 ```
 
-Install local project dependencies:
-```bash
-agents-cli install
+Then open:
+
+- `http://localhost:8000/agui/index.html` (recommended)
+- `http://localhost:8000/a2ui/index.html`
+
+## Repository Layout
+
+```text
+agents/              Python ADK agents
+app/                 FastAPI backend and APIs
+ui/agui/             Farmer web dashboard
+ui/a2ui/             Declarative canvas renderer
+mcp_servers/         MCP tool servers (weather, rag, market, stt, tts, etc.)
+okf/                 Agricultural ontology and knowledge files
+rag_pipeline/        Retrieval pipeline assets
+safety_kernel/       Safety validation rules
+docs/                Architecture, operations, and plans
+.ai-sdlc/            Governance evidence and release artifacts
 ```
 
-Launch the local web environment / playground:
+## Key Commands
+
 ```bash
-agents-cli playground
-```
-
-## 🌾 Running the Krishi Sampark Frontend Dashboard
-
-To launch the web interface and converse with the **Krishi Sastri** advisor agent:
-
-1. **Start the backend agent playground (port 8080)**:
-   ```bash
-   uv run agents-cli playground
-   ```
-2. **Start the FastAPI web app server (port 8000)**:
-   ```bash
-   uv run python -m app.fast_api_app
-   ```
-3. **Access the Interface**:
-   Open your browser and navigate to:
-   *   **Krishi Sampark Dashboard (Recommended):** `http://localhost:8000/agui/index.html`
-   *   **Standard A2UI Client:** `http://localhost:8000/a2ui/index.html`
-
-## 📚 Project Documentation & Governance
-
-For deeper details, consult the following resources:
-*   [AI-SDLC Operational Guide (AGENTS.md)](file:///Users/nalin.giri/workspaces/agentic-agri-advisor/AGENTS.md): Coding guidelines, translation constraints, safety parameters, and definitions of done for coding LLMs and assistants.
-*   [AI-SDLC Directory (.ai-sdlc/)](file:///Users/nalin.giri/workspaces/agentic-agri-advisor/.ai-sdlc/): Governance parameters, YAML agent definitions, skills execution, quality scorecards, and release readiness reports.
-*   [Technical Architecture Guide](file:///Users/nalin.giri/workspaces/agentic-agri-advisor/docs/TECHNICAL_ARCHITECTURE.md): Comprehensive system blueprints, agent schemas, and simulation dynamics.
-*   [PWA & Local LLM Integration Plan](file:///Users/nalin.giri/workspaces/agentic-agri-advisor/docs/PWA_LLM_IMPLEMENTATION_PLAN.md): Details the client-side WebGPU local Gemma model deployment, offline TFLite camera classifier, and hybrid agent routing.
-*   [Hybrid Intelligence Strategy](file:///Users/nalin.giri/workspaces/agentic-agri-advisor/docs/HYBRID_INTELLIGENCE_STRATEGY.md): Details the query-triage router (Local Edge vs Cloud Agent Network) and outlines offline/online mobile use cases.
-
-## 🛠️ Verification Gates
-
-Run pre-PR quality, safety, and translation validation checks locally:
-```bash
+make lint
+make typecheck
+make test
 make ai-sdlc-check
-```
-Verify staging/production release eligibility and compile quality scorecards:
-```bash
 make release-check
 ```
 
-The AI-SDLC gates are evidence-driven. Test, safety, traceability, and security reports are registered in `.ai-sdlc/evidence/evidence-manifest.json` with command, exit code, timestamp, commit SHA, and SHA-256. Missing scanners are reported as `NOT_EXECUTED`; they are not treated as clean scans.
+## Documentation
 
-Production release readiness requires current evidence, a rollback reference, and a human approval in `.ai-sdlc/evidence/approvals/approvals.json` for the exact commit. The evidence is hashed and auditable, but it is not cryptographically signed.
+- [AGENTS.md](AGENTS.md)
+- [Technical Architecture](docs/TECHNICAL_ARCHITECTURE.md)
+- [Hybrid Intelligence Strategy](docs/HYBRID_INTELLIGENCE_STRATEGY.md)
+- [PWA LLM Plan](docs/PWA_LLM_IMPLEMENTATION_PLAN.md)
+- [Operations Docs](docs/07-operations)
+
+## Security and Responsible Use
+
+- Use [SECURITY.md](SECURITY.md) for vulnerability reporting
+- All agronomic recommendations should pass through the safety kernel
+- Treat this as decision-support, not a replacement for certified local agronomists
+
+## Contributing
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening pull requests.
+

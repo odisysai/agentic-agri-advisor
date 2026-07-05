@@ -62,6 +62,11 @@ resource "google_cloud_run_v2_service" "app" {
         name  = "GEMINI_API_KEY"
         value = var.gemini_api_key
       }
+
+      env {
+        name  = "GOOGLE_OIDC_CLIENT_ID"
+        value = var.google_oidc_client_id
+      }
     }
 
     service_account = google_service_account.app_sa.email

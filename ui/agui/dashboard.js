@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <label style="display:block;font-size:0.85rem;color:#333;margin-bottom:6px;">Guest Email</label>
           <input id="guest-email-input" type="email" placeholder="name@example.com" style="width:100%;padding:10px;border:1px solid #ccd;border-radius:10px;font-size:0.95rem;" />
           <button id="guest-login-btn" style="margin-top:10px;width:100%;padding:10px;border:none;border-radius:10px;background:#2f7c47;color:#fff;font-weight:600;cursor:pointer;">Continue as Guest</button>
-          <div style="display:flex;align-items:center;gap:10px;margin:14px 0 10px;color:#666;font-size:0.85rem;"><span style="flex:1;height:1px;background:#e3e6eb;"></span><span>OR</span><span style="flex:1;height:1px;background:#e3e6eb;"></span></div>
+          <div id="google-or-divider" style="display:flex;align-items:center;gap:10px;margin:14px 0 10px;color:#666;font-size:0.85rem;"><span style="flex:1;height:1px;background:#e3e6eb;"></span><span>OR</span><span style="flex:1;height:1px;background:#e3e6eb;"></span></div>
           <div id="google-signin-btn" style="display:flex;justify-content:center;"></div>
           <div id="auth-gate-status" style="margin-top:10px;min-height:18px;font-size:0.82rem;color:#b00020;"></div>
         </div>
@@ -124,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const buttonContainer = document.getElementById('google-signin-btn');
+      const googleDivider = document.getElementById('google-or-divider');
       if (config.enabled && window.google?.accounts?.id && buttonContainer && config.client_id) {
         google.accounts.id.initialize({
           client_id: config.client_id,
@@ -153,8 +154,17 @@ document.addEventListener('DOMContentLoaded', () => {
           text: 'signin_with',
           width: 220
         });
-      } else if (config.required && status) {
-        status.textContent = 'Google sign-in is required but currently unavailable.';
+      } else {
+        if (googleDivider) googleDivider.style.display = 'none';
+        if (buttonContainer) buttonContainer.style.display = 'none';
+        if (status) {
+          status.style.color = '#555';
+          if (!config.enabled || !config.client_id) {
+            status.textContent = 'Google sign-in is not configured for this environment.';
+          } else {
+            status.textContent = 'Google sign-in is temporarily unavailable. You can continue as guest.';
+          }
+        }
       }
 
       return false;

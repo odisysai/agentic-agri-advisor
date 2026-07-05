@@ -36,6 +36,12 @@ variable "gemini_api_key" {
   default     = ""
 }
 
+variable "google_oidc_client_id" {
+  type        = string
+  description = "Google OAuth Web client ID used for frontend OIDC login"
+  default     = ""
+}
+
 variable "telemetry_logs_filter" {
   type        = string
   description = "Log Sink filter for capturing telemetry data. Captures logs with the `traceloop.association.properties.log_type` attribute set to `tracing`."

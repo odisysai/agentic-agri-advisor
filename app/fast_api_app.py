@@ -102,7 +102,6 @@ app.title = "agentic-agri-advisor"
 app.description = "API for interacting with the Agent agentic-agri-advisor"
 
 
-GOOGLE_OIDC_CLIENT_ID = os.getenv("GOOGLE_OIDC_CLIENT_ID", "").strip()
 SESSION_COOKIE_NAME = "aaa_session"
 SESSION_SECRET = os.getenv("APP_SESSION_SECRET", "dev-only-change-me")
 SESSION_MAX_AGE_SECONDS = int(os.getenv("SESSION_MAX_AGE_SECONDS", "43200"))
@@ -118,6 +117,20 @@ USE_EMAIL_AS_FARMER_ID = os.getenv("USE_EMAIL_AS_FARMER_ID", "0") in {
 }
 GUEST_FARMER_ID = os.getenv("GUEST_FARMER_ID", "guest")
 LOGGED_IN_FARMER_ID = os.getenv("LOGGED_IN_FARMER_ID", "user")
+
+
+def _get_google_oidc_client_id() -> str:
+    # Support common env variable names across local/devops setups.
+    for key in (
+        "GOOGLE_OIDC_CLIENT_ID",
+        "GOOGLE_CLIENT_ID",
+        "OAUTH_CLIENT_ID",
+        "OIDC_CLIENT_ID",
+    ):
+        value = os.getenv(key, "").strip()
+        if value:
+            return value
+    return ""
 
 
 def _is_google_login_required() -> bool:
@@ -224,23 +237,25 @@ class GuestLoginBody(BaseModel):
 
 @app.get("/api/auth/config")
 def auth_config() -> dict:
-    enabled = bool(GOOGLE_OIDC_CLIENT_ID)
+    client_id = _get_google_oidc_client_id()
+    enabled = bool(client_id)
     return {
         "enabled": enabled,
         "required": _is_google_login_required(),
         "allow_guest": True,
-        "client_id": GOOGLE_OIDC_CLIENT_ID if enabled else None,
+        "client_id": client_id if enabled else None,
     }
 
 
 @app.post("/api/auth/google")
 def login_with_google(payload: GoogleLoginBody, response: Response) -> dict:
-    if not GOOGLE_OIDC_CLIENT_ID:
+    client_id = _get_google_oidc_client_id()
+    if not client_id:
         raise HTTPException(status_code=503, detail="Google OIDC is not configured")
 
     try:
         token_info = google_id_token.verify_oauth2_token(
-            payload.credential, GoogleAuthRequest(), GOOGLE_OIDC_CLIENT_ID
+            payload.credential, GoogleAuthRequest(), client_id
         )
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Invalid Google credential") from exc
