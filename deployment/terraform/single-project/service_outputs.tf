@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-output "cloud_run_service_url" {
-  description = "Cloud Run service URL"
-  value       = google_cloud_run_v2_service.app.uri
-}
-
 output "cloud_run_service_name" {
   description = "Cloud Run service name"
   value       = google_cloud_run_v2_service.app.name
