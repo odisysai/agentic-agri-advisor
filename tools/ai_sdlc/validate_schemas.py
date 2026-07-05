@@ -8,20 +8,42 @@ def validate_a2ui_schemas():
     errors = []
 
     approved_components = {
+        # Core layout
         "text",
         "grid",
-        "metric",
-        "chart",
-        "form",
-        "input",
-        "button",
         "section",
         "card",
-        "option_grid",
+        "header",
+        # Data display
+        "metric",
         "metric_card",
-        "alert_card",
-        "action_bar",
+        "chart",
+        "list",
+        "table",
         "status_card",
+        "alert_card",
+        "greeting",
+        # Interactive
+        "form",
+        "input",
+        "textarea",
+        "select",
+        "number",
+        "button",
+        "buttons",
+        "actions",
+        "action_bar",
+        "action_card",
+        "option_grid",
+        # A2UI specific
+        "image",
+        "camera",
+        "voice",
+        "toggle",
+        "badge",
+        "divider",
+        "tabs",
+        "modal",
     }
 
     if not os.path.exists(schema_dir):
