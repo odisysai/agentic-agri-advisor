@@ -176,6 +176,17 @@ jobs:
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+    - name: Verify Service Usage permissions
+      run: |
+        set +e
+        gcloud services list --enabled --project="${{ secrets.GCP_PROJECT_ID }}" > /dev/null 2>&1
+        status=$?
+        set -e
+        if [ "$status" -ne 0 ]; then
+          echo "::error::Service account lacks permissions to list/enable project services for ${{ secrets.GCP_PROJECT_ID }}. Grant roles/serviceusage.serviceUsageAdmin (and typically roles/viewer) on the project to the CI service account."
+          exit 1
+        fi
+
     - name: Install Terraform
       uses: hashicorp/setup-terraform@v3
       with:
@@ -269,6 +280,17 @@ jobs:
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+    - name: Verify Service Usage permissions
+      run: |
+        set +e
+        gcloud services list --enabled --project="${{ secrets.GCP_PROJECT_ID }}" > /dev/null 2>&1
+        status=$?
+        set -e
+        if [ "$status" -ne 0 ]; then
+          echo "::error::Service account lacks permissions to list/enable project services for ${{ secrets.GCP_PROJECT_ID }}. Grant roles/serviceusage.serviceUsageAdmin (and typically roles/viewer) on the project to the CI service account."
+          exit 1
+        fi
 
     # --- Step 1: Terraform (Firestore + GCS + IAM + Cloud Run shell) ---
     - name: Install Terraform
