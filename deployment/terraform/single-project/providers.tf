@@ -17,7 +17,11 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 7.13.0"
+      version = ">= 7.13.0, < 8.0.0"
+    }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = ">= 7.13.0, < 8.0.0"
     }
     random = {
       source  = "hashicorp/random"
@@ -36,6 +40,12 @@ provider "google" {
 provider "google" {
   alias                 = "billing_override"
   billing_project       = var.project_id
+  region                = var.region
+  user_project_override = true
+}
+
+provider "google-beta" {
+  project               = var.project_id
   region                = var.region
   user_project_override = true
 }
