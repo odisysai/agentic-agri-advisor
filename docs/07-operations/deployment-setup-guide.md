@@ -162,38 +162,64 @@ Go to your fork's **Settings → Secrets and variables → Actions → New repos
 ### Step 2: Create Service Account for GitHub Actions
 
 ```bash
+# Set reusable variables (no hardcoded project/service-account names)
+export PROJECT_ID="your-project-id"
+export GITHUB_ACTIONS_SA="your-github-actions-sa"
+
 # Create service account
-gcloud iam service-accounts create github-actions-deployer \
+gcloud iam service-accounts create "$GITHUB_ACTIONS_SA" \
+  --project="$PROJECT_ID" \
   --display-name="GitHub Actions Deployer"
 
 # Grant required roles
-gcloud projects add-iam-policy-binding your-project-id \
-  --member="serviceAccount:github-actions-deployer@your-project-id.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${GITHUB_ACTIONS_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/run.admin"
 
-gcloud projects add-iam-policy-binding your-project-id \
-  --member="serviceAccount:github-actions-deployer@your-project-id.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${GITHUB_ACTIONS_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/firestore.admin"
 
-gcloud projects add-iam-policy-binding your-project-id \
-  --member="serviceAccount:github-actions-deployer@your-project-id.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${GITHUB_ACTIONS_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/storage.admin"
 
-gcloud projects add-iam-policy-binding your-project-id \
-  --member="serviceAccount:github-actions-deployer@your-project-id.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${GITHUB_ACTIONS_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/iam.serviceAccountUser"
 
-gcloud projects add-iam-policy-binding your-project-id \
-  --member="serviceAccount:github-actions-deployer@your-project-id.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${GITHUB_ACTIONS_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/cloudbuild.builds.editor"
 
-gcloud projects add-iam-policy-binding your-project-id \
-  --member="serviceAccount:github-actions-deployer@your-project-id.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${GITHUB_ACTIONS_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
   --role="roles/artifactregistry.admin"
+
+# Roles used by Terraform-managed IAM + telemetry resources
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${GITHUB_ACTIONS_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/serviceusage.serviceUsageAdmin" \
+  --condition=None
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${GITHUB_ACTIONS_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/resourcemanager.projectIamAdmin" \
+  --condition=None
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${GITHUB_ACTIONS_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountAdmin" \
+  --condition=None
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${GITHUB_ACTIONS_SA}@${PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/bigquery.admin" \
+  --condition=None
 
 # Create and download the key
 gcloud iam service-accounts keys create github-actions-key.json \
-  --iam-account=github-actions-deployer@your-project-id.iam.gserviceaccount.com
+  --iam-account="${GITHUB_ACTIONS_SA}@${PROJECT_ID}.iam.gserviceaccount.com"
 
 # Copy the entire contents of github-actions-key.json
 cat github-actions-key.json

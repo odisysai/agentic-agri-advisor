@@ -176,14 +176,31 @@ jobs:
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Verify Service Usage permissions
+    - name: Verify Terraform IAM permissions (plan)
       run: |
-        set +e
-        gcloud services list --enabled --project="${{ secrets.GCP_PROJECT_ID }}" > /dev/null 2>&1
-        status=$?
-        set -e
-        if [ "$status" -ne 0 ]; then
-          echo "::error::Service account lacks permissions to list/enable project services for ${{ secrets.GCP_PROJECT_ID }}. Grant roles/serviceusage.serviceUsageAdmin (and typically roles/viewer) on the project to the CI service account."
+        required_permissions=(
+          "serviceusage.services.list"
+          "serviceusage.services.enable"
+          "resourcemanager.projects.getIamPolicy"
+          "resourcemanager.projects.setIamPolicy"
+          "iam.serviceAccounts.create"
+          "bigquery.datasets.create"
+          "bigquery.connections.create"
+        )
+
+        permissions_csv="$(IFS=,; echo "${required_permissions[*]}")"
+        granted_permissions="$(gcloud projects test-iam-permissions "${{ secrets.GCP_PROJECT_ID }}" --permissions="$permissions_csv" --format='value(permissions)' || true)"
+
+        missing_permissions=()
+        for permission in "${required_permissions[@]}"; do
+          if ! printf '%s\n' "$granted_permissions" | grep -qx "$permission"; then
+            missing_permissions+=("$permission")
+          fi
+        done
+
+        if [ "${#missing_permissions[@]}" -gt 0 ]; then
+          echo "::error::Missing required permissions for Terraform plan/apply in project ${{ secrets.GCP_PROJECT_ID }}: ${missing_permissions[*]}"
+          echo "::error::Grant this CI service account project-level roles such as roles/serviceusage.serviceUsageAdmin, roles/resourcemanager.projectIamAdmin, roles/iam.serviceAccountAdmin, and roles/bigquery.admin (or equivalent custom roles)."
           exit 1
         fi
 
@@ -281,14 +298,31 @@ jobs:
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Verify Service Usage permissions
+    - name: Verify Terraform IAM permissions (deploy)
       run: |
-        set +e
-        gcloud services list --enabled --project="${{ secrets.GCP_PROJECT_ID }}" > /dev/null 2>&1
-        status=$?
-        set -e
-        if [ "$status" -ne 0 ]; then
-          echo "::error::Service account lacks permissions to list/enable project services for ${{ secrets.GCP_PROJECT_ID }}. Grant roles/serviceusage.serviceUsageAdmin (and typically roles/viewer) on the project to the CI service account."
+        required_permissions=(
+          "serviceusage.services.list"
+          "serviceusage.services.enable"
+          "resourcemanager.projects.getIamPolicy"
+          "resourcemanager.projects.setIamPolicy"
+          "iam.serviceAccounts.create"
+          "bigquery.datasets.create"
+          "bigquery.connections.create"
+        )
+
+        permissions_csv="$(IFS=,; echo "${required_permissions[*]}")"
+        granted_permissions="$(gcloud projects test-iam-permissions "${{ secrets.GCP_PROJECT_ID }}" --permissions="$permissions_csv" --format='value(permissions)' || true)"
+
+        missing_permissions=()
+        for permission in "${required_permissions[@]}"; do
+          if ! printf '%s\n' "$granted_permissions" | grep -qx "$permission"; then
+            missing_permissions+=("$permission")
+          fi
+        done
+
+        if [ "${#missing_permissions[@]}" -gt 0 ]; then
+          echo "::error::Missing required permissions for Terraform deploy in project ${{ secrets.GCP_PROJECT_ID }}: ${missing_permissions[*]}"
+          echo "::error::Grant this CI service account project-level roles such as roles/serviceusage.serviceUsageAdmin, roles/resourcemanager.projectIamAdmin, roles/iam.serviceAccountAdmin, and roles/bigquery.admin (or equivalent custom roles)."
           exit 1
         fi
 
@@ -303,6 +337,25 @@ jobs:
       env:
         TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
       run: terraform init
+
+    - name: Import existing default Firestore database if present
+      working-directory: deployment/terraform/single-project
+      run: |
+        if terraform state show google_firestore_database.database > /dev/null 2>&1; then
+          echo "Firestore default database already tracked in Terraform state."
+          exit 0
+        fi
+
+        if gcloud firestore databases describe --project="${{ secrets.GCP_PROJECT_ID }}" --database="(default)" > /dev/null 2>&1; then
+          echo "Existing Firestore default database found; importing into Terraform state."
+          terraform import \
+            -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
+            -var="region=us-east1" \
+            google_firestore_database.database \
+            "projects/${{ secrets.GCP_PROJECT_ID }}/databases/(default)"
+        else
+          echo "No existing Firestore default database found; Terraform will create it."
+        fi
 
     - name: Download Terraform plan (from plan job)
       uses: actions/download-artifact@v4
