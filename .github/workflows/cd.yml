@@ -119,7 +119,7 @@ jobs:
         uv sync --all-extras --dev
 
     - name: Install Trivy
-      uses: aquasecurity/setup-trivy@v0.2.3
+      uses: aquasecurity/setup-trivy@v0.2.0
 
     - name: Secret scan
       run: uv run python -m tools.ai_sdlc.cli security --secrets
