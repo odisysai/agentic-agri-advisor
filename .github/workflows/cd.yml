@@ -48,10 +48,10 @@ jobs:
         working-directory: .
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.12'
         cache: pip
@@ -87,7 +87,7 @@ jobs:
         echo "✅ Documentation verified"
 
     - name: Upload quality evidence
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: quality-evidence
@@ -106,10 +106,10 @@ jobs:
         working-directory: .
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.12'
         cache: pip
@@ -143,7 +143,7 @@ jobs:
       continue-on-error: true
 
     - name: Upload security evidence
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: security-evidence
@@ -162,7 +162,7 @@ jobs:
         working-directory: .
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v2
@@ -232,7 +232,7 @@ jobs:
         fi
 
     - name: Upload Terraform plan
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: terraform-plan
         path: deployment/terraform/single-project/plan.txt
@@ -262,10 +262,10 @@ jobs:
         working-directory: .
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.12'
         cache: pip
@@ -374,7 +374,7 @@ jobs:
           --no-confirm-project 2>&1 | tee agents_cli_deploy.log
 
     - name: Upload agents-cli deploy log
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: agents-cli-deploy-log
@@ -391,7 +391,12 @@ jobs:
         sleep 15
         echo "Checking: ${SERVICE_URL}/api/profile/user"
 
-        http_code=$(curl -sS -o /tmp/health_response.json -w "%{http_code}" "${SERVICE_URL}/api/profile/user")
+        # Cloud Run service is private; use an ID token for authenticated probe.
+        ID_TOKEN=$(gcloud auth print-identity-token --audiences="${SERVICE_URL}")
+
+        http_code=$(curl -sS -o /tmp/health_response.json -w "%{http_code}" \
+          -H "Authorization: Bearer ${ID_TOKEN}" \
+          "${SERVICE_URL}/api/profile/user")
         if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
           echo "::error::Health check failed with HTTP ${http_code}"
           echo "Response body:"
