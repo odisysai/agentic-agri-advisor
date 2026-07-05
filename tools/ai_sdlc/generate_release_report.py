@@ -2,7 +2,6 @@ import json
 import os
 from pathlib import Path
 
-
 APPROVALS_PATH = Path(".ai-sdlc/evidence/approvals/approvals.json")
 
 
@@ -26,7 +25,7 @@ def approval_status(environment, current_commit_sha):
         return ("FAIL", "Invalid approvals file")
 
     approvals = data.get("approvals", [])
-    
+
     # Find the most recent approval for this environment
     matching = [a for a in approvals if a.get("environment") == environment]
 

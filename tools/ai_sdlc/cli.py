@@ -31,7 +31,9 @@ EVIDENCE_DIR = os.path.join(
     os.path.dirname(__file__), "..", "..", ".ai-sdlc", "evidence"
 )
 REPORTS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", ".ai-sdlc", "reports")
-MANIFEST_PATH = os.path.join(os.path.dirname(__file__), "..", "..", ".ai-sdlc", "manifest.yaml")
+MANIFEST_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "..", ".ai-sdlc", "manifest.yaml"
+)
 
 
 def run_validate_schemas():
@@ -105,8 +107,12 @@ def run_validate_skill_contracts():
         issues.append("skillContractMatrix missing or empty in .ai-sdlc/manifest.yaml")
 
     tool_names = {tool.get("name") for tool in tool_registry if isinstance(tool, dict)}
-    registry_names = {skill.get("name") for skill in skill_registry if isinstance(skill, dict)}
-    registry_ids = {skill.get("id") for skill in skill_registry if isinstance(skill, dict)}
+    registry_names = {
+        skill.get("name") for skill in skill_registry if isinstance(skill, dict)
+    }
+    registry_ids = {
+        skill.get("id") for skill in skill_registry if isinstance(skill, dict)
+    }
 
     matrix_by_name = {
         contract.get("name"): contract
@@ -152,13 +158,19 @@ def run_validate_skill_contracts():
 
         skill_path = contract.get("skillPath")
         if skill_path:
-            full_skill_path = os.path.join(os.path.dirname(__file__), "..", "..", skill_path)
+            full_skill_path = os.path.join(
+                os.path.dirname(__file__), "..", "..", skill_path
+            )
             if not os.path.exists(full_skill_path):
-                issues.append(f"Skill contract path does not exist for {skill_name}: {skill_path}")
+                issues.append(
+                    f"Skill contract path does not exist for {skill_name}: {skill_path}"
+                )
 
         tool_name = contract.get("tool")
         if tool_name and tool_name not in tool_names:
-            issues.append(f"Skill contract tool not found in toolRegistry for {skill_name}: {tool_name}")
+            issues.append(
+                f"Skill contract tool not found in toolRegistry for {skill_name}: {tool_name}"
+            )
 
         evidence_path = contract.get("evidencePath")
         if evidence_path and not evidence_path.startswith(".ai-sdlc/"):
@@ -168,7 +180,9 @@ def run_validate_skill_contracts():
 
         metrics = contract.get("evaluationMetrics")
         if not isinstance(metrics, list) or not metrics:
-            issues.append(f"Skill contract evaluationMetrics must be a non-empty list: {skill_name}")
+            issues.append(
+                f"Skill contract evaluationMetrics must be a non-empty list: {skill_name}"
+            )
 
     seen_names = set()
     seen_ids = set()
@@ -185,9 +199,13 @@ def run_validate_skill_contracts():
         seen_names.add(name)
         seen_ids.add(skill_id)
         if name and name not in registry_names:
-            issues.append(f"Skill contract has unknown skill name (not in skillRegistry): {name}")
+            issues.append(
+                f"Skill contract has unknown skill name (not in skillRegistry): {name}"
+            )
         if skill_id and skill_id not in registry_ids:
-            issues.append(f"Skill contract has unknown skill id (not in skillRegistry): {skill_id}")
+            issues.append(
+                f"Skill contract has unknown skill id (not in skillRegistry): {skill_id}"
+            )
 
     os.makedirs(REPORTS_DIR, exist_ok=True)
     report_path = os.path.join(REPORTS_DIR, "skill-contract-validation.json")

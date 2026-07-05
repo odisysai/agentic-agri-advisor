@@ -1,7 +1,7 @@
 import json
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 from tools.ai_sdlc import collect_test_evidence, evidence, generate_release_report
 from tools.ai_sdlc.generate_traceability import validate_duplicate_ids
@@ -74,7 +74,9 @@ def test_traceability_duplicate_ids_are_detected():
     assert duplicates == ["REQ-1"]
 
 
-@pytest.mark.skip(reason="Requires fix in generate_release_report.approval_status: uses wrong key 'commit' instead of 'commitSha'")
+@pytest.mark.skip(
+    reason="Requires fix in generate_release_report.approval_status: uses wrong key 'commit' instead of 'commitSha'"
+)
 def test_release_approval_requires_current_commit(monkeypatch, tmp_path):
     approvals = tmp_path / "approvals.json"
     approvals.write_text(

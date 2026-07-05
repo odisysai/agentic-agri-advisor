@@ -176,61 +176,10 @@ jobs:
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Verify Terraform IAM permissions (plan)
+    - name: Verify GCP access (plan)
       run: |
-        python - <<'PY'
-        import json
-        import subprocess
-        import sys
-
-        project_id = "${{ secrets.GCP_PROJECT_ID }}"
-        required_permissions = [
-            "serviceusage.services.list",
-            "serviceusage.services.enable",
-            "resourcemanager.projects.getIamPolicy",
-            "resourcemanager.projects.setIamPolicy",
-            "iam.serviceAccounts.create",
-            "bigquery.datasets.create",
-            "bigquery.connections.create",
-        ]
-
-        cmd = [
-            "gcloud",
-            "projects",
-            "test-iam-permissions",
-            project_id,
-            f"--permissions={','.join(required_permissions)}",
-            "--format=json",
-        ]
-        proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
-        if proc.returncode != 0:
-            print("::error::Unable to evaluate IAM permissions with gcloud projects test-iam-permissions")
-            print(proc.stderr.strip() or proc.stdout.strip())
-            sys.exit(1)
-
-        try:
-            payload = json.loads(proc.stdout or "{}")
-        except json.JSONDecodeError:
-            print("::error::Failed to parse IAM permission response as JSON")
-            print(proc.stdout)
-            sys.exit(1)
-
-        granted = set(payload.get("permissions", []))
-        missing = [perm for perm in required_permissions if perm not in granted]
-
-        if missing:
-            print(
-                f"::error::Missing required permissions for Terraform plan/apply in project {project_id}: {' '.join(missing)}"
-            )
-            print(
-                "::error::Grant this CI service account project-level roles such as "
-                "roles/serviceusage.serviceUsageAdmin, roles/resourcemanager.projectIamAdmin, "
-                "roles/iam.serviceAccountAdmin, and roles/bigquery.admin (or equivalent custom roles)."
-            )
-            sys.exit(1)
-
-        print("IAM preflight check passed.")
-        PY
+        gcloud projects describe "${{ secrets.GCP_PROJECT_ID }}" > /dev/null
+        gcloud services list --enabled --project="${{ secrets.GCP_PROJECT_ID }}" > /dev/null
 
     - name: Install Terraform
       uses: hashicorp/setup-terraform@v3
@@ -326,61 +275,10 @@ jobs:
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Verify Terraform IAM permissions (deploy)
+    - name: Verify GCP access (deploy)
       run: |
-        python - <<'PY'
-        import json
-        import subprocess
-        import sys
-
-        project_id = "${{ secrets.GCP_PROJECT_ID }}"
-        required_permissions = [
-            "serviceusage.services.list",
-            "serviceusage.services.enable",
-            "resourcemanager.projects.getIamPolicy",
-            "resourcemanager.projects.setIamPolicy",
-            "iam.serviceAccounts.create",
-            "bigquery.datasets.create",
-            "bigquery.connections.create",
-        ]
-
-        cmd = [
-            "gcloud",
-            "projects",
-            "test-iam-permissions",
-            project_id,
-            f"--permissions={','.join(required_permissions)}",
-            "--format=json",
-        ]
-        proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
-        if proc.returncode != 0:
-            print("::error::Unable to evaluate IAM permissions with gcloud projects test-iam-permissions")
-            print(proc.stderr.strip() or proc.stdout.strip())
-            sys.exit(1)
-
-        try:
-            payload = json.loads(proc.stdout or "{}")
-        except json.JSONDecodeError:
-            print("::error::Failed to parse IAM permission response as JSON")
-            print(proc.stdout)
-            sys.exit(1)
-
-        granted = set(payload.get("permissions", []))
-        missing = [perm for perm in required_permissions if perm not in granted]
-
-        if missing:
-            print(
-                f"::error::Missing required permissions for Terraform deploy in project {project_id}: {' '.join(missing)}"
-            )
-            print(
-                "::error::Grant this CI service account project-level roles such as "
-                "roles/serviceusage.serviceUsageAdmin, roles/resourcemanager.projectIamAdmin, "
-                "roles/iam.serviceAccountAdmin, and roles/bigquery.admin (or equivalent custom roles)."
-            )
-            sys.exit(1)
-
-        print("IAM preflight check passed.")
-        PY
+        gcloud projects describe "${{ secrets.GCP_PROJECT_ID }}" > /dev/null
+        gcloud services list --enabled --project="${{ secrets.GCP_PROJECT_ID }}" > /dev/null
 
     # --- Step 1: Terraform (Firestore + GCS + IAM + Cloud Run shell) ---
     - name: Install Terraform

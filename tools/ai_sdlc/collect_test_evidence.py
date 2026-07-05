@@ -1,7 +1,6 @@
 import json
 import os
 import subprocess
-
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -21,7 +20,7 @@ def parse_junit(junit_path: str) -> dict:
     try:
         ET.parse(junit_path)
     except ET.ParseError as exc:
-        raise ValueError(f"Malformed JUnit XML: {exc}")
+        raise ValueError(f"Malformed JUnit XML: {exc}") from exc
 
     root = ET.parse(junit_path).getroot()
     total = int(root.attrib.get("tests", 0))

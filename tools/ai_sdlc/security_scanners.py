@@ -75,7 +75,12 @@ def run_scanner(tool_name: str, command: list[str], evidence_file: str = None) -
             "timestamp": datetime.now(UTC).isoformat(),
         }
     except FileNotFoundError:
-        evidence = unavailable(tool_name, f"security-{tool_name}", f"security-{tool_name}", EVIDENCE_DIR / f"{tool_name}.json")
+        evidence = unavailable(
+            tool_name,
+            f"security-{tool_name}",
+            f"security-{tool_name}",
+            EVIDENCE_DIR / f"{tool_name}.json",
+        )
         evidence["command"] = " ".join(command)
     except subprocess.TimeoutExpired:
         evidence = {
