@@ -232,10 +232,14 @@ rm github-actions-key.json
 ### Step 3: Create Artifact Registry
 
 ```bash
+# Reuse variables from Step 2
+export REGION="your-region"
+export ARTIFACT_REGISTRY_REPO="your-artifact-repo"
+
 # Create Artifact Registry repository for Docker images
-gcloud artifacts repositories create agentic-agri-advisor \
+gcloud artifacts repositories create "$ARTIFACT_REGISTRY_REPO" \
   --repository-format=docker \
-  --location=us-east1 \
+  --location="$REGION" \
   --description="Krishi Sampark Docker images"
 ```
 

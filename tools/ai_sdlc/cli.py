@@ -5,6 +5,7 @@ Usage:
     python -m tools.ai_sdlc.cli validate --schemas
     python -m tools.ai_sdlc.cli validate --translations
     python -m tools.ai_sdlc.cli validate --safety
+    python -m tools.ai_sdlc.cli validate --skills
     python -m tools.ai_sdlc.cli validate --all
     python -m tools.ai_sdlc.cli test --evidence
     python -m tools.ai_sdlc.cli security --secrets
@@ -24,10 +25,13 @@ import subprocess
 import sys
 from datetime import UTC, datetime, timezone
 
+import yaml
+
 EVIDENCE_DIR = os.path.join(
     os.path.dirname(__file__), "..", "..", ".ai-sdlc", "evidence"
 )
 REPORTS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", ".ai-sdlc", "reports")
+MANIFEST_PATH = os.path.join(os.path.dirname(__file__), "..", "..", ".ai-sdlc", "manifest.yaml")
 
 
 def run_validate_schemas():
@@ -70,6 +74,7 @@ def run_validate_all():
         "schemas": run_validate_schemas(),
         "translations": run_validate_translations(),
         "safety": run_validate_safety(),
+        "skills": run_validate_skill_contracts(),
     }
     all_pass = all(results.values())
     print(
@@ -77,6 +82,133 @@ def run_validate_all():
         f"({sum(results.values())}/{len(results)} passed)"
     )
     return all_pass
+
+
+def run_validate_skill_contracts():
+    """Validate skill contract matrix integrity and executability metadata."""
+    issues = []
+
+    try:
+        with open(MANIFEST_PATH) as f:
+            manifest = yaml.safe_load(f) or {}
+    except Exception as exc:
+        print(f"❌ Failed to load AI-SDLC manifest: {exc}")
+        return False
+
+    skill_registry = manifest.get("skillRegistry", [])
+    tool_registry = manifest.get("toolRegistry", [])
+    skill_matrix = manifest.get("skillContractMatrix", [])
+
+    if not skill_registry:
+        issues.append("skillRegistry missing or empty in .ai-sdlc/manifest.yaml")
+    if not skill_matrix:
+        issues.append("skillContractMatrix missing or empty in .ai-sdlc/manifest.yaml")
+
+    tool_names = {tool.get("name") for tool in tool_registry if isinstance(tool, dict)}
+    registry_names = {skill.get("name") for skill in skill_registry if isinstance(skill, dict)}
+    registry_ids = {skill.get("id") for skill in skill_registry if isinstance(skill, dict)}
+
+    matrix_by_name = {
+        contract.get("name"): contract
+        for contract in skill_matrix
+        if isinstance(contract, dict) and contract.get("name")
+    }
+
+    for skill in skill_registry:
+        if not isinstance(skill, dict):
+            issues.append("skillRegistry contains non-object entry")
+            continue
+
+        skill_name = skill.get("name")
+        skill_id = skill.get("id")
+        if not skill_name or not skill_id:
+            issues.append("skillRegistry entry missing required fields: name/id")
+            continue
+
+        contract = matrix_by_name.get(skill_name)
+        if not contract:
+            issues.append(f"Missing skill contract entry for: {skill_name}")
+            continue
+
+        if contract.get("id") != skill_id:
+            issues.append(
+                f"Skill contract ID mismatch for {skill_name}: expected {skill_id}, found {contract.get('id')}"
+            )
+
+        required_fields = [
+            "name",
+            "id",
+            "skillPath",
+            "tool",
+            "command",
+            "inputSchema",
+            "outputSchema",
+            "evidencePath",
+            "evaluationMetrics",
+        ]
+        for field in required_fields:
+            if field not in contract:
+                issues.append(f"Skill contract {skill_name} missing field: {field}")
+
+        skill_path = contract.get("skillPath")
+        if skill_path:
+            full_skill_path = os.path.join(os.path.dirname(__file__), "..", "..", skill_path)
+            if not os.path.exists(full_skill_path):
+                issues.append(f"Skill contract path does not exist for {skill_name}: {skill_path}")
+
+        tool_name = contract.get("tool")
+        if tool_name and tool_name not in tool_names:
+            issues.append(f"Skill contract tool not found in toolRegistry for {skill_name}: {tool_name}")
+
+        evidence_path = contract.get("evidencePath")
+        if evidence_path and not evidence_path.startswith(".ai-sdlc/"):
+            issues.append(
+                f"Skill contract evidencePath should be repository relative (.ai-sdlc/...): {skill_name}"
+            )
+
+        metrics = contract.get("evaluationMetrics")
+        if not isinstance(metrics, list) or not metrics:
+            issues.append(f"Skill contract evaluationMetrics must be a non-empty list: {skill_name}")
+
+    seen_names = set()
+    seen_ids = set()
+    for contract in skill_matrix:
+        if not isinstance(contract, dict):
+            issues.append("skillContractMatrix contains non-object entry")
+            continue
+        name = contract.get("name")
+        skill_id = contract.get("id")
+        if name in seen_names:
+            issues.append(f"Duplicate skill contract name: {name}")
+        if skill_id in seen_ids:
+            issues.append(f"Duplicate skill contract id: {skill_id}")
+        seen_names.add(name)
+        seen_ids.add(skill_id)
+        if name and name not in registry_names:
+            issues.append(f"Skill contract has unknown skill name (not in skillRegistry): {name}")
+        if skill_id and skill_id not in registry_ids:
+            issues.append(f"Skill contract has unknown skill id (not in skillRegistry): {skill_id}")
+
+    os.makedirs(REPORTS_DIR, exist_ok=True)
+    report_path = os.path.join(REPORTS_DIR, "skill-contract-validation.json")
+    report = {
+        "generatedAt": datetime.now(UTC).isoformat(),
+        "status": "PASS" if not issues else "FAIL",
+        "issues": issues,
+        "checkedSkills": len(skill_registry),
+    }
+    with open(report_path, "w") as f:
+        json.dump(report, f, indent=2)
+
+    if issues:
+        print("❌ Skill contract validation FAILED:")
+        for issue in issues:
+            print(f"  - {issue}")
+        print(f"Report: {report_path}")
+        return False
+
+    print(f"✅ Skill contract validation passed. Report: {report_path}")
+    return True
 
 
 def run_test_evidence():
@@ -242,6 +374,7 @@ def main():
     val_parser.add_argument("--schemas", action="store_true")
     val_parser.add_argument("--translations", action="store_true")
     val_parser.add_argument("--safety", action="store_true")
+    val_parser.add_argument("--skills", action="store_true")
     val_parser.add_argument("--all", action="store_true")
 
     # test
@@ -279,6 +412,8 @@ def main():
             success = run_validate_translations()
         elif args.safety:
             success = run_validate_safety()
+        elif args.skills:
+            success = run_validate_skill_contracts()
         else:
             success = run_validate_all()
         sys.exit(0 if success else 1)
