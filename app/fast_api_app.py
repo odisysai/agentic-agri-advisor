@@ -111,6 +111,13 @@ SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "1") in {
     "true",
     "True",
 }
+USE_EMAIL_AS_FARMER_ID = os.getenv("USE_EMAIL_AS_FARMER_ID", "0") in {
+    "1",
+    "true",
+    "True",
+}
+GUEST_FARMER_ID = os.getenv("GUEST_FARMER_ID", "guest")
+LOGGED_IN_FARMER_ID = os.getenv("LOGGED_IN_FARMER_ID", "user")
 
 
 def _is_google_login_required() -> bool:
@@ -177,12 +184,18 @@ def _current_user_from_request(request: Request) -> dict | None:
     return _read_session_cookie(request.cookies.get(SESSION_COOKIE_NAME))
 
 
+def _authenticated_farmer_id(current_user: dict) -> str:
+    if USE_EMAIL_AS_FARMER_ID and current_user.get("email"):
+        return _farmer_id_from_email(current_user["email"])
+    return LOGGED_IN_FARMER_ID
+
+
 def _resolve_farmer_id(request: Request, fallback_farmer_id: str) -> str:
     current_user = _current_user_from_request(request)
     if _is_google_login_required() and not current_user:
         raise HTTPException(status_code=401, detail="Login required")
-    if current_user and current_user.get("email"):
-        return _farmer_id_from_email(current_user["email"])
+    if current_user:
+        return _authenticated_farmer_id(current_user)
     return fallback_farmer_id
 
 
@@ -235,7 +248,7 @@ def login_with_google(payload: GoogleLoginBody, response: Response) -> dict:
             "email": token_info.get("email", ""),
             "name": token_info.get("name", ""),
             "picture": token_info.get("picture", ""),
-            "farmer_id": _farmer_id_from_email(token_info.get("email", "user")),
+            "farmer_id": _authenticated_farmer_id(token_info),
         },
     }
 
@@ -246,14 +259,19 @@ def auth_me(request: Request) -> dict:
     if not current_user:
         if _is_google_login_required():
             raise HTTPException(status_code=401, detail="Login required")
-        return {"authenticated": False}
+        return {
+            "authenticated": False,
+            "profile_mode": "guest",
+            "farmer_id": GUEST_FARMER_ID,
+        }
     return {
         "authenticated": True,
+        "profile_mode": "logged_in",
         "user": {
             "email": current_user.get("email", ""),
             "name": current_user.get("name", ""),
             "picture": current_user.get("picture", ""),
-            "farmer_id": _farmer_id_from_email(current_user.get("email", "user")),
+            "farmer_id": _authenticated_farmer_id(current_user),
         },
     }
 
@@ -299,6 +317,16 @@ def get_v1_models():
     return {"data": []}
 
 
+@app.get("/api/health")
+def health_check():
+    """Lightweight health endpoint for deployment checks."""
+    return {
+        "status": "ok",
+        "service": app.title,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+
+
 def _save_profile_impl(farmer_id: str, payload: dict) -> dict:
     name = payload.get("farmer_name") or "New Field"
     soil_type = payload.get("soil_type") or "Alluvial"
@@ -334,19 +362,19 @@ def _save_language_impl(farmer_id: str, payload: dict) -> dict:
 
 @app.get("/api/profile/user")
 def get_current_profile(request: Request):
-    farmer_id = _resolve_farmer_id(request, "user")
+    farmer_id = _resolve_farmer_id(request, GUEST_FARMER_ID)
     return db_manager.get_profile_data(farmer_id)
 
 
 @app.post("/api/profile/user")
 def save_current_profile(request: Request, payload: dict = Body(...)):
-    farmer_id = _resolve_farmer_id(request, "user")
+    farmer_id = _resolve_farmer_id(request, GUEST_FARMER_ID)
     return _save_profile_impl(farmer_id, payload)
 
 
 @app.post("/api/profile/user/language")
 def save_current_language(request: Request, payload: dict = Body(...)):
-    farmer_id = _resolve_farmer_id(request, "user")
+    farmer_id = _resolve_farmer_id(request, GUEST_FARMER_ID)
     return _save_language_impl(farmer_id, payload)
 
 

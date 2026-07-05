@@ -389,14 +389,14 @@ jobs:
         SERVICE_URL=$(terraform output -raw cloud_run_service_url)
         echo "Waiting for service to warm up..."
         sleep 15
-        echo "Checking: ${SERVICE_URL}/api/profile/user"
+        echo "Checking: ${SERVICE_URL}/api/health"
 
         # Cloud Run service is private; use an ID token for authenticated probe.
         ID_TOKEN=$(gcloud auth print-identity-token --audiences="${SERVICE_URL}")
 
         http_code=$(curl -sS -o /tmp/health_response.json -w "%{http_code}" \
           -H "Authorization: Bearer ${ID_TOKEN}" \
-          "${SERVICE_URL}/api/profile/user")
+          "${SERVICE_URL}/api/health")
         if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
           echo "::error::Health check failed with HTTP ${http_code}"
           echo "Response body:"

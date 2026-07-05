@@ -38,32 +38,49 @@ document.addEventListener('DOMContentLoaded', () => {
       const configResponse = await fetch('/api/auth/config', { credentials: 'include' });
       if (!configResponse.ok) return true;
       const config = await configResponse.json();
-      if (!config || !config.enabled) return true;
+      if (!config || !authSlot) return true;
 
       const meResponse = await fetch('/api/auth/me', { credentials: 'include' });
-      if (meResponse.ok) {
-        const me = await meResponse.json();
-        if (me?.authenticated && authSlot) {
-          authSlot.textContent = 'Signed In';
-          authSlot.style.fontSize = '0.8rem';
-          authSlot.style.opacity = '0.8';
+      const me = meResponse.ok ? await meResponse.json() : null;
+
+      if (me?.authenticated) {
+        const displayName = me.user?.name || me.user?.email || 'Logged In';
+        authSlot.innerHTML = `
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:0.78rem;opacity:0.85;">${displayName}</span>
+            <button id="google-logout-btn" style="border:1px solid rgba(255,255,255,0.35);background:transparent;color:inherit;border-radius:12px;padding:2px 8px;font-size:0.75rem;cursor:pointer;">Logout</button>
+          </div>
+        `;
+        const logoutBtn = document.getElementById('google-logout-btn');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', async () => {
+            try {
+              await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+              window.location.reload();
+            } catch (err) {
+              console.warn('Logout failed:', err);
+            }
+          });
         }
         return true;
       }
 
-      if (!config.required) return true;
-
-      if (!authSlot) {
-        alert('Login required, but login UI is missing.');
-        return false;
+      if (!config.enabled) {
+        authSlot.textContent = 'Guest Mode';
+        authSlot.style.fontSize = '0.78rem';
+        authSlot.style.opacity = '0.85';
+        return true;
       }
 
-      authSlot.innerHTML = '<span style="font-size:0.8rem;opacity:0.8;">Sign in required</span><div id="google-signin-btn" style="margin-top:4px;"></div>';
+      authSlot.innerHTML = `<span style="font-size:0.78rem;opacity:0.85;">${config.required ? 'Sign in required' : 'Guest mode (optional sign-in)'}</span><div id="google-signin-btn" style="margin-top:4px;"></div>`;
       const buttonContainer = document.getElementById('google-signin-btn');
 
       if (!window.google?.accounts?.id || !buttonContainer || !config.client_id) {
-        alert('Google login is required but Google Sign-In is unavailable.');
-        return false;
+        if (config.required) {
+          alert('Google login is required but Google Sign-In is unavailable.');
+          return false;
+        }
+        return true;
       }
 
       google.accounts.id.initialize({
@@ -93,9 +110,10 @@ document.addEventListener('DOMContentLoaded', () => {
         size: 'small',
         shape: 'pill',
         text: 'signin_with',
-        width: 160
+        width: 170
       });
-      return false;
+
+      return !config.required;
     } catch (e) {
       console.warn('Auth config check failed; continuing without forced login.', e);
       return true;
@@ -688,7 +706,10 @@ document.addEventListener('DOMContentLoaded', () => {
       window.switchTab('market');
     } else if (action === 'NAVIGATE_PROFILE') {
       window.switchTab('more');
-      setTimeout(() => loadSchema('farmer_profile', 'more-canvas'), 150);
+      const hasSavedProfile = Boolean(localStorage.getItem('aaa_farmer_profile'));
+      const hasFields = Array.isArray(activeFields) && activeFields.length > 0;
+      const profileSchema = (!hasSavedProfile && !hasFields) ? 'farmer_onboarding' : 'farmer_profile';
+      setTimeout(() => loadSchema(profileSchema, 'more-canvas'), 150);
     } else if (action === 'NAVIGATE_SIMULATOR') {
       window.switchTab('more');
       setTimeout(() => loadSchema('simulation', 'more-canvas'), 150);
@@ -2085,7 +2106,7 @@ ${text}`;
 
       userInputField.value = statusPrompt;
       handleSend();
-    } else if (action === 'save_farmer_profile') {
+    } else if (action === 'save_farmer_profile' || action === 'SAVE_ONBOARDING_PROFILE') {
       const activeCanvas = getActiveCanvas();
       if (!activeCanvas) return;
       const form = activeCanvas.querySelector('form') || activeCanvas.querySelector('.a2ui-form');
@@ -2102,6 +2123,13 @@ ${text}`;
       localStorage.setItem('aaa_farmer_profile', JSON.stringify(profile));
       localDb.saveProfile(profile);
 
+      const preferredLanguage = normalizeLanguageCode(profile.preferred_language || profile.language || 'en');
+      localStorage.setItem('aaa_preferred_language', preferredLanguage);
+      const languageSelector = document.getElementById('language-selector');
+      if (languageSelector) languageSelector.value = preferredLanguage;
+      applyLanguageTranslation(preferredLanguage);
+      updateFarmerDisplayNames(preferredLanguage);
+
       if (!navigator.onLine) {
         showToast("Profile Saved Offline", "Profile details cached locally. Sync queued.", "warning");
         const prompt = `Profile updated: saved profile details for farmer. Name is ${profile.farmer_name || 'unnamed'}, Location is ${profile.region}, Size is ${profile.acres} acres, Soil is ${profile.soil_type}, Crop is ${profile.primary_crop}, Drip Irrigation is ${profile.has_drip}. Please acknowledge and update your advisory guidelines.`;
@@ -2117,6 +2145,13 @@ ${text}`;
       })
       .then(res => res.json())
       .then(data => {
+        if (profile.preferred_language || profile.language) {
+          fetch('/api/profile/user/language', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ language: profile.preferred_language || profile.language })
+          }).catch(() => {});
+        }
         showToast("Profile Synced", "Farmer profile saved locally and synced with advisors.", "success");
         fetchFieldsAndProfile();
       });
