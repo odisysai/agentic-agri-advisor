@@ -187,16 +187,24 @@ jobs:
       env:
         TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
       run: |
+        set +e
         terraform plan \
           -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
           -var="region=us-east1" \
           -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" \
           -no-color > plan.txt 2>&1
+        plan_exit_code=$?
+
         cat plan.txt
         echo "## Terraform Plan (for review)" >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
         cat plan.txt >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
+
+        if [ "$plan_exit_code" -ne 0 ]; then
+          echo "::error::Terraform plan failed with exit code $plan_exit_code"
+          exit "$plan_exit_code"
+        fi
 
     - name: Upload Terraform plan
       uses: actions/upload-artifact@v4
