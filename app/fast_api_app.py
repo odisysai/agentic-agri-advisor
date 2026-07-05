@@ -146,6 +146,8 @@ def _create_session_cookie(user_payload: dict) -> str:
         "email": user_payload.get("email", ""),
         "name": user_payload.get("name", ""),
         "picture": user_payload.get("picture", ""),
+        "guest_user": bool(user_payload.get("guest_user", False)),
+        "auth_provider": user_payload.get("auth_provider", "google"),
         "iat": int(time.time()),
         "exp": int(time.time()) + SESSION_MAX_AGE_SECONDS,
     }
@@ -180,6 +182,16 @@ def _farmer_id_from_email(email: str) -> str:
     return re.sub(r"[^a-z0-9_]+", "_", base)[:64] or "user"
 
 
+def _guest_farmer_id_from_email(email: str) -> str:
+    base = email.strip().lower()
+    slug = re.sub(r"[^a-z0-9_]+", "_", base)[:56] or "guest"
+    return f"guest_{slug}"
+
+
+def _is_valid_email(email: str) -> bool:
+    return bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email.strip()))
+
+
 def _current_user_from_request(request: Request) -> dict | None:
     return _read_session_cookie(request.cookies.get(SESSION_COOKIE_NAME))
 
@@ -195,6 +207,8 @@ def _resolve_farmer_id(request: Request, fallback_farmer_id: str) -> str:
     if _is_google_login_required() and not current_user:
         raise HTTPException(status_code=401, detail="Login required")
     if current_user:
+        if current_user.get("guest_user") and current_user.get("email"):
+            return _guest_farmer_id_from_email(current_user["email"])
         return _authenticated_farmer_id(current_user)
     return fallback_farmer_id
 
@@ -203,12 +217,18 @@ class GoogleLoginBody(BaseModel):
     credential: str = Field(..., min_length=16)
 
 
+class GuestLoginBody(BaseModel):
+    email: str = Field(..., min_length=5)
+    name: str = "Guest"
+
+
 @app.get("/api/auth/config")
 def auth_config() -> dict:
     enabled = bool(GOOGLE_OIDC_CLIENT_ID)
     return {
         "enabled": enabled,
         "required": _is_google_login_required(),
+        "allow_guest": True,
         "client_id": GOOGLE_OIDC_CLIENT_ID if enabled else None,
     }
 
@@ -232,6 +252,8 @@ def login_with_google(payload: GoogleLoginBody, response: Response) -> dict:
     if not token_info.get("email_verified", False):
         raise HTTPException(status_code=401, detail="Email is not verified")
 
+    token_info["auth_provider"] = "google"
+
     session_cookie = _create_session_cookie(token_info)
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
@@ -253,6 +275,41 @@ def login_with_google(payload: GoogleLoginBody, response: Response) -> dict:
     }
 
 
+@app.post("/api/auth/guest")
+def login_as_guest(payload: GuestLoginBody, response: Response) -> dict:
+    email = payload.email.strip().lower()
+    if not _is_valid_email(email):
+        raise HTTPException(status_code=400, detail="Valid email is required")
+
+    guest_payload = {
+        "sub": "",
+        "email": email,
+        "name": payload.name.strip() or "Guest",
+        "picture": "",
+        "guest_user": True,
+        "auth_provider": "guest",
+    }
+    session_cookie = _create_session_cookie(guest_payload)
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=session_cookie,
+        httponly=True,
+        secure=SESSION_COOKIE_SECURE,
+        samesite="lax",
+        max_age=SESSION_MAX_AGE_SECONDS,
+        path="/",
+    )
+    return {
+        "authenticated": True,
+        "profile_mode": "guest_user",
+        "user": {
+            "email": email,
+            "name": guest_payload["name"],
+            "farmer_id": _guest_farmer_id_from_email(email),
+        },
+    }
+
+
 @app.get("/api/auth/me")
 def auth_me(request: Request) -> dict:
     current_user = _current_user_from_request(request)
@@ -263,6 +320,20 @@ def auth_me(request: Request) -> dict:
             "authenticated": False,
             "profile_mode": "guest",
             "farmer_id": GUEST_FARMER_ID,
+        }
+    if current_user.get("guest_user"):
+        email = current_user.get("email", "")
+        return {
+            "authenticated": True,
+            "profile_mode": "guest_user",
+            "user": {
+                "email": email,
+                "name": current_user.get("name", "Guest"),
+                "picture": "",
+                "farmer_id": _guest_farmer_id_from_email(email)
+                if email
+                else GUEST_FARMER_ID,
+            },
         }
     return {
         "authenticated": True,
