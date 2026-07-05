@@ -28,7 +28,9 @@ terraform {
 
 provider "google" {
   // Default provider for all resources that don't need billing override (storage, IAM, etc.)
-  region = var.region
+  project               = var.project_id
+  region                = var.region
+  user_project_override = true
 }
 
 provider "google" {
