@@ -186,11 +186,26 @@ jobs:
       with:
         terraform_version: "1.7.0"
 
+    - name: Ensure Terraform state bucket
+      run: |
+        set -euo pipefail
+        TF_STATE_BUCKET="${{ secrets.GCP_PROJECT_ID }}-tfstate"
+        if gcloud storage buckets describe "gs://${TF_STATE_BUCKET}" > /dev/null 2>&1; then
+          echo "Terraform state bucket exists: gs://${TF_STATE_BUCKET}"
+        else
+          echo "Creating Terraform state bucket: gs://${TF_STATE_BUCKET}"
+          gcloud storage buckets create "gs://${TF_STATE_BUCKET}" --location=us-east1 --uniform-bucket-level-access
+          gcloud storage buckets update "gs://${TF_STATE_BUCKET}" --versioning
+        fi
+
     - name: Terraform Init
       working-directory: deployment/terraform/single-project
       env:
         TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-      run: terraform init
+      run: |
+        terraform init -reconfigure \
+          -backend-config="bucket=${{ secrets.GCP_PROJECT_ID }}-tfstate" \
+          -backend-config="prefix=single-project"
 
     - name: Terraform Plan (for review)
       working-directory: deployment/terraform/single-project
@@ -286,14 +301,33 @@ jobs:
       with:
         terraform_version: "1.7.0"
 
+    - name: Ensure Terraform state bucket
+      run: |
+        set -euo pipefail
+        TF_STATE_BUCKET="${{ secrets.GCP_PROJECT_ID }}-tfstate"
+        if gcloud storage buckets describe "gs://${TF_STATE_BUCKET}" > /dev/null 2>&1; then
+          echo "Terraform state bucket exists: gs://${TF_STATE_BUCKET}"
+        else
+          echo "Creating Terraform state bucket: gs://${TF_STATE_BUCKET}"
+          gcloud storage buckets create "gs://${TF_STATE_BUCKET}" --location=us-east1 --uniform-bucket-level-access
+          gcloud storage buckets update "gs://${TF_STATE_BUCKET}" --versioning
+        fi
+
     - name: Terraform Init
       working-directory: deployment/terraform/single-project
       env:
         TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-      run: terraform init
+      run: |
+        terraform init -reconfigure \
+          -backend-config="bucket=${{ secrets.GCP_PROJECT_ID }}-tfstate" \
+          -backend-config="prefix=single-project"
 
     - name: Import existing default Firestore database if present
       working-directory: deployment/terraform/single-project
+      env:
+        TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_region: us-east1
+        TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
       run: |
         if terraform state show google_firestore_database.database > /dev/null 2>&1; then
           echo "Firestore default database already tracked in Terraform state."
@@ -303,6 +337,7 @@ jobs:
         if gcloud firestore databases describe --project="${{ secrets.GCP_PROJECT_ID }}" --database="(default)" > /dev/null 2>&1; then
           echo "Existing Firestore default database found; importing into Terraform state."
           terraform import \
+            -input=false \
             -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
             -var="region=us-east1" \
             google_firestore_database.database \
@@ -313,6 +348,10 @@ jobs:
 
     - name: Import existing Terraform resources if present
       working-directory: deployment/terraform/single-project
+      env:
+        TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+        TF_VAR_region: us-east1
+        TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
       run: |
         set -euo pipefail
 
@@ -324,7 +363,7 @@ jobs:
         if ! terraform state show google_service_account.app_sa > /dev/null 2>&1; then
           if gcloud iam service-accounts describe "$APP_SA_EMAIL" --project="$PROJECT_ID" > /dev/null 2>&1; then
             echo "Importing existing app service account..."
-            terraform import google_service_account.app_sa "projects/${PROJECT_ID}/serviceAccounts/${APP_SA_EMAIL}" || true
+            terraform import -input=false google_service_account.app_sa "projects/${PROJECT_ID}/serviceAccounts/${APP_SA_EMAIL}" || true
           fi
         fi
 
@@ -332,7 +371,7 @@ jobs:
         if ! terraform state show google_storage_bucket.logs_data_bucket > /dev/null 2>&1; then
           if gcloud storage buckets describe "gs://${PROJECT_ID}-agentic-agri-advisor-logs" > /dev/null 2>&1; then
             echo "Importing existing logs bucket..."
-            terraform import google_storage_bucket.logs_data_bucket "${PROJECT_ID}-agentic-agri-advisor-logs" || true
+            terraform import -input=false google_storage_bucket.logs_data_bucket "${PROJECT_ID}-agentic-agri-advisor-logs" || true
           fi
         fi
 
@@ -340,7 +379,7 @@ jobs:
         if ! terraform state show google_storage_bucket.assets_bucket > /dev/null 2>&1; then
           if gcloud storage buckets describe "gs://${PROJECT_ID}-agentic-agri-advisor-assets" > /dev/null 2>&1; then
             echo "Importing existing assets bucket..."
-            terraform import google_storage_bucket.assets_bucket "${PROJECT_ID}-agentic-agri-advisor-assets" || true
+            terraform import -input=false google_storage_bucket.assets_bucket "${PROJECT_ID}-agentic-agri-advisor-assets" || true
           fi
         fi
 
@@ -348,7 +387,7 @@ jobs:
         if ! terraform state show google_bigquery_dataset.telemetry_dataset > /dev/null 2>&1; then
           if bq --project_id="$PROJECT_ID" show --dataset "${PROJECT_ID}:agentic_agri_advisor_telemetry" > /dev/null 2>&1; then
             echo "Importing existing telemetry dataset..."
-            terraform import google_bigquery_dataset.telemetry_dataset "projects/${PROJECT_ID}/datasets/agentic_agri_advisor_telemetry" || true
+            terraform import -input=false google_bigquery_dataset.telemetry_dataset "projects/${PROJECT_ID}/datasets/agentic_agri_advisor_telemetry" || true
           fi
         fi
 
@@ -356,7 +395,7 @@ jobs:
         if ! terraform state show google_bigquery_connection.genai_telemetry_connection > /dev/null 2>&1; then
           if bq --project_id="$PROJECT_ID" show --connection --location=us-east1 "${PROJECT_ID}.us-east1.agentic-agri-advisor-genai-telemetry" > /dev/null 2>&1; then
             echo "Importing existing telemetry connection..."
-            terraform import google_bigquery_connection.genai_telemetry_connection "projects/${PROJECT_ID}/locations/us-east1/connections/agentic-agri-advisor-genai-telemetry" || true
+            terraform import -input=false google_bigquery_connection.genai_telemetry_connection "projects/${PROJECT_ID}/locations/us-east1/connections/agentic-agri-advisor-genai-telemetry" || true
           fi
         fi
 
@@ -369,7 +408,7 @@ jobs:
               --filter="bindings.role:${ROLE} AND bindings.members:${MEMBER}" \
               --format="value(bindings.role)" | grep -q "${ROLE}"; then
             echo "Importing existing project IAM member binding..."
-            terraform import google_project_iam_member.default_compute_sa_storage_object_creator "${PROJECT_ID} ${ROLE} ${MEMBER}" || true
+            terraform import -input=false google_project_iam_member.default_compute_sa_storage_object_creator "${PROJECT_ID} ${ROLE} ${MEMBER}" || true
           fi
         fi
 
