@@ -402,14 +402,51 @@ class LocalAiEngine {
     let activeAgent = "Coordinator";
     let activeSkill = "General Advisory";
 
-    // 2. Multi-Agent Skill Routing
-    if (text.includes('pest') || text.includes('insect') || text.includes('disease') || text.includes('borer') || text.includes('rust') || text.includes('aphid') || text.includes('blight') || text.includes('outbreak') || text.includes('pathology')) {
+    // 2. Multi-Agent Skill Routing (multilingual keyword matching)
+    const pestKeywords = ['pest', 'insect', 'disease', 'borer', 'rust', 'aphid', 'blight', 'outbreak', 'pathology',
+      // Hindi
+      'कीट', 'रोग', 'बीमारी', 'कीड़ा', 'फफूंद', 'झुलसन', 'रतुआ', 'बोलवर्म',
+      // Marathi
+      'कीडकीट', 'रोग', 'फुगी', 'कवक',
+      // Telugu
+      'తెగులు', 'వ్యాధి', 'కీటకాలు', 'శిలీంధ్రం', 'పురుగు',
+      // Swahili
+      'magonjwa', 'wadudu', 'magonjwa', 'ukungaji', 'kuuguza',
+      // Zulu
+      'izilwane', 'izifo', 'amathosi'
+    ];
+    const irrigationKeywords = ['water', 'irrigate', 'irrigation', 'drip', 'rain', 'moisture', 'watering',
+      // Hindi
+      'पानी', 'सिंच', 'जल', 'बारिश', 'नमी', 'ड्रिप',
+      // Marathi
+      'पाणी', 'सिंचन', 'द्रिप', 'ओलावा',
+      // Telugu
+      'నీరు', 'నీటి', 'సాగు', 'తేమ', 'డ్రిప్',
+      // Swahili
+      'maji', 'umwagiliaji', 'unyevu', 'mvua',
+      // Zulu
+      'amanzi', 'ukunisela', 'umswakama'
+    ];
+    const soilKeywords = ['soil', 'nutrient', 'nitrogen', 'npk', 'fertilizer', 'manure', 'compost',
+      // Hindi
+      'मिट्टी', 'माटी', 'खाद', 'नाइट्रोजन', 'उर्वरक', 'जैव',
+      // Marathi
+      'माती', 'खत', 'नत्र',
+      // Telugu
+      'నేల', 'ఎరువు', 'నత్రజని', 'భాస్వరం',
+      // Swahili
+      'udongo', 'mbolea', 'nitrojeni',
+      // Zulu
+      'umhlabathi', 'isikhathi'
+    ];
+
+    if (pestKeywords.some(kw => text.includes(kw))) {
       activeAgent = dict.pathologistName;
       activeSkill = dict.pathologistSkill;
 
       let diseaseMatch = "Maize Stalk Borer Infestation";
-      if (text.includes('rust')) diseaseMatch = "Brown Leaf Rust";
-      else if (text.includes('aphid')) diseaseMatch = "Aphids";
+      if (text.includes('rust') || text.includes('रतुआ') || text.includes('తుప్పు') || text.includes('kutu')) diseaseMatch = "Brown Leaf Rust";
+      else if (text.includes('aphid') || text.includes('माहू') || text.includes('ఆకుపురుగు')) diseaseMatch = "Aphids";
 
       const rawDiag = okfGuide.diagnostics[diseaseMatch] || {
         symptom: { English: "General crop leaf damage and pest sightings." },
@@ -421,14 +458,14 @@ class LocalAiEngine {
 
       response = `[Offline AI - ${activeAgent}] ${dict.pranam} ${dict.triggered} **${activeSkill}** ${dict.skillFor} ${okfGuide.metadata.name} ${dict.crop} \n\n📋 **${dict.symptomLabel}:** ${symptomVal}\n🌱 **${dict.organicLabel}:** ${remedyVal}`;
     }
-    else if (text.includes('water') || text.includes('irrigate') || text.includes('irrigation') || text.includes('drip') || text.includes('rain') || text.includes('moisture') || text.includes('watering')) {
+    else if (irrigationKeywords.some(kw => text.includes(kw))) {
       activeAgent = dict.irrigatorName;
       activeSkill = dict.irrigatorSkill;
 
       const specs = okfGuide.specifications;
       response = `[Offline AI - ${activeAgent}] ${dict.ramram} **${activeSkill}** ${dict.skillFor} ${okfGuide.metadata.name} ${dict.crop} \n\n💧 **${dict.optimalMoisture}:** ${specs.soil_moisture.optimal_pct}%\n📉 **${dict.criticalLimit}:** ${specs.soil_moisture.min_pct}%\n🧬 **${dict.dripStrategy}:** ${dict.strategyDesc}`;
     }
-    else if (text.includes('soil') || text.includes('nutrient') || text.includes('nitrogen') || text.includes('npk') || text.includes('fertilizer') || text.includes('manure') || text.includes('compost')) {
+    else if (soilKeywords.some(kw => text.includes(kw))) {
       activeAgent = dict.analystName;
       activeSkill = dict.analystSkill;
 

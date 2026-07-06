@@ -45,8 +45,8 @@
           <div class="logo">🌾 Krishi Sampark</div>
           <div class="header-right">
             <div id="google-auth-slot" style="margin-right: 8px;"></div>
-            <button id="speak-toggle-btn" class="header-btn" title="Toggle Voice Output" style="background: linear-gradient(135deg, #2C6B37, #3E8E41); color: white; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
-              🔊
+            <button id="speak-toggle-btn" class="header-btn" title="Toggle Voice Output" style="background: linear-gradient(135deg, #2C6B37, #3E8E41); border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-right: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
+              <img src="/assets/krishi_speaker_icon.png" alt="Speaker" style="width: 28px; height: 28px; object-fit: contain;" />
             </button>
             <button id="theme-toggle-btn" class="theme-btn" title="Toggle Light/Dark Theme">🌙</button>
             <select id="language-selector" class="header-dropdown">
@@ -252,7 +252,7 @@
               </div>
             </div>
             <div class="text-input-bar" style="margin: 0 10px; display: flex; gap: 8px; align-items: center;">
-              <button id="mic-input-btn" title="Speak" style="background: linear-gradient(135deg, #1a5276, #2980b9); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">🎙️</button>
+              <button id="mic-input-btn" title="Speak" style="background: linear-gradient(135deg, #1a5276, #2980b9); border: none; border-radius: 50%; width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"><img src="/assets/krishi_microphone_icon.png" alt="Mic" style="width: 34px; height: 34px; object-fit: contain;" /></button>
               <input type="text" id="user-input-field" data-tr-placeholder="chat_placeholder" placeholder="लिखकर पूछें..." style="flex: 1;">
               <button id="send-btn" class="send-action-btn" style="flex-shrink: 0;">➔</button>
             </div>
@@ -274,7 +274,7 @@
             <div>
               <label style="font-size: 0.9rem; font-weight: 600; display: block; margin-bottom: 6px;">अपना सवाल लिखें या बोलें:</label>
               <div style="display: flex; gap: 8px; align-items: center;">
-                <button id="expert-mic-btn" title="Speak" style="background: linear-gradient(135deg, #1a5276, #2980b9); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 1.3rem; cursor: pointer; flex-shrink: 0;">🎙️</button>
+                <button id="expert-mic-btn" title="Speak" style="background: linear-gradient(135deg, #1a5276, #2980b9); border: none; border-radius: 50%; width: 44px; height: 44px; cursor: pointer; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"><img src="/assets/krishi_microphone_icon.png" alt="Mic" style="width: 34px; height: 34px; object-fit: contain;" /></button>
                 <textarea id="expert-question-input" placeholder="अपना सवाल यहाँ लिखें..." style="flex: 1; min-height: 80px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-main); padding: 10px; font-family: inherit; resize: vertical;"></textarea>
               </div>
             </div>
@@ -312,7 +312,7 @@
               </div>
             </div>
             <div class="text-input-bar expert-input-bar">
-              <button id="expert-mic-btn" title="Speak" style="background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; border: none; border-radius: 50%; width: 44px; height: 44px; font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">🎙️</button>
+              <button id="expert-mic-btn" title="Speak" style="background: linear-gradient(135deg, #7c3aed, #a855f7); border: none; border-radius: 50%; width: 44px; height: 44px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.15);"><img src="/assets/krishi_microphone_icon.png" alt="Mic" style="width: 34px; height: 34px; object-fit: contain;" /></button>
               <input type="text" id="expert-input-field" placeholder="Ask the cloud expert..." data-tr-placeholder="expert_placeholder">
               <button id="expert-send-btn" class="send-action-btn expert-send-btn" title="Ask Expert">✦</button>
             </div>

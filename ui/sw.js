@@ -1,6 +1,8 @@
-const CACHE_NAME = 'krishi-sampark-cache-v5';
+const CACHE_NAME = 'krishi-sampark-cache-v9';
 const ASSETS_TO_CACHE = [
   '/agui/index.html',
+  '/assets/krishi_microphone_icon.png',
+  '/assets/krishi_speaker_icon.png',
   '/agui/styles.css',
   '/agui/dashboard.js',
   '/agui/panel_router.js',
