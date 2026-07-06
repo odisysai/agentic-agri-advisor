@@ -13,7 +13,7 @@ crop_analyst_agent = Agent(
     instruction=(
         "You are an expert crop and soil scientist. Your task is to analyze soil conditions, "
         "detect crop diseases, recommend appropriate crops, and plan fertilization schedules. "
-        "LANGUAGE RULE: You MUST respond in the language specified by the coordinator agent. If the coordinator says 'Respond in en', reply in English. If 'Respond in hi', reply in Hindi. If 'Respond in mr', reply in Marathi. If 'Respond in te', reply in Telugu. If 'Respond in sw', reply in Swahili. The language instruction from the coordinator is the single source of truth — ignore the input language. "
+        "LANGUAGE RULE: You MUST respond in the language specified by the coordinator agent. If the coordinator says 'Respond in en', reply in English. If 'Respond in hi', reply in Hindi. If 'Respond in mr', reply in Marathi. If 'Respond in te', reply in Telugu. If 'Respond in sw', reply in Swahili. If 'Respond in zu', reply in Zulu. The language instruction from the coordinator is the single source of truth — ignore the input language. "
         "If the user asks for crop health telemetry, NPK target levels, soil conditions, or crop "
         "dashboard information, you MUST execute the 'refresh_crop_schema' tool first to retrieve "
         "live weather data, then you MUST execute the 'get_ui_schema' tool with 'crop_dashboard' as input "

@@ -362,6 +362,38 @@ class LocalAiEngine {
         analystSkill: "Kipimo cha Udongo NPK",
         coordinatorName: "Mratibu (Coordinator)",
         coordinatorSkill: "Usimamizi Mkuu"
+      },
+      Zulu: {
+        pranam: "Sawubona Mlimi.",
+        ramram: "Sawubona Mlimi. Ngiyasebenza",
+        namaste: "Sawubona. Ngiyasebenza",
+        welcome: "Sawubona mlimi.",
+        triggered: "Ngivuse i-",
+        skillFor: "iskhathi sami sesimu sethu se-",
+        crop: "ummbila.",
+        symptomLabel: "Imibhalo",
+        organicLabel: "Ukwelapha Ngokwemvelo",
+        optimalMoisture: "Umswakama Ohelekile",
+        criticalLimit: "Izinga Elingaphansi",
+        dripStrategy: "Isu Lokunisela Ngamathontsi",
+        strategyDesc: "Nisela amanzi amancane njalo nsuku. Qaphela ukungahlangani kwamanzi eduze nezimpande.",
+        targetNpk: "I-NPK Ehihlose",
+        optimalPh: "I-pH Ehelekile",
+        nitrogen: "I-Nitrogen",
+        phosphorus: "I-Phosphorus",
+        potassium: "I-Potassium",
+        coordinatorIntro: "Ngingumlekeleli wakho wangaphandle koxhumano. Ngithole imininingwane yesimu: ukukhuliswa",
+        onSoil: "kumhlabathi we-",
+        soilSuffix: ".",
+        coordinatorOffer: "Ngingakuvusa izikhathi ezithile lapha:",
+        pathologistName: "Uchwepheshe Wezifo (Crop Pathologist)",
+        pathologistSkill: "Ukwelapha Izifo Zommbila",
+        irrigatorName: "Umqambi Wokunisela (Irrigation Planner)",
+        irrigatorSkill: "Isu Lokunisela Umswakama",
+        analystName: "Umlinganisi Wommbila (Crop Analyst)",
+        analystSkill: "Ukuhlola Umhlabathi I-NPK",
+        coordinatorName: "Umalekeleli (Coordinator)",
+        coordinatorSkill: "Ukuphatha Okuyinhloko"
       }
     };
 

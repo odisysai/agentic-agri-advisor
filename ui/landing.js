@@ -492,12 +492,109 @@
     'landing.footer.copyright': '© 2025 Krishi Sampark. Haki zote zimehifadhiwa.'
   };
 
+  const ZU = {
+    'landing.header.brandTitle': 'Krishi Sampark',
+    'landing.header.brandSubtitle': 'Usizo lolimo ngolimi lwakho',
+    'landing.header.navAbout': 'Mayelana',
+    'landing.header.navFeatures': 'Izici',
+    'landing.header.navHowItWorks': 'Indlela Esisebenza Ngayo',
+    'landing.header.navSafetyTrust': 'Ukuphepha Nokwesekwa',
+    'landing.header.navContact': 'Xhumana Nathi',
+
+    'landing.hero.title': 'Umlingani wakho wolimo wokuthatha izinqumo ezinhle',
+    'landing.hero.description': 'Buza imibuzo ngolimi lwakho, hlol izinkinga zommbila, qonda imibhalo yomhlabathi, hlela ukunisela, futhi buka amaxwe emakethe.',
+    'landing.hero.continueAsGuest': 'Qhubeka Njengesivakashi',
+    'landing.hero.signInWithGoogle': 'Ngena nge-Google',
+    'landing.hero.voiceAssistTitle': 'Usizo Lwezwi',
+    'landing.hero.voiceAssistText': 'Cindezela i-microphone futhi buze umbuzo wolimo ngolimi lwakho',
+    'landing.hero.trustNote': 'Akukho ulwazi oluningi oludingekayo. Kwenziwe abalimi, abafundi, nabacebisi bolimo.',
+    'landing.hero.chipVoice': 'Imibuzo yezwi',
+    'landing.hero.chipPhoto': 'Ukuhlola isithombe sommbila',
+    'landing.hero.chipMarket': 'Isikhathi sangempela samaxwe emakethe',
+    'landing.hero.trustPanelTitle': 'Sebenza nakuba intanethi incane',
+    'landing.hero.trust1': 'Usizo lolimi lwendawo (olimi 5+)',
+    'landing.hero.trust2': 'Ngaphandle koxhumano kuqala - imininingwane yakho iphephile',
+    'landing.hero.trust3': 'Usizo oluhlolwe ngemichwepheshe nemikhambi yezinambuzane',
+    'landing.hero.trust4': 'Usizo lomnqobi kwezinkinga ezinzima',
+    'landing.hero.trust5': 'Ubumfihlo bulondolozwe - imininingwane yakho iphephile',
+
+    'landing.auth.guestTitle': 'Sitshele ngasimu lakho',
+    'landing.auth.guestMessage': 'Nikeza imininingwane embalwa ukuze sikunike usizo oluhle lolimo. Imininingwane yakho ihlala kule divayisi.',
+    'landing.auth.nameLabel': 'Igama Lakho',
+    'landing.auth.emailLabel': 'I-imeyili',
+    'landing.auth.regionLabel': 'Isikhundla',
+    'landing.auth.soilLabel': 'Uhlobo Lomhlabathi',
+    'landing.auth.acresLabel': 'Usayizi Wesimi (Amakha)',
+    'landing.auth.cropLabel': 'Ummbila Oyinhloko',
+    'landing.auth.selectPlaceholder': 'Khetha...',
+    'landing.auth.continue': 'Qala Ukubusa',
+    'landing.auth.skip': 'Yeqa okwamanje',
+    'landing.auth.close': 'Vala',
+    'landing.auth.invalidEmail': 'Sicela ufake i-imeyili efanele noma uyishiye ingenalutho.',
+    'landing.auth.guestError': 'Akukwaziwa ukuqhubeka njengesivakashi. Sicela uzame futhi.',
+    'landing.auth.signingInSecurely': 'Kungenisa ngokuphepha...',
+    'landing.auth.nameRequired': 'Sicela ufake igama lakho.',
+    'landing.auth.regionRequired': 'Sicela ukhethe isikhundla sakho.',
+    'landing.auth.soilRequired': 'Sicela ukhethe uhlobo lomhlabathi.',
+    'landing.auth.acresRequired': 'Sicela ufake usayizi wesimu ngezakha.',
+    'landing.auth.cropRequired': 'Sicela ukhethe ummbila oyinhloko.',
+
+    'landing.features.askTitle': 'Buza noma Khuluma no-Krishi Sastri',
+    'landing.features.askDescription': 'Buza ngombhalo noma izwi futhi uthole izimpendulo ezilula ngemibuzo yommbila, amanzi, izithombo, nezinaambuzane.',
+    'landing.features.photoTitle': 'Ukuhlola Isithombe Sommbila',
+    'landing.features.photoDescription': 'Thatha isithombe futhi uthole usizo oluholelayo ngezingozi ezimpilweni yommbila.',
+    'landing.features.soilTitle': 'Imbhalo Yomhlabathi',
+    'landing.features.soilDescription': 'Layisha imbhalo yokuhlola umhlabathi futhi uyiqonde ngamagama alula.',
+    'landing.features.marketTitle': 'Amaxwe Emakethe',
+    'landing.features.marketDescription': 'Hlola amaxwe ansuku zonke nokuqhubeka emakethe yakho endaweni.',
+    'landing.features.planTitle': 'Iphulo Lesimi Lwanamuhla',
+    'landing.features.planDescription': 'Buka izenzo ezilula eziqokiwe zemisebenzi yesimi yanamuhla.',
+    'landing.features.expertTitle': 'Usizo Lomnqobi',
+    'landing.features.expertDescription': 'Thumela izinkinga ezinzima kubachwepheshe bolimo usizo.',
+
+    'landing.howItWorks.title': 'Indlela esisebenza ngayo',
+    'landing.howItWorks.summary': 'Izinyathelo ezintathu ezisheshayo ukuthola umyalozo olula wolimo ngesithombe, izwi, noma umbuzo ngombhalo.',
+    'landing.howItWorks.step1Title': 'Sitshele ngasimu lakho',
+    'landing.howItWorks.step1Description': 'Engeza ummbila wakho, isikhundla, uhlobo lomhlabathi, nemininingwane yesimi.',
+    'landing.howItWorks.step2Title': 'Buza, layisha, noma thatha isithombe',
+    'landing.howItWorks.step2Description': 'Buza imibuzo, layisha imbhalo yomhlabathi, noma thatha isithombe sommbila wakho.',
+    'landing.howItWorks.step3Title': 'Thola umyalozo olula nezinyathelo ezilandelayo',
+    'landing.howItWorks.step3Description': 'Amukela usizo olulula, iziphakamiso eziqokiwe, futhi ulandele izinyathelo ezilandelayo.',
+
+    'landing.trust.title': 'Kwenziwe isimo sangempela solimo',
+    'landing.trust.offlineTitle': 'Ngaphandle koxhumano kuqala',
+    'landing.trust.offlineDescription': 'Sebenza nakuba intanethi incane',
+    'landing.trust.languageTitle': 'Izilimi zendawo',
+    'landing.trust.languageDescription': 'Khuluma ngolimi lwakho',
+    'landing.trust.farmerFriendlyTitle': 'Kulula abalimi',
+    'landing.trust.farmerFriendlyDescription': 'Amagama alula, iziphakamiso ezingezinzima',
+    'landing.trust.safetyTitle': 'Ukuphepha kuqala',
+    'landing.trust.safetyDescription': 'Usizo oluhlolwe ngemichwepheshe nemikhambi yezinambuzane',
+    'landing.trust.expertTitle': 'Inethiwekhi yomnqobi',
+    'landing.trust.expertDescription': 'Abachwepheshe bomuntu izindaba ezinzima',
+    'landing.trust.privacyTitle': 'Ubumfihlo bulondolozwe',
+    'landing.trust.privacyDescription': 'Imininingwane yakho iphephile',
+
+    'landing.capstone.title': 'Iphulatifomu ye-Krishi Sampark',
+    'landing.capstone.description': 'Iphulatifomu yombukiso ye-AI yolimo engaphandle koxhumano kuqala nomyalozo wolimi oluningi, iziphakamiso eziqokiwe, nosizo lomnqobi.',
+
+    'landing.footer.brandTitle': 'Krishi Sampark',
+    'landing.footer.brandSubtitle': 'Usizo lolimo ngolimi lwakho',
+    'landing.footer.about': 'Mayelana Nathi',
+    'landing.footer.privacy': 'Inqubo Yobumfihlo',
+    'landing.footer.terms': 'Imigomo Yokusebenzisa',
+    'landing.footer.help': 'Usizo',
+    'landing.footer.contact': 'Xhumana Nathi',
+    'landing.footer.copyright': '© 2025 Krishi Sampark. Wonke amalungelo agodliwe.'
+  };
+
   const TRANSLATIONS = {
     en: EN,
     hi: HI,
     mr: MR,
     te: TE,
-    sw: SW
+    sw: SW,
+    zu: ZU
   };
 
   let currentLang = 'en';
@@ -541,7 +638,8 @@
     'hi': '/assets/how-it-works-content-hindi.png?v=1',
     'mr': '/assets/how-it-works-content-marathi.png?v=1',
     'te': '/assets/how-it-works-content-telugu.png?v=1',
-    'sw': '/assets/how-it-works-content-swahili.png?v=1'
+    'sw': '/assets/how-it-works-content-swahili.png?v=1',
+    'zu': '/assets/how-it-works-content.png?v=2'
   };
 
   function updateHowItWorksImage(lang) {

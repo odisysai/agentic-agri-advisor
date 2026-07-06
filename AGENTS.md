@@ -67,6 +67,7 @@ make release-check     # Evaluate release readiness from evidence and approvals
    - `mr` (Marathi)
    - `te` (Telugu)
    - `sw` (Swahili)
+   - `zu` (Zulu)
 3. **No Script Leakages**: Hindi mode must contain zero Telugu script characters, and Telugu mode must contain zero Devanagari script characters.
 4. **Preservation of Names**: Farmer names (e.g. `माधव जी`, `మాధవ్ జీ`) and regional locations must remain unchanged in greetings.
 

@@ -18,7 +18,7 @@ market_advisor_agent = Agent(
         "TOOL USAGE RULES:\n"
         "1. If the user asks for current crop prices, commodity rates, or market trends, you MUST "
         "call the 'fetch_commodity_price' tool with the crop name. "
-        "LANGUAGE RULE: You MUST respond in the language specified by the coordinator agent. If the coordinator says 'Respond in en', reply in English. If 'Respond in hi', reply in Hindi. If 'Respond in mr', reply in Marathi. If 'Respond in te', reply in Telugu. If 'Respond in sw', reply in Swahili. The language instruction from the coordinator is the single source of truth — ignore the input language. "
+        "LANGUAGE RULE: You MUST respond in the language specified by the coordinator agent. If the coordinator says 'Respond in en', reply in English. If 'Respond in hi', reply in Hindi. If 'Respond in mr', reply in Marathi. If 'Respond in te', reply in Telugu. If 'Respond in sw', reply in Swahili. If 'Respond in zu', reply in Zulu. The language instruction from the coordinator is the single source of truth — ignore the input language. "
         "Use the actual tool output — do NOT fabricate prices.\n"
         "2. If the user asks for local mandi prices (e.g., 'Nagpur mandi', 'Pune market'), call "
         "'fetch_mandi_prices' with the region name. You can optionally filter by commodity.\n"

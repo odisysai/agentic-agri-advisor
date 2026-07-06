@@ -12,7 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
       Hindi: 'hi',
       Marathi: 'mr',
       Telugu: 'te',
-      Swahili: 'sw'
+      Swahili: 'sw',
+      Zulu: 'zu'
     };
     return aliases[value] || value;
   }
@@ -1097,6 +1098,8 @@ document.addEventListener('DOMContentLoaded', () => {
             comp.description = `రేపు ఉదయం నీరు పెట్టండి: ${waterNeededLitres.toLocaleString()} లీటర్ల నీరు అవసరం.`;
           } else if (currentLang === 'Swahili') {
             comp.description = `Mwagilia kesho asubuhi: lita ${waterNeededLitres.toLocaleString()} zinahitajika.`;
+          } else if (currentLang === 'Zulu') {
+            comp.description = `Nisela kusasa ekuseni: ${waterNeededLitres.toLocaleString()} amalitha adingekayo.`;
           } else {
             comp.description = `Irrigate tomorrow morning: apply ${waterNeededLitres.toLocaleString()} Litres of water.`;
           }
@@ -1109,6 +1112,8 @@ document.addEventListener('DOMContentLoaded', () => {
             comp.description = "నేలలో తగినంత తేమ ఉంది. ఈరోజు నీరు పెట్టనవసరం లేదు.";
           } else if (currentLang === 'Swahili') {
             comp.description = "Udongo una unyevu wa kutosha. Hakuna haja ya kumwagilia leo.";
+          } else if (currentLang === 'Zulu') {
+            comp.description = "Umhlabathi unomswakama ohlelekile. Akukho sidingo sokunisela namuhla.";
           } else {
             comp.description = "Soil moisture is optimal. No watering needed today.";
           }
@@ -1448,7 +1453,8 @@ document.addEventListener('DOMContentLoaded', () => {
       'hi': { text: 'यह एक जटिल समस्या लग रही है। क्या मैं इसे कृषि विशेषज्ञ को गहन विश्लेषण के लिए भेजूँ?', yes: 'हाँ, विशेषज्ञ से पूछें', no: 'नहीं, ठीक है' },
       'mr': { text: 'ही एक गुंतागुंतीची समस्या वाटते. मी हे कृषी तज्ज्ञांकडे सविस्तर विश्लेषणासाठी पाठवू?', yes: 'होय, तज्ज्ञांना विचारा', no: 'नाही, ठीक आहे' },
       'te': { text: 'ఇది క్లిష్టమైన సమస్య అనిపిస్తోంది. నేను దీన్ని నిపుణుడికి సవివర విశ్లేషణ కోసం పంపాలా?', yes: 'అవును, నిపుణుడిని అడగండి', no: 'లేదు, సరే' },
-      'sw': { text: 'Hii inaonekana kuwa tatizo linalochanganya. Nielekeze kwa mtaalamu kwa uchambuzi wa kina?', yes: 'Ndiyo, uliza mtaalamu', no: 'Hapana, asante' }
+      'sw': { text: 'Hii inaonekana kuwa tatizo linalochanganya. Nielekeze kwa mtaalamu kwa uchambuzi wa kina?', yes: 'Ndiyo, uliza mtaalamu', no: 'Hapana, asante' },
+      'zu': { text: 'Kubonakala sengathi inkinga enzima. Ngingayithumela kumnqobi ukuhlola kabanzi?', yes: 'Yebo, buza umnqobi', no: 'Cha, ngiyabonga' }
     };
     const msg = escalationMessages[langCode] || escalationMessages['en'];
 
@@ -1523,7 +1529,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function handleAdvisorLocalAnswer(text, preferredLang, thinkingBubble) {
     if (thinkingBubble) thinkingBubble.remove();
 
-    const langNameMap = { 'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi', 'te': 'Telugu', 'sw': 'Swahili' };
+    const langNameMap = { 'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi', 'te': 'Telugu', 'sw': 'Swahili', 'zu': 'Zulu' };
     const langName = langNameMap[preferredLang] || 'English';
 
     // Try to search OKF knowledge from IndexedDB
@@ -1581,6 +1587,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'Marathi': `कृषी ज्ञानानुसार:\n\n${name}:\n${bodyText}\n\nसविस्तर विश्लेषणासाठी कृषी तज्ज्ञांचा सल्ला घ्या.`,
         'Telugu': `వ్యవసాయ జ్ఞానం ప్రకారం:\n\n${name}:\n${bodyText}\n\nవివరణాత్మక విశ్లేషణ కోసం నిపుణుడిని సంప్రదించండి.`,
         'Swahili': `Kulingana na maarifa ya kilimo:\n\n${name}:\n${bodyText}\n\nKwa uchambuzi wa kina, shauriana na mtaalamu wa kilimo.`,
+        'Zulu': `Ngokwesiko lolimo:\n\n${name}:\n${bodyText}\n\nUkuze uthole ukuhlaziwa okujulile, xhumana nomchwepheshe bolimo.`,
       };
       reply = replies[langName] || replies['English'];
     } else {
@@ -1932,7 +1939,8 @@ document.addEventListener('DOMContentLoaded', () => {
     'Hindi': "[Context: Language: Hindi] किसान ने अपनी पसंद की भाषा बदलकर हिंदी कर दी है। उन्हें हिंदी में बधाई दें और पुष्टि करें।",
     'Marathi': "[Context: Language: Marathi] शेतकऱ्याने आपली भाषा बदलून मराठी केली आहे. त्यांना मराठीमध्ये प्रतिसाद द्या.",
     'Telugu': "[Context: Language: Telugu] రైతు భాషను తెలుగుకు మార్చారు. వారికి తెలుగులో సమాధానం ఇవ్వండి.",
-    'Swahili': "[Context: Language: Swahili] Mkulima amebadilisha lugha kuwa Kiswahili. Msalimie na uthibitishe kwa Kiswahili."
+    'Swahili': "[Context: Language: Swahili] Mkulima amebadilisha lugha kuwa Kiswahili. Msalimie na uthibitishe kwa Kiswahili.",
+    'Zulu': "[Context: Language: Zulu] Umlimi ushintshile ulimi lwakhe abe ngu-Zulu. Mmemeze futhi uqinisekise nge-Zulu."
   };
 
   // Hook up Language selector dropdown listener
@@ -2715,6 +2723,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (langCode === 'mr') return '⏳ <em>कृषि शास्त्री सल्ला तयार करत आहेत...</em>';
     if (langCode === 'te') return '⏳ <em>కృషి శాస్త్రి సలహాను సిద్ధం చేస్తున్నారు...</em>';
     if (langCode === 'sw') return '⏳ <em>Krishi Sastri anaandaa ushauri...</em>';
+    if (langCode === 'zu') return '⏳ <em>U-Krishi Sastri ulungisa usizo...</em>';
     return '⏳ <em>Krishi Sastri is preparing advisory...</em>';
   }
 
@@ -2989,7 +2998,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!chatMessages) return;
 
     const langCode = localStorage.getItem('aaa_preferred_language') || 'hi';
-    const langMap = { 'en': 'en', 'hi': 'hi', 'mr': 'mr', 'te': 'te', 'sw': 'sw' };
+    const langMap = { 'en': 'en', 'hi': 'hi', 'mr': 'mr', 'te': 'te', 'sw': 'sw', 'zu': 'zu' };
     const code = langMap[langCode] || 'hi';
 
     const texts = {
@@ -2998,6 +3007,7 @@ document.addEventListener('DOMContentLoaded', () => {
       'mr': { summary: 'हे प्रकरण थोडे कठीण आहे.', rec: 'तज्ज्ञाकडून तपासणी करवणे चांगले राहील.', q: 'हा प्रश्न तज्ज्ञ सहाय्याला पाठवू?', send: 'होय, तज्ज्ञाला पाठवा', photo: 'आधी फोटो जोडा', no: 'आत्ता नाही' },
       'te': { summary: 'ఈ సందర్భం కొంచెం క్లిష్టంగా ఉంది.', rec: 'నిపుణుడు ద్వారా తనిఖీ చేయించడం మంచిది.', q: 'ఈ ప్రశ్నను నిపుణుడికి పంపాలా?', send: 'అవును, నిపుణుడికి పంపండి', photo: 'ముందు ఫోటో జోడించండి', no: 'ఇప్పుడు కాదు' },
       'sw': { summary: 'Hali hii ni ngumu kidogo.', rec: 'Ni bora kumtafute mtaalamu.', q: 'Nitume swali hili kwa mtaalamu?', send: 'Ndio, tuma kwa mtaalamu', photo: 'Ongeza picha kwanza', no: 'Sio sasa' },
+      'zu': { summary: 'Le ndaba inzima kancane.', rec: 'Kungcono ukuba ihlolwe umnqobi.', q: 'Ngithume le mbuzo kosizo lomnqobi?', send: 'Yebo, thumela kumnqobi', photo: 'Faka isithombe kuqala', no: 'Akusamanje' },
     };
     const t = texts[code] || texts['hi'];
 
@@ -3132,7 +3142,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Apply translations to advisor cards
     const langCode = localStorage.getItem('aaa_preferred_language') || 'hi';
-    const langMap = { 'en': 'en', 'hi': 'hi', 'mr': 'mr', 'te': 'te', 'sw': 'sw' };
+    const langMap = { 'en': 'en', 'hi': 'hi', 'mr': 'mr', 'te': 'te', 'sw': 'sw', 'zu': 'zu' };
     const code = langMap[langCode] || 'hi';
 
     // Use getTranslation from translations.js if available

@@ -42,7 +42,8 @@
       'Hindi': 'hi',
       'Marathi': 'mr',
       'Telugu': 'te',
-      'Swahili': 'sw'
+      'Swahili': 'sw',
+      'Zulu': 'zu'
     };
     currentLang = langMap[langName] || 'en';
 
@@ -109,7 +110,7 @@
     const rawLang = localStorage.getItem('aaa_preferred_language') || 'English';
     const nameToCode = {
       'English': 'en', 'Hindi': 'hi', 'Marathi': 'mr',
-      'Telugu': 'te', 'Swahili': 'sw'
+      'Telugu': 'te', 'Swahili': 'sw', 'Zulu': 'zu'
     };
     const codeToCode = {
       'en': 'en', 'en-US': 'en', 'en-IN': 'en',
@@ -117,6 +118,7 @@
       'mr': 'mr', 'mr-IN': 'mr',
       'te': 'te', 'te-IN': 'te',
       'sw': 'sw', 'sw-KE': 'sw',
+      'zu': 'zu', 'zu-ZA': 'zu',
     };
     const language = lang || nameToCode[rawLang] || codeToCode[rawLang] || currentLang || 'en';
 
@@ -214,9 +216,9 @@
       // Convert BCP-47 code to full language name for the backend VOICE_MAP
       const langNameMap = {
         'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi',
-        'te': 'Telugu', 'sw': 'Swahili',
+        'te': 'Telugu', 'sw': 'Swahili', 'zu': 'Zulu',
         'English': 'English', 'Hindi': 'Hindi', 'Marathi': 'Marathi',
-        'Telugu': 'Telugu', 'Swahili': 'Swahili',
+        'Telugu': 'Telugu', 'Swahili': 'Swahili', 'Zulu': 'Zulu',
       };
       const backendLang = langNameMap[language] || 'English';
 
@@ -280,11 +282,11 @@
     // Handle both full names and BCP-47 codes
     const nameToBcp47 = {
       'English': 'en-US', 'Hindi': 'hi-IN', 'Marathi': 'mr-IN',
-      'Telugu': 'te-IN', 'Swahili': 'sw-KE'
+      'Telugu': 'te-IN', 'Swahili': 'sw-KE', 'Zulu': 'zu-ZA'
     };
     const codeToBcp47 = {
       'en': 'en-US', 'hi': 'hi-IN', 'mr': 'mr-IN',
-      'te': 'te-IN', 'sw': 'sw-KE'
+      'te': 'te-IN', 'sw': 'sw-KE', 'zu': 'zu-ZA'
     };
     const recognitionLang = nameToBcp47[rawLang] || codeToBcp47[rawLang] || 'en-US';
 

@@ -359,14 +359,16 @@ class LocalDb {
               Hindi: "पत्तियों पर भूरे रंग के धब्बे फैल रहे हैं।",
               Marathi: "पानांवर तांबूस तपकिरी ठिपके पसरणे.",
               Telugu: "ఆకులపై గోధుమ రంగు మచ్చలు వ్యాపించడం.",
-              Swahili: "Madoa ya kahawia kwenye majani."
+              Swahili: "Madoa ya kahawia kwenye majani.",
+              Zulu: "Amaphaphu ansundu asabalala emagxabini."
             },
             organic_remedy: {
               English: "Dissolve 5kg wood ash and 5L cow urine in 100L water, then spray.",
               Hindi: "5 किलो लकड़ी की राख और 5 लीटर गोमूत्र 100 लीटर पानी में मिलाकर छिड़काव करें।",
               Marathi: "५ किलो लाकडी राख आणि ५ लीटर गोमूत्र १०० लीटर पाण्यात विरघळवून फवारावे.",
               Telugu: "5 కిలోల కట్టె బూడిద మరియు 5 లీటర్ల గోమూత్రం 100 లీటర్ల నీటిలో కలిపి పిచారీ చేయండి.",
-              Swahili: "Changanya jivu la kuni kilo 5 na mkojo wa ng'ombe lita 5 katika maji lita 100, kisha mwagilia."
+              Swahili: "Changanya jivu la kuni kilo 5 na mkojo wa ng'ombe lita 5 katika maji lita 100, kisha mwagilia.",
+              Zulu: "Hlanganisa 5kg wamalahle kanye nochago lwenkomo 5L emanzini 100L, bese ununyiza."
             }
           },
           "Aphids": {
@@ -375,14 +377,16 @@ class LocalDb {
               Hindi: "पत्तियों के नीचे छोटे हरे कीट रस चूसते हैं जिससे पत्तियां सिकुड़ जाती हैं।",
               Marathi: "पानांखालील बारीक हिरवे कीटक जे रस शोषून घेतात आणि पाने आकसतात.",
               Telugu: "ఆకుల క్రింద రసం పీల్చే చిన్న పచ్చటి పురుగులు.",
-              Swahili: "Wadudu wadogo wa kijani chini ya majani."
+              Swahili: "Wadudu wadogo wa kijani chini ya majani.",
+              Zulu: "Izinambuzane ezincane eziluhlaza ngaphansi kwamagxabi."
             },
             organic_remedy: {
               English: "Spray soap water emulsion mixed with crushed garlic extract onto the stems.",
               Hindi: "लहसुन के रस के साथ साबुन के पानी का घोल बनाकर तनों पर छिड़काव करें।",
               Marathi: "लसणाचा अर्क आणि साबणाच्या पाण्याचे द्रावण खोडांवर फवारावे.",
               Telugu: "వెల్లుల్లి రసం మరియు సబ్బు నీటి ద్రావణాన్ని కొమ్మలపై పిచికారీ చేయండి.",
-              Swahili: "Nyunyizia mchanganyiko wa maji ya sabuni na kitunguu saumu kilichosagwa."
+              Swahili: "Nyunyizia mchanganyiko wa maji ya sabuni na kitunguu saumu kilichosagwa.",
+              Zulu: "Nunyiza inhlanganisela yamanzi esabhuni kanye nesisuso segalikhi eshiqiwe emagxabenzi."
             }
           }
         }
@@ -407,14 +411,16 @@ class LocalDb {
               Hindi: "पत्तियों पर छोटे छिद्र और तनों में सुरंग जैसी क्षति।",
               Marathi: "पानांवर बारीक छिद्रे पडणे आणि खोडा पोखरले जाणे.",
               Telugu: "ఆకులపై రంధ్రాలు మరియు కాండం లోపల సొరంగం లాంటి నష్టం.",
-              Swahili: "Mashimo kwenye majani na uharibifu wa mashimo kwenye mashina."
+              Swahili: "Mashimo kwenye majani na uharibifu wa mashimo kwenye mashina.",
+              Zulu: "Amaphaphu emagxabini kanye nokulimala kwesiphango emagxabeni."
             },
             organic_remedy: {
               English: "Sprinkle dry wood ash or sand directly into the central leaf whorls to smother the larvae.",
               Hindi: "लार्वा को नष्ट करने के लिए सूखी लकड़ी की राख या सूखी रेत को सीधे पत्तियों के मध्य भाग में छिड़कें।",
               Marathi: "अळ्या गुदमरून मारण्यासाठी कोरडी लाकडी राख थेट पानाच्या पोंग्यात टाकावी.",
               Telugu: "లార్వాలను అణిచివేసేందుకు పొడి కట్టె బూడిదను నేరుగా ఆకుల మధ్య భాగంలో చల్లండి.",
-              Swahili: "Nyunyizia jivu la kuni kavu au mchanga moja kwa moja kwenye majani ili kuua mabuu."
+              Swahili: "Nyunyizia jivu la kuni kavu au mchanga moja kwa moja kwenye majani ili kuua mabuu.",
+              Zulu: "Thela amalahle omile noma usawoti ngqo emagxabeni aphakathi ukubulala amaphuphu."
             }
           },
           "Common Rust": {
@@ -423,14 +429,16 @@ class LocalDb {
               Hindi: "पत्तियों की दोनों सतहों पर लंबे सुनहरे-भूरे रंग के धब्बे।",
               Marathi: "पानांच्या दोन्ही बाजूंवर तांबूस पिवळसर लांबट फोड येणे.",
               Telugu: "ఆకు రెండు వైపులా పొడుగుపాటి బంగారు-గోధుమ రంగు మచ్చలు.",
-              Swahili: "Madoa marefu ya manjano-kahawia pande zote mbili za majani."
+              Swahili: "Madoa marefu ya manjano-kahawia pande zote mbili za majani.",
+              Zulu: "Amaphaphu amade ansundu-ogolide kumagxabi omabili."
             },
             organic_remedy: {
               English: "Spray neem oil solution (5ml/L) mixed with a mild soap surfactant.",
               Hindi: "हल्के साबुन के साथ नीम के तेल (5ml/L) के घोल का छिड़काव करें।",
               Marathi: "सौम्य साबण द्रावण आणि कडुनिंब तेल (५ मि.ली. प्रति लीटर) फवारावे.",
               Telugu: "వేప నూనె ద్రావణాన్ని (లీటరుకు 5 మి.లీ) సబ్బు నీటితో కలిపి పిచికారీ చేయండి.",
-              Swahili: "Nyunyizia mchanganyiko wa mafuta ya mwarobaini (5ml kwa kila lita) na sabuni kidogo."
+              Swahili: "Nyunyizia mchanganyiko wa mafuta ya mwarobaini (5ml kwa kila lita) na sabuni kidogo.",
+              Zulu: "Nunyiza isisuso sehafu yomthi (5ml/L) esihlanganiswe nesabhuni esithile."
             }
           }
         }

@@ -8,6 +8,7 @@ mcp = FastMCP("Translation-Server")
 MOCK_TRANSLATIONS = {
     "es": {"hello": "hola", "water": "agua", "corn": "maíz"},
     "sw": {"hello": "jambo", "water": "maji", "corn": "mahindi"},
+    "zu": {"hello": "sawubona", "water": "amanzi", "corn": "ummbila"},
 }
 
 

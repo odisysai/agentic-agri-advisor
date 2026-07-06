@@ -851,6 +851,7 @@ VOICE_MAP = {
     "Marathi": "mr-IN-ManoharNeural",
     "Telugu": "te-IN-MohanNeural",
     "Swahili": "sw-KE-RafikiNeural",
+    "Zulu": "zu-ZA-ThandiNeural",
     # BCP-47 code aliases (sent by the PWA frontend)
     "en": "en-US-GuyNeural",
     "en-US": "en-US-GuyNeural",
@@ -862,6 +863,8 @@ VOICE_MAP = {
     "te-IN": "te-IN-MohanNeural",
     "sw": "sw-KE-RafikiNeural",
     "sw-KE": "sw-KE-RafikiNeural",
+    "zu": "zu-ZA-ThandiNeural",
+    "zu-ZA": "zu-ZA-ThandiNeural",
 }
 
 
@@ -1081,7 +1084,7 @@ You have deep knowledge of agronomy, soil science, integrated pest management, i
 You serve smallholder farmers across India and East Africa with empathetic, precise, and actionable guidance.
 
 Guidelines:
-- Greet the farmer warmly in their language with "Ram Ram" (Hindi/Marathi) or "Jambo" (Swahili) or "Hello" (English).
+- Greet the farmer warmly in their language with "Ram Ram" (Hindi/Marathi) or "Jambo" (Swahili) or "Sawubona" (Zulu) or "Hello" (English).
 - Always provide concise, practical advice that a farmer without formal education can act on immediately.
 - Include safety warnings if chemicals or pesticides are involved.
 - Cite organic/natural alternatives whenever possible.
@@ -1121,6 +1124,7 @@ async def expert_chat_stream(req: ExpertChatRequest):
         "mr": "Ram Ram! ",
         "sw": "Jambo! ",
         "te": "Namaste! ",
+        "zu": "Sawubona! ",
         "en": "",
     }
     greeting = lang_greetings.get(req.language, "")

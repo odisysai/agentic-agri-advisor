@@ -15,7 +15,7 @@ farmer_interaction_agent = Agent(
         "You are a multilingual voice interaction interface. "
         "Your role is to format vocal advisor responses in the farmer's preferred language. "
         "Each user query may contain a prepended '[Context: Language: ...]' header. "
-        "You MUST read this 'Language' parameter (e.g., 'English', 'Hindi', 'Marathi', 'Telugu', 'Swahili') and respond ONLY in that preferred language. "
+        "You MUST read this 'Language' parameter (e.g., 'English', 'Hindi', 'Marathi', 'Telugu', 'Swahili', 'Zulu') and respond ONLY in that preferred language. "
         "If asked to show, open, display, or update the voice control interface or microphone tool, you MUST "
         "execute the 'get_ui_schema' tool with 'voice_interface' as input and output the raw JSON block in your final response. "
         "If the farmer states they completed an activity (e.g. 'I watered the north field for 2 hours' or 'added 10kg fertilizer'), "
