@@ -535,12 +535,31 @@
     }
   }
 
+  // Update the how-it-works image based on selected language
+  const HOW_IT_WORKS_IMAGES = {
+    'en': '/assets/how-it-works-content.png?v=2',
+    'hi': '/assets/how-it-works-content-hindi.png?v=1',
+    'mr': '/assets/how-it-works-content-marathi.png?v=1',
+    'te': '/assets/how-it-works-content-telugu.png?v=1',
+    'sw': '/assets/how-it-works-content-swahili.png?v=1'
+  };
+
+  function updateHowItWorksImage(lang) {
+    const image = document.getElementById('how-it-works-image');
+    if (!image) return;
+    const newSrc = HOW_IT_WORKS_IMAGES[lang] || HOW_IT_WORKS_IMAGES['en'];
+    if (image.src.indexOf(newSrc) === -1) {
+      image.src = newSrc;
+    }
+  }
+
   function setLanguage(lang) {
     currentLang = TRANSLATIONS[lang] ? lang : 'en';
     document.documentElement.lang = currentLang;
     if (languageSelector) languageSelector.value = currentLang;
     localStorage.setItem('aaa_preferred_language', currentLang);
     applyTranslations();
+    updateHowItWorksImage(currentLang);
   }
 
   function openGuestModal() {

@@ -6,10 +6,10 @@
   <title>Krishi Sampark - Traditional Agriculture Advisor</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#2C6B37">
-  <link rel="stylesheet" href="/agui/styles.css?v=9">
+  <link rel="stylesheet" href="/agui/styles.css?v=10">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
   <script src="/device.js?v=1"></script>
-  <script>window.SCHEMA_VERSION = 7;</script>
+  <script>window.SCHEMA_VERSION = 8;</script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="light-theme">
@@ -321,24 +321,30 @@
       </main>
 
       <!-- GLOBAL BOTTOM NAVIGATION BAR (mobile only) -->
-      <nav class="bottom-nav-bar">
-        <a href="#" data-tab="home" class="nav-tab active">
+      <nav class="bottom-nav-bar" aria-label="Bottom Navigation">
+        <a href="#" data-tab="home" class="nav-tab active" aria-label="Home">
           <span class="nav-icon">🏠</span>
           <span class="nav-label" data-tr="nav_home">Home</span>
         </a>
-        <a href="#" data-tab="farm" class="nav-tab">
+        <a href="#" data-tab="farm" class="nav-tab" aria-label="My Farm">
           <span class="nav-icon">🌱</span>
           <span class="nav-label" data-tr="nav_farm">My Farm</span>
         </a>
-        <a href="#" data-tab="chat" class="nav-tab nav-tab-center">
-          <div class="nav-mic-bubble">
-            <span class="nav-icon mic-icon">💬</span>
-          </div>
-          <span class="nav-label" data-tr="nav_ask">Chat</span>
+        <a href="#" data-tab="ask" class="nav-tab" aria-label="Ask">
+          <span class="nav-icon">💬</span>
+          <span class="nav-label" data-tr="nav_ask">Ask</span>
         </a>
-        <a href="#" data-tab="market" class="nav-tab">
+        <a href="#" data-tab="image" class="nav-tab" aria-label="Photo Check">
+          <span class="nav-icon">📷</span>
+          <span class="nav-label" data-tr="nav_image">Photo</span>
+        </a>
+        <a href="#" data-tab="market" class="nav-tab" aria-label="Market Prices">
           <span class="nav-icon">📈</span>
           <span class="nav-label" data-tr="nav_market">Market</span>
+        </a>
+        <a href="#" data-tab="more" class="nav-tab" aria-label="More">
+          <span class="nav-icon">📋</span>
+          <span class="nav-label" data-tr="nav_more">More</span>
         </a>
       </nav>
 
@@ -381,7 +387,7 @@
   <!-- Toast Notification Container -->
   <div id="toast-container" class="toast-container"></div>
 
-  <script src="/a2ui/app.js?v=2"></script>
+  <script src="/a2ui/app.js?v=3"></script>
   <script src="/agui/panel_router.js"></script>
   <script src="/agui/translations.js?v=6"></script>
   <script src="/agui/voice.js?v=6"></script>

@@ -65,6 +65,36 @@
           "icon": "ℹ️",
           "descriptionKey": "more.items.help.desc",
           "commandId": "APP_HELP"
+        },
+        {
+          "labelKey": "more.items.soil.label",
+          "icon": "🧪",
+          "descriptionKey": "more.items.soil.desc",
+          "commandId": "NAVIGATE_SOIL"
+        },
+        {
+          "labelKey": "more.items.irrigation.label",
+          "icon": "💧",
+          "descriptionKey": "more.items.irrigation.desc",
+          "commandId": "NAVIGATE_IRRIGATION"
+        },
+        {
+          "labelKey": "more.items.expert.label",
+          "icon": "🧑‍🔬",
+          "descriptionKey": "more.items.expert.desc",
+          "commandId": "NAVIGATE_EXPERT"
+        },
+        {
+          "labelKey": "more.items.theme.label",
+          "icon": "🌙",
+          "descriptionKey": "more.items.theme.desc",
+          "commandId": "TOGGLE_THEME"
+        },
+        {
+          "labelKey": "more.items.logout.label",
+          "icon": "🚪",
+          "descriptionKey": "more.items.logout.desc",
+          "commandId": "LOGOUT"
         }
       ]
     }

@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Krishi Sampark</title>
-  <link rel="stylesheet" href="/landing.css?v=53" />
+  <link rel="stylesheet" href="/landing.css?v=54" />
   <script src="/device.js?v=1"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -112,7 +112,7 @@
         <img
           id="how-it-works-image"
           class="how-image"
-          src="/assets/how-it-works-content.png?v=1"
+          src="/assets/how-it-works-content.png?v=2"
           alt="How it works in three steps"
           loading="lazy"
         />
@@ -212,14 +212,7 @@
         </div>
         <div class="guest-form-field">
           <label for="guest-region" data-i18n="landing.auth.regionLabel">Location</label>
-          <select id="guest-region">
-            <option value="" data-i18n="landing.auth.selectPlaceholder">Select your region</option>
-            <option value="Nagpur District">Nagpur District (Maharashtra)</option>
-            <option value="Pune District">Pune District (Maharashtra)</option>
-            <option value="Indore District">Indore District (Madhya Pradesh)</option>
-            <option value="Hyderabad District">Hyderabad District (Telangana)</option>
-            <option value="Rift Valley Region">Rift Valley Region (Kenya)</option>
-          </select>
+          <input id="guest-region" type="text" placeholder="e.g. Nagpur, Maharashtra" />
         </div>
         <div class="guest-form-field">
           <label for="guest-soil" data-i18n="landing.auth.soilLabel">Soil Type</label>
@@ -253,6 +246,6 @@
     </div>
   </div>
 
-  <script src="/landing.js?v=14"></script>
+  <script src="/landing.js?v=15"></script>
 </body>
 </html>

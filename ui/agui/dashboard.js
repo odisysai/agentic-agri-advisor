@@ -461,6 +461,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Active Screen / Tab Controller
   window.switchTab = function(tabId, skipLoadSchema, persistRoute = true) {
+    // Mark that user has interacted — cancel any pending startup onboarding
+    window._startupOnboardingCheckDone = true;
 
     // Save route selection
     if (persistRoute) {
@@ -477,8 +479,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (menuToggle) menuToggle.focus();
     }
 
-    // 'chat' tab opens the chat pane on mobile (does not switch content)
-    if (tabId === 'chat') {
+    // 'ask' tab opens the chat pane on mobile (does not switch content)
+    if (tabId === 'ask') {
       const chatPane = document.getElementById('chat-pane');
       if (chatPane) chatPane.classList.add('open');
       const chatMessages = document.getElementById('chat-messages');
@@ -789,6 +791,25 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (action === 'NAVIGATE_SIMULATOR') {
       window.switchTab('more');
       setTimeout(() => loadSchema('simulation', 'more-canvas'), 150);
+    } else if (action === 'NAVIGATE_SOIL') {
+      window.switchTab('soil');
+    } else if (action === 'NAVIGATE_IRRIGATION') {
+      window.switchTab('farm');
+      setTimeout(() => loadSchema('irrigation_planner', 'farm-canvas'), 150);
+    } else if (action === 'NAVIGATE_EXPERT') {
+      window.switchTab('ask');
+    } else if (action === 'TOGGLE_THEME') {
+      const body = document.body;
+      if (body.classList.contains('dark-theme')) {
+        body.classList.remove('dark-theme');
+        body.classList.add('light-theme');
+      } else {
+        body.classList.remove('light-theme');
+        body.classList.add('dark-theme');
+      }
+    } else if (action === 'LOGOUT') {
+      fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+        .then(() => { window.location.href = '/'; });
     }
   });
   // Translations loaded from translations.js
@@ -1391,178 +1412,111 @@ document.addEventListener('DOMContentLoaded', () => {
     const langCode = window.currentLanguageState?.code || 'en';
     const preferredLang = window.currentLanguageState?.displayName || 'English';
 
-    // When online, always use the cloud agent for best quality.
-    // When offline, use local OKF knowledge cache + rule-based responses.
-    if (!navigator.onLine) {
-      console.log(`[Triage] Offline — routing to local OKF knowledge.`);
-      const thinkingBubble = appendMessage('Krishi Sastri', 'Thinking...', 'thinking-msg');
-      handleAdvisorLocalAnswer(text, langCode, thinkingBubble);
-      return;
-    }
-
+    // Krishi Sastri always uses local knowledge (OKF + rule-based + Gemma if available)
+    // Only Krishi Visheshagya (Expert) uses cloud Gemini
+    console.log(`[Triage] Routing to local Krishi Sastri (OKF + rule-based).`);
     const thinkingBubble = appendMessage('Krishi Sastri', 'Thinking...', 'thinking-msg');
+    handleAdvisorLocalAnswer(text, langCode, thinkingBubble);
+    return;
+  }
 
-    // Context Enrichment: Grab the saved profile and prepend it to the text payload!
+  // Detect if a query is too complex for local knowledge and needs expert escalation
+  function isComplexQuery(text) {
+    const lower = text.toLowerCase();
+    // Complex keywords that indicate the query needs expert/cloud analysis
+    const complexKeywords = [
+      'disease', 'रोग', 'बीमारी', 'వ్యాధి', 'magonjwa',
+      'pest', 'कीट', 'कीड़ा', 'తెగులు', 'wadudu',
+      'fungus', 'फफूंद', 'कवक', 'శిలీంధ్రం', 'ukaugaji',
+      'chemical', 'रसायन', 'రసాయన', 'kemikali',
+      'pesticide', 'कीटनाशक', 'పురుగుమందు', 'dawa ya wadudu',
+      'fertilizer dose', 'खाद मात्रा', 'ఎరువు మోతాదు', 'kipimo cha mbolea',
+      'diagnosis', 'निदान', 'రోగ నిర్ధారణ', 'ugunduzi',
+      'yellow leaves', 'पीली पत्तियाँ', 'पीले पत्ते', 'పసుపు ఆకులు', 'majani manjano',
+      'wilting', 'मुरझान', 'వాడిపోవడం', 'kukauka',
+      'blight', 'झुलसन', 'మంట వ్యాధి', 'madoa',
+      'rust', 'रतुआ', 'తుప్పు', 'kutu',
+      'unknown', 'पहचान नहीं', 'గుర్తించలేని', 'sitambui'
+    ];
+    return complexKeywords.some(kw => lower.includes(kw));
+  }
+
+  // Offer to escalate a complex query to the cloud Expert (Krishi Visheshagya)
+  function offerExpertEscalation(originalQuery, langCode) {
+    const escalationMessages = {
+      'en': { text: 'This seems like a complex issue. Shall I send this to Krishi Visheshagya (Expert) for deeper analysis?', yes: 'Yes, ask the Expert', no: 'No, thanks' },
+      'hi': { text: 'यह एक जटिल समस्या लग रही है। क्या मैं इसे कृषि विशेषज्ञ को गहन विश्लेषण के लिए भेजूँ?', yes: 'हाँ, विशेषज्ञ से पूछें', no: 'नहीं, ठीक है' },
+      'mr': { text: 'ही एक गुंतागुंतीची समस्या वाटते. मी हे कृषी तज्ज्ञांकडे सविस्तर विश्लेषणासाठी पाठवू?', yes: 'होय, तज्ज्ञांना विचारा', no: 'नाही, ठीक आहे' },
+      'te': { text: 'ఇది క్లిష్టమైన సమస్య అనిపిస్తోంది. నేను దీన్ని నిపుణుడికి సవివర విశ్లేషణ కోసం పంపాలా?', yes: 'అవును, నిపుణుడిని అడగండి', no: 'లేదు, సరే' },
+      'sw': { text: 'Hii inaonekana kuwa tatizo linalochanganya. Nielekeze kwa mtaalamu kwa uchambuzi wa kina?', yes: 'Ndiyo, uliza mtaalamu', no: 'Hapana, asante' }
+    };
+    const msg = escalationMessages[langCode] || escalationMessages['en'];
+
+    // Create escalation message with action buttons
+    const escalationHtml = `
+      <div style="margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:var(--radius-m);background:rgba(44,107,55,0.05);">
+        <p style="margin:0 0 8px;font-size:0.9rem;color:var(--text-sub);">${msg.text}</p>
+        <div style="display:flex;gap:8px;">
+          <button id="escalate-yes-btn" class="a2ui-btn" style="width:auto;padding:6px 14px;font-size:0.85rem;">${msg.yes}</button>
+          <button id="escalate-no-btn" class="a2ui-btn ghost" style="width:auto;padding:6px 14px;font-size:0.85rem;">${msg.no}</button>
+        </div>
+      </div>
+    `;
+
+    const escalationMsg = appendMessage('Krishi Sastri', escalationHtml, 'agent-msg');
+    if (escalationMsg) {
+      const textContainer = escalationMsg.querySelector('.message-text') || escalationMsg;
+      textContainer.innerHTML = escalationHtml;
+
+      // Bind buttons
+      const yesBtn = textContainer.querySelector('#escalate-yes-btn');
+      const noBtn = textContainer.querySelector('#escalate-no-btn');
+
+      if (yesBtn) {
+        yesBtn.addEventListener('click', () => {
+          // Navigate to Expert screen and send the query
+          escalationMsg.remove();
+          delegateToExpert(originalQuery, langCode);
+        });
+      }
+      if (noBtn) {
+        noBtn.addEventListener('click', () => {
+          escalationMsg.remove();
+        });
+      }
+    }
+  }
+
+  // Delegate a query to the cloud Expert (Krishi Visheshagya)
+  async function delegateToExpert(originalQuery, langCode) {
+    // Switch to Ask tab (Expert screen)
+    window.switchTab('ask');
+
+    // Prepare a well-structured query for the expert
     const savedProfile = localStorage.getItem('aaa_farmer_profile');
-    let textToSend = text;
+    let expertQuery = originalQuery;
+    let context = '';
     if (savedProfile) {
       try {
         const profile = JSON.parse(savedProfile);
-        textToSend = `[Context: Farmer Name: ${profile.farmer_name || 'unnamed'}, Language: ${langCode}, Location: ${profile.region}, Acres: ${profile.acres}, Soil: ${profile.soil_type}, Crop: ${profile.primary_crop}, Drip Irrigation: ${profile.has_drip}]
-
-${text}`;
-      } catch (e) {
-        textToSend = `[Context: Language: ${langCode}]
-
-${text}`;
-      }
-    } else {
-      textToSend = `[Context: Language: ${langCode}]
-
-${text}`;
+        context = `Farmer: ${profile.farmer_name || 'Unknown'}, Crop: ${profile.primary_crop || 'Unknown'}, Soil: ${profile.soil_type || 'Unknown'}, Acres: ${profile.acres || 'Unknown'}, Region: ${profile.region || 'Unknown'}`;
+      } catch (e) { /* ignore */ }
     }
 
-    try {
-      const activeSessionId = await getSessionId();
-      const baseUrl = window.ADK_BACKEND_URL ?? '';
-      const appName = window.ADK_APP_NAME ?? 'agents';
-      const response = await fetch(`${baseUrl}/run_sse`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          app_name: appName,
-          user_id: 'user',
-          session_id: activeSessionId,
-          new_message: {
-            parts: [{ text: textToSend }]
-          },
-          streaming: true
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Agent response error: ${response.statusText}`);
+    // Show the expert chat with the prepared query
+    const userInputField = document.getElementById('user-input-field');
+    if (userInputField) {
+      // Pre-fill the input with the original query
+      userInputField.value = originalQuery;
+      // Trigger the expert send
+      if (typeof sendExpertMessage === 'function') {
+        sendExpertMessage();
+      } else if (typeof handleSend === 'function') {
+        handleSend();
       }
-
-      thinkingBubble.remove();
-
-      const responseMsg = appendMessage('Krishi Sastri', '', 'agent-msg');
-      const textContainer = responseMsg ? responseMsg.querySelector('.message-text') : null;
-      if (!textContainer) return;
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let fullResponseText = '';
-
-      function getStreamingCleanText(text) {
-        if (!text) return "";
-        const fenceIndex = text.indexOf('```json');
-        if (fenceIndex !== -1) {
-          return text.substring(0, fenceIndex).trim();
-        }
-        const cardIndex = text.indexOf('"type": "card"');
-        if (cardIndex !== -1) {
-          const sub = text.substring(0, cardIndex);
-          const braceIndex = sub.lastIndexOf('{');
-          if (braceIndex !== -1) {
-            return text.substring(0, braceIndex).trim();
-          }
-        }
-        return text;
-      }
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop();
-
-        for (const line of lines) {
-          if (line.trim().startsWith('data: ')) {
-            try {
-              const eventData = JSON.parse(line.trim().substring(6));
-              if (eventData.content && eventData.content.parts) {
-                if (eventData.partial === false) {
-                  let consolidatedText = "";
-                  for (const part of eventData.content.parts) {
-                    if (part.text) {
-                      consolidatedText += part.text;
-                    }
-                  }
-                  if (consolidatedText) {
-                    fullResponseText = consolidatedText;
-                  }
-                } else {
-                  for (const part of eventData.content.parts) {
-                    if (part.text) {
-                      fullResponseText += part.text;
-                    }
-                  }
-                }
-                const cleaned = getStreamingCleanText(fullResponseText);
-                if (cleaned.trim().startsWith('{') || cleaned.includes('"recommendation"')) {
-                  textContainer.innerHTML = getPreparingAdvisoryMsg(langCode);
-                } else {
-                  textContainer.innerHTML = markdownToHtml(cleaned);
-                }
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-              }
-            } catch (err) {
-              // Ignore
-            }
-          }
-        }
-      }
-
-      const cleanResponse = getStreamingCleanText(fullResponseText).trim();
-      let isStructured = false;
-      try {
-        const extracted = extractJsonContent(cleanResponse);
-        const parsed = JSON.parse(extracted);
-        if (parsed && typeof parsed === 'object' && parsed.recommendation !== undefined) {
-          isStructured = true;
-          renderStructuredResponse(parsed, textContainer, responseMsg);
-          // Auto-speak if voice output is enabled (header toggle)
-          if (localStorage.getItem('tts_enabled') !== 'false') {
-            speakText(parsed.recommendation + (parsed.question ? " " + parsed.question : ""));
-          }
-        }
-      } catch (err) {
-        // Fall back to standard rendering
-      }
-
-      if (!isStructured) {
-        textContainer.innerHTML = markdownToHtml(cleanResponse);
-        // Auto-speak if voice output is enabled (header toggle)
-        if (localStorage.getItem('tts_enabled') !== 'false') {
-          speakText(cleanResponse);
-        }
-      }
-
-      const renderedInline = detectAndRenderA2UI(fullResponseText);
-
-      if (!renderedInline && window.panelRouter) {
-        const targetSchema = window.panelRouter.routeIntent(fullResponseText);
-        if (targetSchema) {
-          // Render schema in the content pane — chat stays open in the right pane
-          loadSchema(targetSchema);
-          showToast("Panel Updated", `${targetSchema.replace('_', ' ')} loaded in content panel.`, "info");
-        }
-      }
-
-      if (fullResponseText.toLowerCase().includes('outbreak') || fullResponseText.toLowerCase().includes('disease')) {
-        showToast("Pest Warning", "Regional active disease risk detected on leaf samples.", "danger");
-      } else if (fullResponseText.toLowerCase().includes('water') && fullResponseText.toLowerCase().includes('critical')) {
-        showToast("Irrigation Alert", "Soil moisture dropping below critical limit. Watering advised.", "warning");
-      }
-
-    } catch (err) {
-      console.warn("ADK server fetch failed. Falling back to offline AI mode.", err);
-      handleOfflineSend(text, langCode, thinkingBubble);
     }
+
+    showToast("Sent to Expert", "Your question has been sent to Krishi Visheshagya for deeper analysis.", "info");
   }
 
   // Advisor mode local answer — searches OKF cache in IndexedDB first
@@ -1640,6 +1594,14 @@ ${text}`;
     // Speak the response if TTS is enabled
     if (typeof window.speakText === 'function') {
       window.speakText(reply);
+    }
+
+    // Check if the query is complex and offer escalation to Expert
+    if (isComplexQuery(text)) {
+      // Add escalation prompt after the local response
+      setTimeout(() => {
+        offerExpertEscalation(text, preferredLang);
+      }, 1000);
     }
 
     // Load relevant schema if pest/irrigation mentioned
@@ -1917,7 +1879,11 @@ ${text}`;
       }).catch(e => console.warn('[Onboarding] fetchFieldsAndProfile failed:', e));
     } else {
       // Check if the user has no fields (e.g., Google login with empty profile)
+      // Only run this check once at startup — don't override user actions later
+      window._startupOnboardingCheckDone = false;
       fetchFieldsAndProfile().then(() => {
+        if (window._startupOnboardingCheckDone) return;
+        window._startupOnboardingCheckDone = true;
         if (activeFields.length === 0) {
           localStorage.removeItem('nav_route_user');
           setTimeout(() => {
