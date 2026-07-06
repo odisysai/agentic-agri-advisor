@@ -19,6 +19,18 @@
           "commandId": "NAVIGATE_PROFILE"
         },
         {
+          "labelKey": "more.items.fields.label",
+          "icon": "🌱",
+          "descriptionKey": "more.items.fields.desc",
+          "commandId": "NAVIGATE_FIELDS"
+        },
+        {
+          "labelKey": "more.items.addfield.label",
+          "icon": "➕",
+          "descriptionKey": "more.items.addfield.desc",
+          "commandId": "ADD_FIELD_FROM_MORE"
+        },
+        {
           "labelKey": "more.items.history.label",
           "icon": "📜",
           "descriptionKey": "more.items.history.desc",

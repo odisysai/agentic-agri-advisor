@@ -1,7 +1,7 @@
 {
   "type": "card",
-  "titleKey": "onboarding.title",
-  "subtitleKey": "onboarding.subtitle",
+  "titleKey": "addfield.title",
+  "subtitleKey": "addfield.subtitle",
   "theme": "primary",
   "components": [
     {
@@ -9,43 +9,7 @@
       "fields": [
         {
           "type": "text",
-          "name": "farmer_name",
-          "labelKey": "onboarding.fields.name.label",
-          "placeholderKey": "onboarding.fields.name.placeholder",
-          "value": ""
-        },
-        {
-          "type": "select",
-          "name": "preferred_language",
-          "labelKey": "onboarding.fields.language.label",
-          "options": [
-            {"value": "English", "label": "English"},
-            {"value": "Hindi", "label": "हिन्दी (Hindi)"},
-            {"value": "Marathi", "label": "मराठी (Marathi)"},
-            {"value": "Telugu", "label": "తెలుగు (Telugu)"},
-            {"value": "Swahili", "label": "Kiswahili (Swahili)"}
-          ]
-        },
-        {
-          "type": "text",
-          "name": "region",
-          "labelKey": "onboarding.fields.region.label",
-          "placeholderKey": "onboarding.fields.region.placeholder",
-          "value": ""
-        }
-      ]
-    },
-    {
-      "type": "header",
-      "titleKey": "onboarding.field1.title",
-      "subtitleKey": "onboarding.field1.subtitle"
-    },
-    {
-      "type": "form",
-      "fields": [
-        {
-          "type": "text",
-          "name": "field1_name",
+          "name": "field_name",
           "labelKey": "onboarding.fields.fieldname.label",
           "placeholderKey": "onboarding.fields.fieldname.placeholder",
           "value": ""
@@ -92,13 +56,13 @@
       "type": "buttons",
       "items": [
         {
-          "labelKey": "onboarding.action.save",
-          "commandId": "SAVE_ONBOARDING_PROFILE",
+          "labelKey": "addfield.action.save",
+          "commandId": "SAVE_ADDITIONAL_FIELD",
           "variant": "primary"
         },
         {
-          "labelKey": "onboarding.action.addfield",
-          "commandId": "ADD_FIELD_ONBOARDING",
+          "labelKey": "addfield.action.cancel",
+          "commandId": "CANCEL_ADD_FIELD",
           "variant": "ghost"
         }
       ]

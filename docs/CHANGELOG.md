@@ -4,6 +4,55 @@ This document maintains a running history of all architectural upgrades, bug fix
 
 ---
 
+## 📅 July 06, 2026
+
+### 1. 🎨 Landing Page Redesign & Multilingual Support
+*   **Full multilingual landing page (`ui/landing.js`):** Replaced placeholder translation stubs (`[HI]`, `[MR]`, `[TE]`, `[SW]` prefixes) with real translations for all 5 languages (Hindi, Marathi, Telugu, Swahili) covering every `data-i18n` key on the landing page — header nav, hero, feature cards, how-it-works, trust strip, footer, and guest modal.
+*   **Guest onboarding form (`ui/index.html`, `ui/landing.js`):** Expanded the guest login modal to collect minimum farm info: Name (required), Email (optional), Location (free-form text, required), Soil Type (required), Field Size in Acres (required), Primary Crop (required). Removed the "Skip" button — users must provide info. Profile is saved via `/api/profile/user` after guest login, redirecting directly to `/app/home`.
+*   **Hero section cleanup:** Removed floating chips (🎙️ Voice, 📷 Photo, 📈 Market) that were covering the hero image. Made the "Works even with limited internet" panel semi-transparent (55% opacity) and narrower (230px) so the hero image is clearly visible.
+*   **Language persistence:** Landing page now restores saved language from `localStorage('aaa_preferred_language')` instead of always defaulting to English.
+
+### 2. 📱 Responsive Design & Device Adaptation
+*   **Shared device detection (`ui/device.js` — new):** Created a lightweight utility that classifies viewport as mobile (<768px), tablet (768–1023px), or desktop (≥1024px). Detects orientation, touch capability, connection type. Sets `data-device`, `data-orientation`, `data-touch` attributes on `<html>` for CSS targeting. Emits `device:change` event on viewport transitions.
+*   **Hamburger menu (`ui/index.html`, `ui/landing.css`, `ui/landing.js`):** Added slide-in nav drawer for tablet/mobile (≤900px). Hamburger button with animated icon (three lines → X). Backdrop overlay to close drawer. Replaces the hidden nav links.
+*   **Fluid typography & spacing (`ui/landing.css`):** All headings use `clamp()` for smooth scaling. Auto-fit grids (`repeat(auto-fit, minmax(min(100%, 280px), 1fr))`) for feature cards and trust strip. Fluid padding with `clamp()`.
+*   **Internal app responsive improvements (`ui/agui/styles.css`):** Fluid chat pane width (`clamp(300px, 32vw, 420px)`). Fluid content padding (`clamp(0.75rem, 2vw, 1.5rem)`). Touch optimizations via `@media (pointer: coarse)` ensuring 44px minimum tap targets. Desktop fine-tuning for ≥1400px.
+*   **PWA manifest fix (`ui/manifest.webmanifest`):** Changed `orientation` from `"portrait-primary"` to `"any"` to allow landscape on tablets. Added `viewport-fit=cover` meta tag for notch support.
+*   **Design documentation (`docs/03-design/responsive-design.md` — new):** Comprehensive document covering device detection, breakpoints, fluid patterns, layout diagrams, touch optimizations, theme system, and verification results. Updated `navigation-and-screen-flow.md` and `farmer-ux-guidelines.md` with cross-references.
+
+### 3. 🌗 Light Theme Overhaul
+*   **Default theme switched to light (`ui/agui/index.html`, `ui/agui/styles.css`):** Changed body class from `dark-theme` to `light-theme`. Updated CSS variables: warm cream background (`#f5f7f4`), white cards, softer borders, larger border radius (20px), softer shadows. Green gradient header (`linear-gradient(135deg, #2C6B37, #4CAF50)`). White text on header. Frosted glass language selector. Dark theme still available via 🌙 toggle.
+*   **Removed phone bezel:** Mobile shell is now full-width with no border/radius/shadow — fills the entire viewport.
+
+### 4. 📝 Multi-Field Onboarding & Field Management
+*   **Enhanced onboarding schema (`ui/schemas/farmer_onboarding.json`):** Split into two sections: farmer profile (name, language, region as free-form text) and first field (field name, acres, soil, crop, irrigation type). Added "Add Another Field" button alongside "Save & Start Advising".
+*   **Add field schema (`ui/schemas/add_field.json` — new):** Form for adding additional fields with field name, acres, soil, crop, irrigation. "Save Field" button saves and re-shows the form for more fields. "Done — Go to Dashboard" button finishes.
+*   **More screen field management (`ui/schemas/more_screen.json`):** Added "🌱 My Fields" option (shows list of all fields with edit buttons) and "➕ Add New Field" option (opens add-field form directly).
+*   **Field list view (`ui/agui/dashboard.js`):** `renderFieldsList()` function lists all fields with name, crop, acres, soil. Each field has an Edit button. Add New Field button at bottom. Shows empty state message if no fields.
+*   **Action handlers (`ui/agui/dashboard.js`):** `ADD_FIELD_ONBOARDING`, `SAVE_ADDITIONAL_FIELD`, `CANCEL_ADD_FIELD`, `NAVIGATE_FIELDS`, `ADD_FIELD_FROM_MORE`, `EDIT_FIELD`.
+*   **Onboarding flow fix:** Google users with no fields are now automatically prompted with the onboarding form. Fixed race condition where `savedRoute` restoration and `switchTab('home')` calls were overriding the onboarding tab switch. Skipped `savedRoute` restoration when on `/onboarding` route.
+
+### 5. 🌍 Translation Fixes
+*   **Duplicate label fix (`ui/agui/translations.js`):** Fixed all onboarding field labels in Hindi (खेत), Marathi (शेत), Telugu (పొలం), and Swahili (shamba) that were all set to the word for "field" instead of proper translations. Each label now has the correct translated value (e.g., "आपका नाम" for Your Name, "पसंदीदा भाषा" for Preferred Language, etc.).
+*   **Missing onboarding keys:** Added `onboarding.title`, `onboarding.subtitle`, `onboarding.field1.title`, `onboarding.field1.subtitle`, `onboarding.fields.fieldname.*`, `onboarding.fields.irrigation.*`, `onboarding.action.addfield`, `addfield.*` to all 4 non-English language sections.
+*   **More screen items:** Added `more.items.fields.label/desc`, `more.items.addfield.label/desc`, `fields.action.edit`, `fields.empty` to all 5 languages.
+*   **Region placeholder:** Added `onboarding.fields.region.placeholder` to all 5 languages.
+*   **Language switch schema reload:** Fixed language selector to check both bottom nav (mobile) and left nav (desktop) for active tab. Added `currentSchemaName` tracking so the correct schema (e.g., `farmer_onboarding` instead of `more_screen`) is reloaded when language changes.
+
+### 6. 🔧 A2UI Renderer Fixes
+*   **Form field type support (`ui/a2ui/app.js`):** Added support for `"type": "text"` and `"type": "number"` field types in the form renderer (previously only `"type": "select"` and `"type": "input"` were handled — text and number fields were silently skipped, showing only labels without input fields).
+*   **Buttons component (`ui/a2ui/app.js`):** Added support for `"type": "buttons"` (plural) which renders multiple buttons from an `items` array with `commandId` actions and `variant` styling (primary/ghost). Previously only `"type": "button"` (singular) was supported.
+*   **Select value fix (`ui/a2ui/app.js`):** Fixed select option values to use the raw `optionValue` instead of `String(optionValue).toLowerCase()` which was causing mismatched values for options like "Black Clay (Cotton Soil)".
+*   **Ghost button styling (`ui/agui/styles.css`):** Added `.a2ui-btn.ghost` class with panel background, border, and no shadow.
+
+### 7. 🐛 Critical Bug Fixes
+*   **`updateActiveTabHighlight` race condition:** Fixed `loadSchema` to skip `updateActiveTabHighlight` when an explicit `targetCanvasId` is provided. Previously, `loadSchema('add_field', 'more-canvas')` would render the form, then call `updateActiveTabHighlight` which called `switchTab('more', true)`, causing a race condition that loaded the farm/telemetry schema instead of the add-field form.
+*   **Schema-to-tab mapping:** Added `farmer_onboarding` and `add_field` to `updateActiveTabHighlight`'s 'more' tab mapping (was defaulting to 'home', causing the tab to switch back after onboarding loaded).
+*   **Duplicate card title:** Removed duplicate `titleKey` from card level in `farmer_onboarding.json` and `add_field.json` (was rendering the title twice — once from the card and once from the header component).
+*   **Schema cache busting:** Added `window.SCHEMA_VERSION` variable and bumped versions to force browser to reload updated schema JSON files.
+
+---
+
 ## 📅 July 01, 2026
 
 ### 1. 🧠 Progressive Web App (PWA) & Offline Capability

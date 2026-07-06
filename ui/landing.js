@@ -686,14 +686,39 @@
     await routeAfterSession();
   }
 
+  let googleClientId = null;
+  let googleInitialized = false;
+
   function promptGoogle() {
     if (authStatus) authStatus.textContent = getText('landing.auth.signingInSecurely');
+    if (!googleInitialized || !window.google?.accounts?.id) {
+      // Google script not loaded yet or not initialized — try to initialize first
+      if (googleClientId && window.google?.accounts?.id) {
+        google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: async (resp) => {
+            if (!resp || !resp.credential) {
+              if (authStatus) authStatus.textContent = '';
+              return;
+            }
+            await googleLogin(resp.credential);
+          }
+        });
+        googleInitialized = true;
+      } else {
+        // Google script not loaded — show alert
+        if (authStatus) authStatus.textContent = '';
+        alert('Google sign-in is not available. Please continue as guest.');
+        return;
+      }
+    }
     window.google?.accounts?.id?.prompt();
   }
 
   function renderGoogleButtons(clientId) {
     if (!window.google?.accounts?.id || !clientId) return;
 
+    googleClientId = clientId;
     google.accounts.id.initialize({
       client_id: clientId,
       callback: async (resp) => {
@@ -704,6 +729,7 @@
         await googleLogin(resp.credential);
       }
     });
+    googleInitialized = true;
 
     const buttonTargets = [
       document.getElementById('hero-google-btn'),
@@ -732,7 +758,16 @@
     if (!configRes.ok) return;
     const config = await configRes.json();
     if (config?.enabled && config?.client_id) {
-      renderGoogleButtons(config.client_id);
+      googleClientId = config.client_id;
+      // Wait for Google script to load, then render buttons
+      const tryRender = (retries = 10) => {
+        if (window.google?.accounts?.id) {
+          renderGoogleButtons(config.client_id);
+        } else if (retries > 0) {
+          setTimeout(() => tryRender(retries - 1), 300);
+        }
+      };
+      tryRender();
     }
   }
 

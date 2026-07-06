@@ -499,6 +499,18 @@ body {
   box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
 }
 
+.a2ui-btn.ghost {
+  background: var(--panel-bg);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.a2ui-btn.ghost:hover {
+  border-color: var(--accent);
+  box-shadow: var(--m3-glow);
+}
+
 /* Lists */
 .a2ui-list {
   display: flex;

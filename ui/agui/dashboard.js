@@ -461,7 +461,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Active Screen / Tab Controller
   window.switchTab = function(tabId, skipLoadSchema, persistRoute = true) {
-    console.log(`[Navigation] Switching to screen tab: ${tabId}`);
 
     // Save route selection
     if (persistRoute) {
@@ -775,6 +774,18 @@ document.addEventListener('DOMContentLoaded', () => {
       const hasFields = Array.isArray(activeFields) && activeFields.length > 0;
       const profileSchema = (!hasSavedProfile && !hasFields) ? 'farmer_onboarding' : 'farmer_profile';
       setTimeout(() => loadSchema(profileSchema, 'more-canvas'), 150);
+    } else if (action === 'NAVIGATE_FIELDS') {
+      // Show a list of all fields with edit options
+      window.switchTab('more', true);
+      renderFieldsList();
+    } else if (action === 'ADD_FIELD_FROM_MORE') {
+      // Show the add-field form from the More screen
+      window.switchTab('more', true);
+      loadSchema('add_field', 'more-canvas');
+    } else if (action === 'EDIT_FIELD') {
+      // Edit a specific field — load add_field schema with pre-filled values
+      window.switchTab('more', true);
+      loadSchema('add_field', 'more-canvas', actionParams);
     } else if (action === 'NAVIGATE_SIMULATOR') {
       window.switchTab('more');
       setTimeout(() => loadSchema('simulation', 'more-canvas'), 150);
@@ -1183,8 +1194,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Track the currently loaded schema name for language-switch reloads
+  let currentSchemaName = null;
+
     // Load static or stored schema
   async function loadSchema(schemaName, targetCanvasId) {
+    currentSchemaName = schemaName;
     try {
       const response = await fetch(`../schemas/${schemaName}.json?v=${window.SCHEMA_VERSION || 1}`);
       if (!response.ok) {
@@ -1228,7 +1243,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetCanvas) {
         window.renderA2UIPayload(data, targetCanvas);
       }
-      updateActiveTabHighlight(schemaName);
+      // Only update tab highlight if no explicit target canvas was provided
+      // (when targetCanvasId is provided, the caller already manages the tab)
+      if (!targetCanvasId) {
+        updateActiveTabHighlight(schemaName);
+      }
     } catch (err) {
       console.warn("Error rendering panel:", err);
     }
@@ -1881,15 +1900,33 @@ ${text}`;
     const params = new URLSearchParams(window.location.search || '');
     const forceOnboarding = currentPath.startsWith('/onboarding') || params.get('onboarding') === '1';
 
-    window.switchTab('home', false, false);
-    fetchFieldsAndProfile();
+    if (!forceOnboarding) {
+      window.switchTab('home', false, false);
+    }
     initCropDiagnosisState();
 
     if (forceOnboarding) {
-      setTimeout(() => {
-        window.switchTab('more');
-        loadSchema('farmer_onboarding', 'more-canvas');
-      }, 250);
+      // User came from /onboarding route — clear saved route and show onboarding
+      localStorage.removeItem('nav_route_user');
+      fetchFieldsAndProfile().then(() => {
+        setTimeout(() => {
+          window.switchTab('more', true);
+          loadSchema('farmer_onboarding', 'more-canvas');
+          showToast("Welcome!", "Please tell us about your farm to get personalized advice.", "info");
+        }, 800);
+      }).catch(e => console.warn('[Onboarding] fetchFieldsAndProfile failed:', e));
+    } else {
+      // Check if the user has no fields (e.g., Google login with empty profile)
+      fetchFieldsAndProfile().then(() => {
+        if (activeFields.length === 0) {
+          localStorage.removeItem('nav_route_user');
+          setTimeout(() => {
+            window.switchTab('more', true);  // skip default schema load
+            loadSchema('farmer_onboarding', 'more-canvas');
+            showToast("Welcome!", "Please tell us about your farm to get personalized advice.", "info");
+          }, 600);
+        }
+      });
     }
   })();
 
@@ -1962,13 +1999,23 @@ ${text}`;
       window.dispatchEvent(new Event('languageChanged'));
 
       // Reload current active tab schema to translate the dynamic widget canvas!
-      const activeTab = document.querySelector('.bottom-nav-bar .nav-tab.active');
+      // Check both bottom nav (mobile) and left nav (desktop/tablet)
+      const activeBottomTab = document.querySelector('.bottom-nav-bar .nav-tab.active');
+      const activeLeftTab = document.querySelector('.left-nav-item.active');
+      const activeTab = activeBottomTab || activeLeftTab;
       if (activeTab) {
         const tabId = activeTab.getAttribute('data-tab');
         if (tabId === 'home') loadSchema('home_today', 'home-canvas');
         else if (tabId === 'farm') loadSchema('my_farm_summary', 'farm-canvas');
         else if (tabId === 'market') loadSchema('market_insights', 'market-canvas');
-        else if (tabId === 'more') loadSchema('more_screen', 'more-canvas');
+        else if (tabId === 'more') {
+          // Reload whatever schema is currently shown in the more-canvas
+          if (currentSchemaName && currentSchemaName !== 'more_screen') {
+            loadSchema(currentSchemaName, 'more-canvas');
+          } else {
+            loadSchema('more_screen', 'more-canvas');
+          }
+        }
       }
     });
   }
@@ -2193,15 +2240,20 @@ ${text}`;
     } else if (action === 'save_farmer_profile' || action === 'SAVE_ONBOARDING_PROFILE') {
       const activeCanvas = getActiveCanvas();
       if (!activeCanvas) return;
-      const form = activeCanvas.querySelector('form') || activeCanvas.querySelector('.a2ui-form');
+      const forms = activeCanvas.querySelectorAll('form, .a2ui-form');
       const profile = {};
-      if (form) {
+      forms.forEach(form => {
         const inputs = form.querySelectorAll('input, select');
         inputs.forEach(input => {
           if (input.name) {
             profile[input.name] = input.value;
           }
         });
+      });
+
+      // Map field1_name to farmer_name for the API
+      if (profile.field1_name && !profile.farmer_name) {
+        profile.farmer_name = profile.field1_name;
       }
 
       localStorage.setItem('aaa_farmer_profile', JSON.stringify(profile));
@@ -2243,6 +2295,53 @@ ${text}`;
       const prompt = `Profile updated: saved profile details for farmer. Name is ${profile.farmer_name || 'unnamed'}, Location is ${profile.region}, Size is ${profile.acres} acres, Soil is ${profile.soil_type}, Crop is ${profile.primary_crop}, Drip Irrigation is ${profile.has_drip}. Please acknowledge and update your advisory guidelines.`;
       userInputField.value = prompt;
       handleSend();
+    } else if (action === 'ADD_FIELD_ONBOARDING') {
+      // After saving first field, show the add-field schema for additional fields
+      loadSchema('add_field', 'more-canvas');
+    } else if (action === 'SAVE_ADDITIONAL_FIELD') {
+      // Save an additional field to the farmer's profile
+      const activeCanvas = getActiveCanvas();
+      if (!activeCanvas) return;
+      const form = activeCanvas.querySelector('form') || activeCanvas.querySelector('.a2ui-form');
+      const fieldData = {};
+      if (form) {
+        const inputs = form.querySelectorAll('input, select');
+        inputs.forEach(input => {
+          if (input.name) {
+            fieldData[input.name] = input.value;
+          }
+        });
+      }
+
+      const fieldName = fieldData.field_name || fieldData.field1_name || 'New Field';
+      const payload = {
+        farmer_name: fieldName,
+        soil_type: fieldData.soil_type || 'Alluvial',
+        acres: parseFloat(fieldData.acres) || 5.0,
+        primary_crop: fieldData.primary_crop || 'Corn',
+        has_drip: fieldData.has_drip || 'no'
+      };
+
+      fetch('/api/profile/user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(() => {
+        showToast("Field Added", `${fieldName} (${fieldData.primary_crop || 'Crop'}) added to your farm.`, "success");
+        fetchFieldsAndProfile();
+        // Show add-field again in case they want to add more
+        setTimeout(() => loadSchema('add_field', 'more-canvas'), 500);
+      })
+      .catch(err => {
+        console.warn('Failed to save additional field:', err);
+        showToast("Save Failed", "Could not save field. Please try again.", "danger");
+      });
+    } else if (action === 'CANCEL_ADD_FIELD') {
+      // Go to home after cancelling add field
+      window.switchTab('home');
+      showToast("Onboarding Complete", "You can add more fields anytime from More → Profile.", "info");
     } else {
       // General Form Submission to Agent
       const activeCanvas = getActiveCanvas();
@@ -2628,10 +2727,14 @@ ${text}`;
 
   // Render left navigation (farmer mode only) and restore last active route
   renderLeftNavigation();
-  const savedRoute = localStorage.getItem('nav_route_user') || 'home';
-  setTimeout(() => {
-    window.switchTab(savedRoute);
-  }, 100);
+  const currentPathForRoute = window.location.pathname || '';
+  const isOnboardingRoute = currentPathForRoute.startsWith('/onboarding');
+  if (!isOnboardingRoute) {
+    const savedRoute = localStorage.getItem('nav_route_user') || 'home';
+    setTimeout(() => {
+      window.switchTab(savedRoute);
+    }, 100);
+  }
 
   // Extracts JSON blocks from agent response text
   function extractJsonContent(text) {
@@ -2730,6 +2833,75 @@ ${text}`;
         actionsDiv.appendChild(btn);
       });
       container.appendChild(actionsDiv);
+    }
+  }
+
+  // Render a list of all fields with edit and add buttons
+  function renderFieldsList() {
+    const canvas = document.getElementById('more-canvas');
+    if (!canvas) return;
+
+    const lang = window.currentLanguageState?.code || 'en';
+    const dict = TRANSLATIONS[lang] || TRANSLATIONS['en'];
+
+    const titleText = dict['more.items.fields.label'] || 'My Fields';
+    const descText = dict['more.items.fields.desc'] || 'View and manage your fields';
+    const addText = dict['more.items.addfield.label'] || 'Add New Field';
+    const editText = dict['fields.action.edit'] || 'Edit';
+    const noFieldsText = dict['fields.empty'] || 'No fields yet. Add your first field to get started.';
+    const fieldNameLabel = dict['onboarding.fields.fieldname.label'] || 'Field Name';
+    const acresLabel = dict['onboarding.fields.acres.label'] || 'Acres';
+    const cropLabel = dict['onboarding.fields.crop.label'] || 'Crop';
+    const soilLabel = dict['onboarding.fields.soil.label'] || 'Soil';
+
+    let html = `
+      <div class="a2ui-card" style="padding: 1.5rem;">
+        <h3 class="a2ui-card-title">${titleText}</h3>
+        <p style="color: var(--text-sub); margin-bottom: 1rem;">${descText}</p>
+    `;
+
+    if (activeFields.length === 0) {
+      html += `<p style="color: var(--text-sub); padding: 1rem; text-align: center;">${noFieldsText}</p>`;
+    } else {
+      activeFields.forEach((field, idx) => {
+        const crop = field.planting ? field.planting.crop_type : '—';
+        const acres = field.acres || '—';
+        const soil = field.soil_type || '—';
+        html += `
+          <div style="background: var(--bg-dark); border: 1px solid var(--border); border-radius: var(--radius-m); padding: 1rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="font-size: 1rem; color: var(--text-main);">${field.name || 'Field ' + (idx + 1)}</strong>
+              <div style="font-size: 0.85rem; color: var(--text-sub); margin-top: 4px;">
+                ${cropLabel}: ${crop} · ${acresLabel}: ${acres} · ${soilLabel}: ${soil}
+              </div>
+            </div>
+            <button class="a2ui-btn" data-edit-field="${field.field_id}" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;">${editText}</button>
+          </div>
+        `;
+      });
+    }
+
+    html += `
+        <button class="a2ui-btn" id="add-field-btn" style="margin-top: 0.5rem;">➕ ${addText}</button>
+      </div>
+    `;
+
+    canvas.innerHTML = html;
+
+    // Bind edit buttons
+    canvas.querySelectorAll('[data-edit-field]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const fieldId = btn.getAttribute('data-edit-field');
+        loadSchema('add_field', 'more-canvas', { editFieldId: fieldId });
+      });
+    });
+
+    // Bind add button
+    const addBtn = canvas.querySelector('#add-field-btn');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        loadSchema('add_field', 'more-canvas');
+      });
     }
   }
 

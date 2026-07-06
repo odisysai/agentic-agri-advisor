@@ -188,6 +188,32 @@ document.addEventListener('DOMContentLoaded', () => {
         document.dispatchEvent(event);
       });
       container.appendChild(btn);
+    } else if (comp.type === 'buttons') {
+      // Render multiple buttons from comp.items array
+      const btnContainer = document.createElement('div');
+      btnContainer.style.display = 'flex';
+      btnContainer.style.gap = '0.75rem';
+      btnContainer.style.flexWrap = 'wrap';
+      btnContainer.style.marginTop = '1rem';
+
+      if (comp.items && Array.isArray(comp.items)) {
+        comp.items.forEach(item => {
+          const btn = document.createElement('button');
+          btn.className = `a2ui-btn ${item.variant || 'primary'}`;
+          btn.textContent = item.label;
+          btn.style.width = item.variant === 'ghost' ? 'auto' : '100%';
+          btn.style.flex = item.variant === 'ghost' ? '0 0 auto' : '1 1 0';
+          btn.style.marginTop = '0';
+          btn.addEventListener('click', () => {
+            const event = new CustomEvent('a2ui-action', {
+              detail: { action: item.commandId, button: btn }
+            });
+            document.dispatchEvent(event);
+          });
+          btnContainer.appendChild(btn);
+        });
+      }
+      container.appendChild(btnContainer);
     } else if (comp.type === 'grid') {
       const grid = document.createElement('div');
       grid.className = 'a2ui-grid';
@@ -259,33 +285,41 @@ document.addEventListener('DOMContentLoaded', () => {
           select.style.backgroundColor = 'var(--bg-dark)';
           select.style.color = 'var(--text-main)';
           select.style.border = '1px solid var(--border)';
-          select.style.borderRadius = '4px';
+          select.style.borderRadius = 'var(--radius-s)';
+          select.style.fontSize = '0.95rem';
+          select.style.fontFamily = 'inherit';
+          select.style.minHeight = '44px';
 
           field.options.forEach(opt => {
             const o = document.createElement('option');
             const optionValue = typeof opt === 'object' ? opt.value : opt;
             const optionLabel = typeof opt === 'object' ? (opt.label || opt.value) : opt;
-            o.value = String(optionValue).toLowerCase();
+            o.value = optionValue;
             o.textContent = optionLabel;
             select.appendChild(o);
           });
           if (field.value !== undefined) {
-            select.value = field.value.toLowerCase();
+            select.value = field.value;
           }
           fRow.appendChild(select);
-        } else if (field.type === 'input') {
+        } else if (field.type === 'input' || field.type === 'text' || field.type === 'number') {
           const input = document.createElement('input');
           input.name = field.name;
-          input.type = 'text';
+          input.type = field.type === 'number' ? 'number' : 'text';
           input.placeholder = field.placeholder || '';
           input.style.padding = '0.5rem';
           input.style.backgroundColor = 'var(--bg-dark)';
           input.style.color = 'var(--text-main)';
           input.style.border = '1px solid var(--border)';
-          input.style.borderRadius = '4px';
-          if (field.value !== undefined) {
+          input.style.borderRadius = 'var(--radius-s)';
+          input.style.fontSize = '0.95rem';
+          input.style.fontFamily = 'inherit';
+          input.style.minHeight = '44px';
+          if (field.value !== undefined && field.value !== '') {
             input.value = field.value;
           }
+          if (field.type === 'number' && field.min !== undefined) input.min = field.min;
+          if (field.type === 'number' && field.step !== undefined) input.step = field.step;
           fRow.appendChild(input);
         }
         form.appendChild(fRow);
