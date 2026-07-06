@@ -1591,8 +1591,22 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       reply = replies[langName] || replies['English'];
     } else {
-      // Fall back to rule-based response
-      reply = buildFarmerSafeOfflineReply(text, preferredLang);
+      // Try the LocalAiEngine (offline multi-agent skill router) for a contextual
+      // response based on the farmer's profile crop/soil. This gives a much richer
+      // reply than the static canned fallback, especially for non-English queries.
+      try {
+        const savedProfile = localStorage.getItem('aaa_farmer_profile');
+        const profile = savedProfile ? JSON.parse(savedProfile) : {};
+        const engine = new window.LocalAiEngine();
+        reply = await engine.generateText(text, {
+          crop: profile.primary_crop || 'corn',
+          soil: profile.soil_type || 'clay',
+          language: langName
+        });
+      } catch (e) {
+        console.warn('[Advisor] LocalAiEngine failed, using rule-based fallback:', e);
+        reply = buildFarmerSafeOfflineReply(text, preferredLang);
+      }
     }
 
     appendMessage('Krishi Sastri', reply, 'agent-msg');
@@ -1639,11 +1653,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function buildFarmerSafeOfflineReply(text, languageCode) {
     const lower = text.toLowerCase();
-    const intent = lower.includes('water') || lower.includes('irrigat') || lower.includes('सिंच') || lower.includes('पानी') || lower.includes('నీరు') || lower.includes('maji')
+    const intent = lower.includes('water') || lower.includes('irrigat') || lower.includes('सिंच') || lower.includes('पानी') || lower.includes('जल') || lower.includes('नमी') || lower.includes('నీరు') || lower.includes('సాగు') || lower.includes('తేమ') || lower.includes('पाणी') || lower.includes('ओलावा') || lower.includes('maji') || lower.includes('umwagiliaji') || lower.includes('unyevu') || lower.includes('amanzi') || lower.includes('ukunisela')
       ? 'irrigation'
-      : lower.includes('price') || lower.includes('market') || lower.includes('mandi') || lower.includes('भाव') || lower.includes('soko')
+      : lower.includes('price') || lower.includes('market') || lower.includes('mandi') || lower.includes('भाव') || lower.includes('बाजार') || lower.includes('मंडी') || lower.includes('soko') || lower.includes('bei') || lower.includes('ధర') || lower.includes('మార్కెట్') || lower.includes('बाजार') || lower.includes('इसिखathi')
         ? 'market'
-        : lower.includes('pest') || lower.includes('disease') || lower.includes('spray') || lower.includes('कीट') || lower.includes('रोग')
+        : lower.includes('pest') || lower.includes('disease') || lower.includes('spray') || lower.includes('कीट') || lower.includes('रोग') || lower.includes('बीमारी') || lower.includes('फफूंद') || lower.includes('झुलसन') || lower.includes('रतुआ') || lower.includes('कीड़ा') || lower.includes('रोग') || lower.includes('फुगी') || lower.includes('తెగులు') || lower.includes('వ్యాధి') || lower.includes('కీటకాలు') || lower.includes('పురుగు') || lower.includes('magonjwa') || lower.includes('wadudu') || lower.includes('izifo') || lower.includes('amathosi')
           ? 'pest'
           : 'general';
 
