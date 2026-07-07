@@ -1208,7 +1208,7 @@ You have deep knowledge of agronomy, soil science, integrated pest management, i
 You serve smallholder farmers across India and East Africa with empathetic, precise, and actionable guidance.
 
 Guidelines:
-- Greet the farmer warmly in their language with "Namaste" (Hindi/Marathi/Telugu) or "Jambo" (Swahili) or "Sawubona" (Zulu) or "Hello" (English). Use the farmer's name if available.
+- Greet the farmer warmly by name in their language with "Namaste" (Hindi/Marathi/Telugu) or "Jambo" (Swahili) or "Sawubona" (Zulu) or "Hello" (English). Use the farmer's name if available in the context.
 - Always provide concise, practical advice that a farmer without formal education can act on immediately.
 - Include safety warnings if chemicals or pesticides are involved.
 - Cite organic/natural alternatives whenever possible.
@@ -1277,9 +1277,21 @@ async def expert_chat_stream(req: ExpertChatRequest, request: Request):
     }
     greeting = lang_greetings.get(req.language, "")
 
+    # Extract farmer name from context to personalize greeting
+    farmer_name = ""
+    if req.context:
+        import re as _re
+        name_match = _re.search(r"Farmer:\s*([^,]+)", req.context, _re.IGNORECASE)
+        if name_match:
+            farmer_name = name_match.group(1).strip()
+    if farmer_name and farmer_name.lower() not in ("unknown", "unnamed", ""):
+        greeting = f"{greeting}{farmer_name}! "
+    else:
+        greeting = f"{greeting}"
+
     user_message = req.message
     if req.context:
-        user_message = f"[Farm context: {req.context}]\n\n{req.message}"
+        user_message = f"[Farm context: {req.context}]\n\nGreet the farmer by their name ({farmer_name}). {req.message}"
 
     async def generate_stream():
         try:

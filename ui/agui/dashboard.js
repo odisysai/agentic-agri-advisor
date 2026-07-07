@@ -3115,37 +3115,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function createExpertRequest(question, photoData) {
+  async function createExpertRequest(question, photoData) {
     // Include farm context
     const profile = localStorage.getItem('aaa_farmer_profile');
     let context = '';
     if (profile) {
       try {
         const p = JSON.parse(profile);
-        context = `\nFarm: ${p.farmer_name || 'Unknown'}, Crop: ${p.primary_crop || 'Unknown'}, Soil: ${p.soil_type || 'Unknown'}, Location: ${p.region || 'Unknown'}`;
+        context = `Farm: ${p.farmer_name || 'Unknown'}, Crop: ${p.primary_crop || 'Unknown'}, Soil: ${p.soil_type || 'Unknown'}, Location: ${p.region || 'Unknown'}`;
       } catch (e) {}
     }
 
-    // Show status display
-    const statusDisplay = document.getElementById('expert-status-display');
-    if (statusDisplay) {
-      statusDisplay.style.display = 'block';
-    }
+    const langCode = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language')) || 'en';
 
-    // Hide form elements
+    // Switch to expert chat view
     const expertForm = document.getElementById('expert-form-screen');
-    if (expertForm) {
-      expertForm.querySelectorAll('div > label, textarea, button').forEach(el => {
-        if (el.id !== 'expert-back-to-chat-btn') el.style.display = 'none';
-      });
-    }
+    const expertChat = document.getElementById('expert-chat-screen');
+    if (expertForm) expertForm.style.display = 'none';
+    if (expertChat) expertChat.style.display = 'flex';
 
-    // In production, this would send to the backend
-    // For now, store in IndexedDB and log
-    console.log('[Expert Request] Created:', { question, context, photo: !!photoData });
-
-    if (typeof window.showToast === 'function') {
-      window.showToast('विशेषज्ञ को भेजा गया', 'आपका सवाल विशेषज्ञ को भेजा गया है।', 'success');
+    // Pre-fill the expert chat input and send
+    const expertInput = document.getElementById('expert-input-field');
+    if (expertInput) {
+      expertInput.value = question;
+      if (typeof sendExpertMessage === 'function') {
+        await sendExpertMessage();
+      }
     }
   }
 
