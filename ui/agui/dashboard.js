@@ -799,6 +799,21 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => loadSchema('irrigation_planner', 'farm-canvas'), 150);
     } else if (action === 'NAVIGATE_EXPERT') {
       window.switchTab('ask');
+    } else if (action === 'FARM_HISTORY') {
+      window.switchTab('more', true);
+      showToast("Farm History", "Field history records will appear here.", "info");
+    } else if (action === 'OFFLINE_DOWNLOADS') {
+      window.switchTab('more', true);
+      showToast("Offline Downloads", "Model and data downloads for offline use.", "info");
+    } else if (action === 'SYNC_STATUS') {
+      window.switchTab('more', true);
+      showToast("Sync Status", "All data is secure and synced.", "success");
+    } else if (action === 'LANGUAGE_VOICE_SETTINGS') {
+      window.switchTab('more', true);
+      showToast("Language & Voice", "Change your language and voice preferences using the header dropdown.", "info");
+    } else if (action === 'APP_HELP') {
+      window.switchTab('more', true);
+      showToast("About Krishi Sampark", "Version 2.0.0 — Capstone demo platform for smallholder farmers.", "info");
     } else if (action === 'TOGGLE_THEME') {
       const body = document.body;
       if (body.classList.contains('dark-theme')) {
@@ -2118,6 +2133,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Listen to A2UI actions (like stepping the simulation sandbox or submitting templates)
   document.addEventListener('a2ui-action', (e) => {
     const action = e.detail.action;
+    // Skip actions already handled by the first dispatcher (navigation, theme, etc.)
+    const handledByFirstDispatcher = [
+      'TAKE_CROP_PHOTO', 'START_CROP_DIAGNOSIS', 'NAVIGATE_ASK', 'NAVIGATE_MARKET',
+      'NAVIGATE_PROFILE', 'NAVIGATE_FIELDS', 'ADD_FIELD_FROM_MORE', 'EDIT_FIELD',
+      'NAVIGATE_SIMULATOR', 'NAVIGATE_SOIL', 'NAVIGATE_IRRIGATION', 'NAVIGATE_EXPERT',
+      'TOGGLE_THEME', 'LOGOUT', 'FARM_HISTORY', 'OFFLINE_DOWNLOADS', 'SYNC_STATUS',
+      'LANGUAGE_VOICE_SETTINGS', 'APP_HELP'
+    ];
+    if (handledByFirstDispatcher.includes(action)) {
+      return; // Already handled — don't fall through to the catch-all
+    }
     if (action === 'run_sim_step') {
       const cropInput = document.querySelector('select[name="crop_type"]') || document.querySelector('input[name="crop_type"]');
       const waterInput = document.querySelector('input[name="water_liters"]');

@@ -1,8 +1,17 @@
-const CACHE_NAME = 'krishi-sampark-cache-v10';
+const CACHE_NAME = 'krishi-sampark-cache-v11';
 const ASSETS_TO_CACHE = [
+  '/',
+  '/index.html',
+  '/landing.css',
+  '/device.js',
   '/agui/index.html',
   '/assets/krishi_microphone_icon.png',
   '/assets/krishi_speaker_icon.png',
+  '/public/favicon.ico',
+  '/public/favicon.svg',
+  '/public/favicon-192.png',
+  '/public/favicon-512.png',
+  '/public/site.webmanifest',
   '/agui/styles.css',
   '/agui/dashboard.js',
   '/agui/panel_router.js',
@@ -17,7 +26,6 @@ const ASSETS_TO_CACHE = [
   '/a2ui/index.html',
   '/a2ui/styles.css',
   '/a2ui/app.js',
-  '/manifest.webmanifest',
   'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap'
 ];
 

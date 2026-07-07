@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security report
-    url: https://github.com/girinalin/agentic-agri-advisor/blob/main/SECURITY.md
+    url: https://github.com/odisysai/agentic-agri-advisor/blob/main/SECURITY.md
     about: Please follow private disclosure guidance for security issues.
   - name: Project documentation
-    url: https://github.com/girinalin/agentic-agri-advisor/tree/main/docs
+    url: https://github.com/odisysai/agentic-agri-advisor/tree/main/docs
     about: Architecture, operations, and roadmap documentation.

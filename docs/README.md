@@ -97,17 +97,6 @@ This is the single entry point for all Krishi Sampark documentation. Every docum
 
 ---
 
-## Active Reference Documents (Kept in Original Location)
-
-These documents are **active** and maintained in their original locations:
-
-| Document | Purpose |
-|----------|---------|
-| [CHANGELOG.md](CHANGELOG.md) | Running project history of changes and transformations — **actively maintained** |
-| [THREAT_MODEL.md](THREAT_MODEL.md) | STRIDE threat model — **actively maintained** (detailed version in [06-devsecops/threat-model.md](06-devsecops/threat-model.md) is the consolidated reference) |
-| [ADK_SAMPLES_SUMMARY.md](ADK_SAMPLES_SUMMARY.md) | ADK reference samples study notes — **kept as reference** |
-| [copilot/](copilot/) | AI agent architectural review and phase instructions — **kept as reference** |
-
 ## Root-Level Documents
 
 | Document | Purpose |
@@ -127,21 +116,3 @@ These documents are **active** and maintained in their original locations:
 | `.github/workflows/` | GitHub Actions CI/CD |
 | `.semgrep/` | 6 custom security rules |
 | `.agents/` | Tool validation and agent hooks |
-
-## Legacy Documents (Superseded)
-
-These documents are superseded by the consolidated docs above. They are kept for historical reference but should not be treated as authoritative:
-
-| Legacy Document | Superseded By |
-|-----------------|---------------|
-| `docs/01_CURRENT_STATE_AND_ARCHITECTURE.md` | [Architecture Overview](02-architecture/architecture-overview.md) |
-| `docs/02_OKF_IMPLEMENTATION_PLAN.md` | [Data & Farm Twin Architecture](02-architecture/data-and-farm-twin-architecture.md) |
-| `docs/ADK_LIFECYCLE_ALIGNMENT_PLAN.md` | [Current Status & Roadmap](08-roadmap/current-status-and-roadmap.md) |
-| `docs/ADVISOR_MODES_AND_DEVICE_CAPABILITIES.md` | [Edge-Cloud Advisor Architecture](02-architecture/edge-cloud-advisor-architecture.md) |
-| `docs/EVALUATION_AND_SAFETY_REPORT.md` | [Evaluation & Safety Report](05-testing/evaluation-and-safety-report.md) |
-| `docs/HYBRID_INTELLIGENCE_STRATEGY.md` | [Hybrid Intelligence Strategy](02-architecture/hybrid-intelligence-strategy.md) |
-| `docs/KAGGLE_&_LEADERSHIP_GUIDE.md` | [Kaggle Capstone Guide](08-roadmap/kaggle-capstone-submission-guide.md) |
-| `docs/ORNITH_SUMMARY.md` | [Product Vision](01-product/product-vision.md) + [Architecture Overview](02-architecture/architecture-overview.md) |
-| `docs/PWA_LLM_IMPLEMENTATION_PLAN.md` | [Local LLM & Device Capabilities](04-engineering/local-llm-and-device-capabilities.md) |
-| `docs/PWA_OFFLINE_IMPLEMENTATION_PLAN.md` | [PWA Offline Implementation](04-engineering/pwa-offline-implementation.md) |
-| `docs/TECHNICAL_ARCHITECTURE.md` | [Architecture Overview](02-architecture/architecture-overview.md) + [Agent Architecture](02-architecture/agent-architecture.md) |
