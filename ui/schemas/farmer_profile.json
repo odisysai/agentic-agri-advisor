@@ -14,34 +14,29 @@
           "type": "input",
           "name": "farmer_name",
           "labelKey": "profile.name.label",
-          "placeholder": "profile.name.placeholder"
+          "placeholder": "e.g. Ramu Nayak"
         },
         {
-          "type": "select",
+          "type": "input",
           "name": "region",
           "labelKey": "profile.region.label",
-          "options": [
-            "profile.region.mh",
-            "profile.region.pb",
-            "profile.region.ke",
-            "profile.region.gh"
-          ]
+          "placeholder": "e.g. Nagpur, Maharashtra"
         },
         {
           "type": "input",
           "name": "acres",
           "labelKey": "profile.acres.label",
-          "placeholder": "profile.acres.placeholder"
+          "placeholder": "e.g. 5"
         },
         {
           "type": "select",
           "name": "soil_type",
           "labelKey": "profile.soil.label",
           "options": [
-            "profile.soil.blackClay",
-            "profile.soil.redSandy",
-            "profile.soil.alluvial",
-            "profile.soil.clayLoam"
+            {"value": "Black Clay (Cotton Soil)", "label": "Black Clay (Cotton Soil)"},
+            {"value": "Red Sandy Loam", "label": "Red Sandy Loam"},
+            {"value": "Alluvial", "label": "Alluvial"},
+            {"value": "Clay Loam", "label": "Clay Loam"}
           ]
         },
         {
@@ -49,9 +44,12 @@
           "name": "primary_crop",
           "labelKey": "profile.crop.label",
           "options": [
-            "profile.crop.corn",
-            "profile.crop.wheat",
-            "profile.crop.soybeans"
+            {"value": "Corn", "label": "Maize / Corn"},
+            {"value": "Wheat", "label": "Wheat"},
+            {"value": "Soybeans", "label": "Soybeans"},
+            {"value": "Rice", "label": "Rice"},
+            {"value": "Cotton", "label": "Cotton"},
+            {"value": "Sugarcane", "label": "Sugarcane"}
           ]
         },
         {
@@ -59,15 +57,28 @@
           "name": "has_drip",
           "labelKey": "profile.drip.label",
           "options": [
-            "profile.drip.yes",
-            "profile.drip.no"
+            {"value": "yes", "label": "Drip Irrigation"},
+            {"value": "no", "label": "Sprinkler/Flood"}
+          ]
+        },
+        {
+          "type": "select",
+          "name": "preferred_language",
+          "labelKey": "profile.language.label",
+          "options": [
+            {"value": "English", "label": "English"},
+            {"value": "Hindi", "label": "Hindi"},
+            {"value": "Marathi", "label": "Marathi"},
+            {"value": "Telugu", "label": "Telugu"},
+            {"value": "Swahili", "label": "Swahili"},
+            {"value": "Zulu", "label": "Zulu"}
           ]
         }
       ]
     },
     {
       "type": "button",
-      "labelKey": "profile.saveAction",
+      "label": "Save Profile",
       "action": "save_farmer_profile"
     }
   ]

@@ -456,14 +456,14 @@ class LocalAiEngine {
       const symptomVal = (rawDiag.symptom && typeof rawDiag.symptom === 'object') ? (rawDiag.symptom[lang] || rawDiag.symptom.English) : rawDiag.symptom;
       const remedyVal = (rawDiag.organic_remedy && typeof rawDiag.organic_remedy === 'object') ? (rawDiag.organic_remedy[lang] || rawDiag.organic_remedy.English) : rawDiag.organic_remedy;
 
-      response = `[Offline AI - ${activeAgent}] ${dict.pranam} ${dict.triggered} **${activeSkill}** ${dict.skillFor} ${okfGuide.metadata.name} ${dict.crop} \n\n📋 **${dict.symptomLabel}:** ${symptomVal}\n🌱 **${dict.organicLabel}:** ${remedyVal}`;
+      response = `(${activeAgent}) ${dict.pranam} ${dict.triggered} **${activeSkill}** ${dict.skillFor} ${okfGuide.metadata.name} ${dict.crop} \n\n📋 **${dict.symptomLabel}:** ${symptomVal}\n🌱 **${dict.organicLabel}:** ${remedyVal}`;
     }
     else if (irrigationKeywords.some(kw => text.includes(kw))) {
       activeAgent = dict.irrigatorName;
       activeSkill = dict.irrigatorSkill;
 
       const specs = okfGuide.specifications;
-      response = `[Offline AI - ${activeAgent}] ${dict.ramram} **${activeSkill}** ${dict.skillFor} ${okfGuide.metadata.name} ${dict.crop} \n\n💧 **${dict.optimalMoisture}:** ${specs.soil_moisture.optimal_pct}%\n📉 **${dict.criticalLimit}:** ${specs.soil_moisture.min_pct}%\n🧬 **${dict.dripStrategy}:** ${dict.strategyDesc}`;
+      response = `(${activeAgent}) ${dict.ramram} **${activeSkill}** ${dict.skillFor} ${okfGuide.metadata.name} ${dict.crop} \n\n💧 **${dict.optimalMoisture}:** ${specs.soil_moisture.optimal_pct}%\n📉 **${dict.criticalLimit}:** ${specs.soil_moisture.min_pct}%\n🧬 **${dict.dripStrategy}:** ${dict.strategyDesc}`;
     }
     else if (soilKeywords.some(kw => text.includes(kw))) {
       activeAgent = dict.analystName;
@@ -471,12 +471,12 @@ class LocalAiEngine {
 
       const specs = okfGuide.specifications;
       const NPK = specs.npk_ratio;
-      response = `[Offline AI - ${activeAgent}] ${dict.namaste} **${activeSkill}** ${dict.skillFor} ${okfGuide.metadata.name} ${dict.crop} \n\n🧪 **${dict.targetNpk}:** ${dict.nitrogen}: ${NPK.nitrogen_ppm}, ${dict.phosphorus}: ${NPK.phosphorus_ppm}, ${dict.potassium}: ${NPK.potassium_ppm}\n🧪 **${dict.optimalPh}:** ${specs.optimal_soil_ph}`;
+      response = `(${activeAgent}) ${dict.namaste} **${activeSkill}** ${dict.skillFor} ${okfGuide.metadata.name} ${dict.crop} \n\n🧪 **${dict.targetNpk}:** ${dict.nitrogen}: ${NPK.nitrogen_ppm}, ${dict.phosphorus}: ${NPK.phosphorus_ppm}, ${dict.potassium}: ${NPK.potassium_ppm}\n🧪 **${dict.optimalPh}:** ${specs.optimal_soil_ph}`;
     }
     else {
       activeAgent = dict.coordinatorName;
       activeSkill = dict.coordinatorSkill;
-      response = `[Offline AI - ${activeAgent}] ${dict.welcome} ${dict.coordinatorIntro} ${okfGuide.metadata.name} ${dict.onSoil} ${soil} ${dict.soilSuffix} \n\n${dict.coordinatorOffer} \n* 🦠 *${dict.pathologistName}* (${dict.pathologistSkill})\n* 💧 *${dict.irrigatorName}* (${dict.irrigatorSkill})\n* 🧪 *${dict.analystName}* (${dict.analystSkill})`;
+      response = `(${activeAgent}) ${dict.welcome} ${dict.coordinatorIntro} ${okfGuide.metadata.name} ${dict.onSoil} ${soil} ${dict.soilSuffix} \n\n${dict.coordinatorOffer} \n* 🦠 *${dict.pathologistName}* (${dict.pathologistSkill})\n* 💧 *${dict.irrigatorName}* (${dict.irrigatorSkill})\n* 🧪 *${dict.analystName}* (${dict.analystSkill})`;
     }
 
     return new Promise(resolve => {

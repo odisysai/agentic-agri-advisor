@@ -19,6 +19,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function farmerDisplayNameForLanguage(language) {
+    // Try to get the actual farmer name from profile or auth
+    try {
+      const savedProfile = localStorage.getItem('aaa_farmer_profile');
+      if (savedProfile) {
+        const profile = JSON.parse(savedProfile);
+        if (profile.farmer_name && profile.farmer_name !== 'unnamed' && profile.farmer_name.trim()) {
+          return profile.farmer_name;
+        }
+        if (profile.field1_name && profile.field1_name !== 'My Field' && profile.field1_name.trim()) {
+          return profile.field1_name;
+        }
+      }
+    } catch (e) { /* ignore */ }
+    // Fallback to default
     const code = normalizeLanguageCode(language);
     if (code === 'hi' || code === 'mr') return 'माधव जी';
     if (code === 'te') return 'మాధవ్ జీ';
@@ -1251,6 +1265,27 @@ document.addEventListener('DOMContentLoaded', () => {
       const currentLang = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language'));
       translateSchemaData(data, currentLang);
 
+      // Replace hardcoded "Madhav Ji" greeting with actual farmer name
+      const farmerName = farmerDisplayNameForLanguage(currentLang);
+      if (farmerName && farmerName !== 'Madhav Ji' && farmerName !== 'माधव जी') {
+        // Walk through all components and replace Madhav Ji in titles/subtitles
+        function replaceNameInSchema(obj) {
+          if (!obj || typeof obj !== 'object') return;
+          for (const key of ['title', 'subtitle', 'description', 'text', 'value', 'label', 'placeholder']) {
+            if (obj[key] && typeof obj[key] === 'string') {
+              obj[key] = obj[key].replace(/Madhav Ji/gi, farmerName)
+                                 .replace(/माधव जी/g, farmerName)
+                                 .replace(/माधवव जी/g, farmerName)
+                                 .replace(/మాధవ్ జీ/g, farmerName);
+            }
+          }
+          for (const key in obj) {
+            if (typeof obj[key] === 'object') replaceNameInSchema(obj[key]);
+          }
+        }
+        replaceNameInSchema(data);
+      }
+
       if (schemaName === 'simulation') {
         bindSimulationState(data);
       } else if (schemaName === 'farmer_profile') {
@@ -1369,6 +1404,39 @@ document.addEventListener('DOMContentLoaded', () => {
       populateFieldSelector();
     } catch (e) {
       console.warn("SQLite database not accessible, running in purely local demo state.", e);
+      // Fallback: load from localStorage profile saved by landing page guest form
+      try {
+        const savedProfile = localStorage.getItem('aaa_farmer_profile');
+        if (savedProfile) {
+          const profile = JSON.parse(savedProfile);
+          // Build a fields array from the profile
+          if (profile.field1_name || profile.farmer_name) {
+            activeFields = [{
+              field_id: 'local_field_1',
+              name: profile.field1_name || 'My Field',
+              soil_type: profile.soil_type || 'Alluvial',
+              acres: profile.acres || 5,
+              irrigation_type: profile.has_drip === 'yes' ? 'Drip' : 'Sprinkler',
+              planting: {
+                planting_id: 'local_planting_1',
+                crop_type: profile.primary_crop || 'Corn',
+                variety: 'Default',
+                planting_date: new Date().toISOString().split('T')[0],
+                stage: 'germination',
+                nitrogen_ppm: 45,
+                moisture_pct: 40,
+                health_pct: 100
+              }
+            }];
+            localStorage.setItem('aaa_fields_cached', JSON.stringify(activeFields));
+            populateFieldSelector();
+          }
+          // Update farmer display name
+          updateFarmerDisplayNames(normalizeLanguageCode(profile.preferred_language) || 'en');
+        }
+      } catch (err) {
+        console.warn("Local profile fallback failed:", err);
+      }
     }
   }
 
@@ -1541,13 +1609,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const expertQuestionInput = document.getElementById('expert-question-input');
     const expertInputField = document.getElementById('expert-input-field');
     
+    // Rephrase the query with farm context for the expert
+    const rephrasedQuery = context 
+      ? `[Context: ${context}] Farmer's question: ${originalQuery}`
+      : originalQuery;
+    
     if (expertQuestionInput) {
-      // Pre-fill the expert form textarea with the original query
       expertQuestionInput.value = originalQuery;
     }
     if (expertInputField) {
-      // Also pre-fill the expert chat input
-      expertInputField.value = originalQuery;
+      expertInputField.value = rephrasedQuery;
       // Trigger the expert send — this sends to cloud Gemini
       if (typeof sendExpertMessage === 'function') {
         sendExpertMessage();
@@ -2306,9 +2377,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!navigator.onLine) {
         showToast("Profile Saved Offline", "Profile details cached locally. Sync queued.", "warning");
-        const prompt = `Profile updated: saved profile details for farmer. Name is ${profile.farmer_name || 'unnamed'}, Location is ${profile.region}, Size is ${profile.acres} acres, Soil is ${profile.soil_type}, Crop is ${profile.primary_crop}, Drip Irrigation is ${profile.has_drip}. Please acknowledge and update your advisory guidelines.`;
-        userInputField.value = prompt;
-        handleSend();
         return;
       }
 
@@ -2329,15 +2397,11 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast("Profile Synced", "Farmer profile saved locally and synced with advisors.", "success");
         fetchFieldsAndProfile();
       });
-
-      const prompt = `Profile updated: saved profile details for farmer. Name is ${profile.farmer_name || 'unnamed'}, Location is ${profile.region}, Size is ${profile.acres} acres, Soil is ${profile.soil_type}, Crop is ${profile.primary_crop}, Drip Irrigation is ${profile.has_drip}. Please acknowledge and update your advisory guidelines.`;
-      userInputField.value = prompt;
-      handleSend();
     } else if (action === 'ADD_FIELD_ONBOARDING') {
       // After saving first field, show the add-field schema for additional fields
       loadSchema('add_field', 'more-canvas');
     } else if (action === 'SAVE_ADDITIONAL_FIELD') {
-      // Save an additional field to the farmer's profile
+      // Save or update a field
       const activeCanvas = getActiveCanvas();
       if (!activeCanvas) return;
       const form = activeCanvas.querySelector('form') || activeCanvas.querySelector('.a2ui-form');
@@ -2360,6 +2424,9 @@ document.addEventListener('DOMContentLoaded', () => {
         has_drip: fieldData.has_drip || 'no'
       };
 
+      // Check if this is an edit (has editFieldId in actionParams)
+      const isEdit = actionParams && actionParams.editFieldId;
+      
       fetch('/api/profile/user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2367,41 +2434,40 @@ document.addEventListener('DOMContentLoaded', () => {
       })
       .then(res => res.json())
       .then(() => {
-        showToast("Field Added", `${fieldName} (${fieldData.primary_crop || 'Crop'}) added to your farm.`, "success");
+        showToast(isEdit ? "Field Updated" : "Field Added", `${fieldName} (${fieldData.primary_crop || 'Crop'}) ${isEdit ? 'updated' : 'added'} successfully.`, "success");
         fetchFieldsAndProfile();
-        // Show add-field again in case they want to add more
-        setTimeout(() => loadSchema('add_field', 'more-canvas'), 500);
+        // Go to My Fields list after save
+        setTimeout(() => renderFieldsList(), 500);
       })
       .catch(err => {
-        console.warn('Failed to save additional field:', err);
-        showToast("Save Failed", "Could not save field. Please try again.", "danger");
+        console.warn('Failed to save field:', err);
+        // Fallback: save to localStorage
+        try {
+          const savedProfile = localStorage.getItem('aaa_farmer_profile') || '{}';
+          const profile = JSON.parse(savedProfile);
+          profile.field1_name = fieldName;
+          profile.soil_type = payload.soil_type;
+          profile.acres = payload.acres;
+          profile.primary_crop = payload.primary_crop;
+          profile.has_drip = payload.has_drip;
+          localStorage.setItem('aaa_farmer_profile', JSON.stringify(profile));
+          showToast(isEdit ? "Field Updated (Local)" : "Field Added (Local)", `${fieldName} saved locally.`, "success");
+          fetchFieldsAndProfile();
+          setTimeout(() => renderFieldsList(), 500);
+        } catch(e) {
+          showToast("Save Failed", "Could not save field. Please try again.", "danger");
+        }
       });
     } else if (action === 'CANCEL_ADD_FIELD') {
       // Go to home after cancelling add field
       window.switchTab('home');
       showToast("Onboarding Complete", "You can add more fields anytime from More → Profile.", "info");
     } else {
-      // General Form Submission to Agent
-      const activeCanvas = getActiveCanvas();
-      if (!activeCanvas) return;
-      const form = activeCanvas.querySelector('form') || activeCanvas.querySelector('.a2ui-form');
-      const params = {};
-      if (form) {
-        const inputs = form.querySelectorAll('input, select');
-        inputs.forEach(input => {
-          if (input.name) {
-            params[input.name] = input.value;
-          }
-        });
+      // Unhandled action — show toast, don't send to chat
+      console.log(`[A2UI Action] Unhandled action: ${action}`);
+      if (typeof showToast === 'function') {
+        showToast("Action", `Action: ${action}`, "info");
       }
-
-      let prompt = `Action triggered: '${action}'`;
-      if (Object.keys(params).length > 0) {
-        prompt += ` with fields: ` + Object.entries(params).map(([k, v]) => `${k}='${v}'`).join(', ');
-      }
-
-      userInputField.value = prompt;
-      handleSend();
     }
   });
 
@@ -3164,6 +3230,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (backBtn) backBtn.addEventListener('click', showAdvisorSelection);
     if (backFromExpertBtn) backFromExpertBtn.addEventListener('click', showAdvisorSelection);
     if (expertBackToChatBtn) expertBackToChatBtn.addEventListener('click', () => { showAdvisorSelection(); showSastriChat(); });
+
+    // Expert chat back button — go back to advisor selection
+    const expertChatBackBtn = document.getElementById('expert-chat-back-btn');
+    if (expertChatBackBtn) expertChatBackBtn.addEventListener('click', () => {
+      const expertChat = document.getElementById('expert-chat-screen');
+      const advisorSelection = document.getElementById('advisor-selection-screen');
+      if (expertChat) expertChat.style.display = 'none';
+      if (advisorSelection) advisorSelection.style.display = 'flex';
+    });
 
     // Expert photo upload
     if (expertPhotoBtn && expertPhotoInput) {
