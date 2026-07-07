@@ -1,0 +1,132 @@
+NOTICE
+======
+
+Krishi Sampark — Agentic Agriculture Advisor
+Copyright (c) 2026 Krishi Sampark Contributors
+
+This product includes software and other assets developed by third parties.
+The following notices acknowledge the projects, services, and tools used.
+
+The project owners do not claim ownership over any third-party dependencies,
+Google services, pretrained models, or external datasets listed below.
+
+
+Open-Source Dependencies
+------------------------
+
+1. Google Agent Development Kit (ADK)
+   License: Apache License 2.0
+   Source: https://github.com/google/adk-python
+   Used for: Multi-agent orchestration, callbacks, agent lifecycle
+
+2. FastAPI
+   License: MIT License
+   Source: https://github.com/tiangolo/fastapi
+   Used for: Backend REST API server
+
+3. Uvicorn
+   License: BSD-3-Clause License
+   Source: https://github.com/encode/uvicorn
+   Used for: ASGI server
+
+4. edge-tts
+   License: MIT License
+   Source: https://github.com/rany2/edge-tts
+   Used for: Neural text-to-speech voice synthesis
+
+5. Pillow
+   License: HPND License
+   Source: https://github.com/python-pillow/Pillow
+   Used for: Image processing
+
+6. Pytest
+   License: MIT License
+   Source: https://github.com/pytest-dev/pytest
+   Used for: Testing framework
+
+7. OpenTelemetry
+   License: Apache License 2.0
+   Source: https://github.com/open-telemetry/opentelemetry-python
+   Used for: Observability and tracing instrumentation
+
+
+Google Cloud Services
+---------------------
+
+1. Google Gemini API (Gemini 2.5 Flash)
+   Used for: Cloud expert escalation, translation, image analysis
+   Note: Requires GEMINI_API_KEY — not included in this repository
+
+2. Google Cloud Firestore
+   Used for: Optional cloud database backend
+   Note: Requires GCP service account — not included in this repository
+
+3. Google Cloud Logging
+   Used for: Application logging and observability
+
+4. Google Cloud Run
+   Used for: Optional deployment target (Terraform IaC included)
+
+
+Pretrained Models
+-----------------
+
+1. Gemma 2B (gemma-2b-it-gpu-int4)
+   License: Gemma Terms of Use
+   Source: https://ai.google.dev/gemma
+   Used for: In-browser offline AI inference via WebGPU
+   Note: Model weights are NOT included in this repository — downloaded
+   on-demand by the PWA client
+
+2. TFLite Crop Disease Classifier
+   Used for: Client-side plant disease image classification
+   Note: Model weights are NOT included in this repository
+
+
+External APIs and Data Sources
+------------------------------
+
+1. Open-Meteo API
+   License: MIT License (data: CC BY 4.0)
+   Source: https://open-meteo.com/
+   Used for: Weather forecast data via MCP weather server
+
+2. Yahoo Finance API
+   Source: https://finance.yahoo.com/
+   Used for: Commodity market pricing via MCP market server
+
+
+Generated Assets
+----------------
+
+1. Favicon and icon pack (krishi_favicon_pack, krishi_voice_icons_pack)
+   Generated using AI image generation tools
+   Licensed under: CC BY 4.0 (see LICENSE-DOCS)
+
+2. Hero and how-it-works images (ui/assets/)
+   Generated for project documentation
+   Licensed under: CC BY 4.0 (see LICENSE-DOCS)
+
+
+Tools and Frameworks
+---------------------
+
+1. agents-cli (Google Agent Skills CLI)
+   Used for: Project scaffolding, playground, deployment
+
+2. Model Context Protocol (MCP)
+   Source: https://modelcontextprotocol.io/
+   Used for: Standardized tool server protocol
+
+3. Mermaid.js
+   License: MIT License
+   Used for: Architecture diagrams in documentation
+
+
+No Secrets or Credentials
+-------------------------
+
+This repository does NOT contain any API keys, passwords, service account
+keys, client secrets, or other credentials. All sensitive values are loaded
+from environment variables at runtime. See config/secrets.template.env for
+the template of required configuration.

@@ -1,0 +1,35 @@
+Creative Commons Attribution 4.0 International (CC BY 4.0)
+=============================================================
+
+Copyright (c) 2026 Krishi Sampark Contributors
+
+This license applies to all documentation, diagrams, screenshots, writeup
+materials, project-generated visual assets, and non-source-code content in this
+repository, including but not limited to:
+
+- All files under docs/ (Markdown documents, architecture diagrams, plans)
+- All files under ui/assets/ (icons, images, visual assets)
+- All files under .ai-sdlc/ (evidence, reports, workflow definitions)
+- README.md, AGENTS.md, GEMINI.md, CONTRIBUTING.md, SECURITY.md, SUPPORT.md
+- Kaggle writeup materials (docs/kaggle-writeup.md, docs/video-screenplay.md)
+- Any screenshots, demo recordings, or presentation materials
+
+You are free to:
+
+- Share — copy and redistribute the material in any medium or format
+- Adapt — remix, transform, and build upon the material for any purpose,
+  even commercially
+
+Under the following terms:
+
+- Attribution — You must give appropriate credit, provide a link to the
+  license, and indicate if changes were made. You may do so in any reasonable
+  manner, but not in any way that suggests the licensor endorses you or your
+  use.
+
+Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
+
+---
+
+Note: Source code in this repository is licensed separately under the Apache
+License 2.0 — see the LICENSE file for details.

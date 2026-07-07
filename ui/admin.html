@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Krishi Sampark — Admin Dashboard</title>
+  <link rel="icon" href="/public/favicon.ico" sizes="any" />
+  <link rel="icon" href="/public/favicon.svg" type="image/svg+xml" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
+    .header { background: linear-gradient(135deg, #167839, #2C6B37); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 1.3rem; }
+    .header a { color: white; text-decoration: none; font-size: 0.9rem; opacity: 0.8; }
+    .header a:hover { opacity: 1; }
+    .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); text-align: center; }
+    .stat-card .number { font-size: 2rem; font-weight: 700; color: #167839; }
+    .stat-card .label { font-size: 0.85rem; color: #666; margin-top: 0.3rem; }
+    .section { background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .section h2 { font-size: 1.1rem; margin-bottom: 1rem; color: #1a1a2e; border-bottom: 2px solid #167839; padding-bottom: 0.5rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.6rem 0.8rem; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    th { color: #666; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
+    tr:hover { background: #f8f9fa; }
+    .login-screen { display: flex; justify-content: center; align-items: center; min-height: 60vh; }
+    .login-box { background: white; border-radius: 16px; padding: 2.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; max-width: 400px; }
+    .login-box h2 { margin-bottom: 0.5rem; }
+    .login-box p { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .login-box button { background: linear-gradient(135deg, #167839, #2C6B37); color: white; border: none; border-radius: 8px; padding: 0.7rem 1.5rem; font-size: 1rem; cursor: pointer; }
+    .login-box button:hover { opacity: 0.9; }
+    .error-msg { color: #dc2626; margin-top: 1rem; font-size: 0.85rem; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+    .badge-online { background: #d4edda; color: #155724; }
+    .badge-offline { background: #f8d7da; color: #721c24; }
+    .empty { color: #999; text-align: center; padding: 2rem; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🌾 Krishi Sampark — Admin Dashboard</h1>
+    <a href="/">← Back to App</a>
+  </div>
+
+  <div id="content" class="container">
+    <div id="login-screen" class="login-screen">
+      <div class="login-box">
+        <h2>Admin Access</h2>
+        <p>Sign in with your authorized admin Google account to view dashboard.</p>
+        <button onclick="window.location.href='/'">Sign In</button>
+        <div id="error-msg" class="error-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function checkAdmin() {
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        const data = await res.json();
+
+        if (!data.authenticated) {
+          document.getElementById('error-msg').textContent = 'Please sign in from the main app first, then return here.';
+          return;
+        }
+
+        // Try fetching admin stats — if 403, user is not admin
+        const statsRes = await fetch('/api/admin/stats', { credentials: 'include' });
+        if (statsRes.status === 403) {
+          document.getElementById('error-msg').textContent = 'Your account is not authorized as admin. Set ADMIN_EMAIL env var to your email.';
+          return;
+        }
+        if (!statsRes.ok) throw new Error('Failed to fetch admin data');
+        const statsData = await statsRes.json();
+
+        // Load all admin data
+        const [usersRes, obsRes, escRes] = await Promise.all([
+          fetch('/api/admin/users', { credentials: 'include' }),
+          fetch('/api/admin/observability', { credentials: 'include' }),
+          fetch('/api/admin/escalations', { credentials: 'include' }),
+        ]);
+
+        const usersData = await usersRes.json();
+        const obsData = await obsRes.json();
+        const escData = await escRes.json();
+
+        renderDashboard(statsData.stats, usersData.users || [], obsData.logs || [], escData.escalations || []);
+      } catch (err) {
+        document.getElementById('error-msg').textContent = 'Error: ' + err.message;
+      }
+    }
+
+    function renderDashboard(stats, users, logs, escalations) {
+      const html = `
+        <div class="stats-grid">
+          <div class="stat-card"><div class="number">${stats.farmers}</div><div class="label">Registered Farmers</div></div>
+          <div class="stat-card"><div class="number">${stats.fields}</div><div class="label">Total Fields</div></div>
+          <div class="stat-card"><div class="number">${stats.observability_events}</div><div class="label">Observability Events</div></div>
+          <div class="stat-card"><div class="number">${stats.expert_calls}</div><div class="label">Expert API Calls</div></div>
+          <div class="stat-card"><div class="number">${stats.escalations}</div><div class="label">Escalations</div></div>
+        </div>
+
+        <div class="section">
+          <h2>Registered Users</h2>
+          ${users.length === 0 ? '<div class="empty">No registered farmers yet.</div>' : `
+          <table>
+            <thead><tr><th>Farmer ID</th><th>Name</th><th>Language</th><th>Fields</th></tr></thead>
+            <tbody>
+              ${users.map(u => `<tr><td>${u.farmer_id}</td><td>${u.name || '—'}</td><td>${u.language || '—'}</td><td>${u.field_count || 0}</td></tr>`).join('')}
+            </tbody>
+          </table>`}
+        </div>
+
+        <div class="section">
+          <h2>Expert Escalation Queue</h2>
+          ${escalations.length === 0 ? '<div class="empty">No pending escalations.</div>' : `
+          <table>
+            <thead><tr><th>ID</th><th>Query</th><th>State</th><th>Date</th></tr></thead>
+            <tbody>
+              ${escalations.slice(0, 20).map(e => `<tr><td>${e.escalation_id || '—'}</td><td>${(e.query || '').substring(0, 80)}</td><td><span class="badge ${e.state === 'open' ? 'badge-offline' : 'badge-online'}">${e.state || '—'}</span></td><td>${e.created_at || '—'}</td></tr>`).join('')}
+            </tbody>
+          </table>`}
+        </div>
+
+        <div class="section">
+          <h2>Recent Activity (Observability)</h2>
+          ${logs.length === 0 ? '<div class="empty">No activity logged yet.</div>' : `
+          <table>
+            <thead><tr><th>Event</th><th>Screen</th><th>Agent</th><th>Route</th><th>Safety</th><th>Device</th><th>Time</th></tr></thead>
+            <tbody>
+              ${logs.slice(0, 30).map(l => `<tr><td>${l.event_type || '—'}</td><td>${l.screen || '—'}</td><td>${l.agent || '—'}</td><td>${l.route || '—'}</td><td>${l.safety_decision || '—'}</td><td>${l.device_tier || '—'}</td><td>${l.timestamp || '—'}</td></tr>`).join('')}
+            </tbody>
+          </table>`}
+        </div>
+      `;
+      document.getElementById('content').innerHTML = html;
+    }
+
+    checkAdmin();
+  </script>
+</body>
+</html>

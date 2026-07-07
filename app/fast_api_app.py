@@ -118,6 +118,38 @@ USE_EMAIL_AS_FARMER_ID = os.getenv("USE_EMAIL_AS_FARMER_ID", "0") in {
 GUEST_FARMER_ID = os.getenv("GUEST_FARMER_ID", "guest")
 LOGGED_IN_FARMER_ID = os.getenv("LOGGED_IN_FARMER_ID", "user")
 
+# ============================================================
+# Rate Limiting — protect paid Gemini API from abuse
+# ============================================================
+EXPERT_RATE_LIMIT = int(os.getenv("EXPERT_RATE_LIMIT", "10"))  # max requests per window
+EXPERT_RATE_WINDOW = int(os.getenv("EXPERT_RATE_WINDOW", "3600"))  # window in seconds (1 hour)
+
+_expert_request_log: dict[str, list[float]] = {}
+
+
+def _check_expert_rate_limit(user_key: str) -> tuple[bool, int]:
+    """Check if user has exceeded the expert chat rate limit.
+
+    Returns (allowed, remaining).
+    """
+    now = time.time()
+    window_start = now - EXPERT_RATE_WINDOW
+
+    # Prune old entries
+    if user_key in _expert_request_log:
+        _expert_request_log[user_key] = [
+            t for t in _expert_request_log[user_key] if t > window_start
+        ]
+    else:
+        _expert_request_log[user_key] = []
+
+    count = len(_expert_request_log[user_key])
+    if count >= EXPERT_RATE_LIMIT:
+        return False, 0
+
+    _expert_request_log[user_key].append(now)
+    return True, EXPERT_RATE_LIMIT - count - 1
+
 
 def _get_google_oidc_client_id() -> str:
     # Support common env variable names across local/devops setups.
@@ -1025,6 +1057,98 @@ def get_observability_logs():
     return {"status": "success", "logs": res}
 
 
+# ============================================================
+# Admin Dashboard — protected by ADMIN_EMAIL env var
+# ============================================================
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
+
+
+def _is_admin(current_user: dict | None) -> bool:
+    if not current_user or not ADMIN_EMAIL:
+        return False
+    return current_user.get("email", "").lower() == ADMIN_EMAIL.lower()
+
+
+@app.get("/api/admin/users")
+def admin_list_users(request: Request):
+    """List all registered farmers (admin only)."""
+    current_user = _current_user_from_request(request)
+    if not _is_admin(current_user):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    conn = db_manager.get_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT farmer_id, name, language FROM farmers ORDER BY farmer_id")
+        farmers = [dict(row) for row in cursor.fetchall()]
+        # Get field counts per farmer
+        for f in farmers:
+            cursor.execute(
+                "SELECT COUNT(*) as cnt FROM fields WHERE farmer_id = ?",
+                (f["farmer_id"],),
+            )
+            f["field_count"] = cursor.fetchone()["cnt"]
+        return {"status": "success", "users": farmers, "total": len(farmers)}
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/observability")
+def admin_observability(request: Request):
+    """Get recent observability events (admin only)."""
+    current_user = _current_user_from_request(request)
+    if not _is_admin(current_user):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    res = db_manager.get_observability_logs()
+    return {"status": "success", "logs": res[:200]}
+
+
+@app.get("/api/admin/escalations")
+def admin_escalations(request: Request):
+    """Get expert escalation queue (admin only)."""
+    current_user = _current_user_from_request(request)
+    if not _is_admin(current_user):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    res = db_manager.get_expert_queue()
+    return {"status": "success", "escalations": res}
+
+
+@app.get("/api/admin/stats")
+def admin_stats(request: Request):
+    """Get summary stats (admin only)."""
+    current_user = _current_user_from_request(request)
+    if not _is_admin(current_user):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    conn = db_manager.get_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT COUNT(*) as cnt FROM farmers")
+        farmer_count = cursor.fetchone()["cnt"]
+        cursor.execute("SELECT COUNT(*) as cnt FROM fields")
+        field_count = cursor.fetchone()["cnt"]
+        cursor.execute("SELECT COUNT(*) as cnt FROM observability_logs")
+        log_count = cursor.fetchone()["cnt"]
+        cursor.execute("SELECT COUNT(*) as cnt FROM escalations")
+        escalation_count = cursor.fetchone()["cnt"]
+        cursor.execute(
+            "SELECT COUNT(*) as cnt FROM observability_logs WHERE event_type = 'expert_chat'"
+        )
+        expert_calls = cursor.fetchone()["cnt"]
+        return {
+            "status": "success",
+            "stats": {
+                "farmers": farmer_count,
+                "fields": field_count,
+                "observability_events": log_count,
+                "escalations": escalation_count,
+                "expert_calls": expert_calls,
+            },
+        }
+    finally:
+        conn.close()
+
+
 @app.post("/api/privacy/preferences")
 def save_privacy(payload: dict = Body(...)):
     res = db_manager.save_privacy_preferences(payload)
@@ -1095,11 +1219,35 @@ Guidelines:
 
 
 @app.post("/api/expert/chat")
-async def expert_chat_stream(req: ExpertChatRequest):
+async def expert_chat_stream(req: ExpertChatRequest, request: Request):
     """Stream an agricultural expert response from Gemini cloud."""
     import json
 
     from fastapi.responses import StreamingResponse
+
+    # --- Rate limiting: max EXPERT_RATE_LIMIT requests per user per hour ---
+    current_user = _current_user_from_request(request)
+    if current_user and current_user.get("email"):
+        rate_key = current_user["email"]
+    else:
+        # Fall back to IP address for unauthenticated users
+        rate_key = request.client.host if request.client else "unknown"
+
+    allowed, remaining = _check_expert_rate_limit(rate_key)
+    if not allowed:
+        reset_in = int(EXPERT_RATE_WINDOW / 60)
+        async def rate_limited_gen():
+            yield (
+                json.dumps(
+                    {
+                        "text": f"⚠️ Expert consultation limit reached ({EXPERT_RATE_LIMIT} per hour). Please try again in {reset_in} minutes or use Krishi Sastri for offline advice.",
+                        "done": True,
+                    }
+                )
+                + "\n"
+            )
+
+        return StreamingResponse(rate_limited_gen(), media_type="text/plain")
 
     gemini_api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get(
         "GOOGLE_API_KEY"
@@ -1162,7 +1310,11 @@ async def expert_chat_stream(req: ExpertChatRequest):
                 + "\n"
             )
 
-    return StreamingResponse(generate_stream(), media_type="text/plain")
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/plain",
+        headers={"X-RateLimit-Remaining": str(remaining), "X-RateLimit-Limit": str(EXPERT_RATE_LIMIT)},
+    )
 
 
 # Mount static files under "/" to serve agui and a2ui frontends

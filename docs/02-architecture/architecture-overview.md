@@ -1,21 +1,24 @@
 # Architecture Overview
 
 > **Status:** Active
-> **Last Updated:** 2026-07-04
+> **Last Updated:** 2026-07-06
 > **Owner:** Architecture
 
 ---
 
 ## System Architecture
 
-Krishi Sampark uses a **Router-Specialist multi-agent pattern** built on the Google Agent Development Kit (ADK), with a decoupled edge-cloud architecture designed for intermittent connectivity.
+![Krishi Sampark System Architecture](../assets/krishi_system_architecture_infographic.png)
+
+Krishi Sampark uses a router-specialist multi-agent pattern aligned with Google ADK concepts, with a decoupled edge-cloud architecture designed for limited-connectivity farming environments. The system combines a mobile PWA, local/offline-friendly data stores, cloud-hosted agent coordination, MCP-style tools, curated agriculture knowledge, and safety-aware response validation.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    EDGE LAYER (PWA)                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
-│  │ Local Gemma  │  │ TFLite       │  │ IndexedDB        │  │
-│  │ 2B (WebGPU)  │  │ Classifier   │  │ (11 stores)      │  │
+│  │ Local AI    │  │ TFLite       │  │ IndexedDB        │  │
+│  │ (WebGPU,    │  │ Classifier   │  │ (11 stores)      │  │
+│  │ experimental)│  │              │  │                  │  │
 │  └──────────────┘  └──────────────┘  └──────────────────┘  │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
 │  │ Service Worker│  │ Voice STT/TTS│  │ Camera (getUserMedia)│
