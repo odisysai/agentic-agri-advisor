@@ -1397,15 +1397,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const activeField = activeFields.find(f => f.field_id === activeFieldId);
     const cropType = activeField && activeField.planting ? activeField.planting.crop_type.toLowerCase() : 'corn';
     const cropSpec = okfDatabaseFallback[cropType] || okfDatabaseFallback['corn'];
+    const currentLang = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language') || 'en');
+    const targetLabel = window.getTranslation ? window.getTranslation('farm.details.target', currentLang) : 'Target';
 
     schema.components.forEach(comp => {
       if (comp.type === 'metric') {
         if (comp.labelKey === 'farm.details.nitrogen') {
-          comp.value = `45 PPM (Target: ${cropSpec.npk_ratio.nitrogen_ppm} PPM)`;
+          comp.value = `45 PPM (${targetLabel}: ${cropSpec.npk_ratio.nitrogen_ppm} PPM)`;
         } else if (comp.labelKey === 'farm.details.phosphorus') {
-          comp.value = `22 PPM (Target: ${cropSpec.npk_ratio.phosphorus_ppm} PPM)`;
+          comp.value = `22 PPM (${targetLabel}: ${cropSpec.npk_ratio.phosphorus_ppm} PPM)`;
         } else if (comp.labelKey === 'farm.details.potassium') {
-          comp.value = `160 PPM (Target: ${cropSpec.npk_ratio.potassium_ppm} PPM)`;
+          comp.value = `160 PPM (${targetLabel}: ${cropSpec.npk_ratio.potassium_ppm} PPM)`;
         }
       }
     });
@@ -1776,6 +1778,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Offer to escalate a complex query to the cloud Expert (Krishi Bisesagya)
   function offerExpertEscalation(originalQuery, langCode) {
+    // === LANG_MAP: escalation_messages — farmer-facing escalation prompt text per language ===
+    // When adding a language: add a 'code': { text, yes, no } entry here
     const escalationMessages = {
       'en': { text: 'This seems like a complex issue. Shall I send this to Krishi Bisesagya (Expert) for deeper analysis?', yes: 'Yes, ask the Expert', no: 'No, thanks' },
       'hi': { text: 'यह एक जटिल समस्या लग रही है। क्या मैं इसे कृषि विशेषज्ञ को गहन विश्लेषण के लिए भेजूँ?', yes: 'हाँ, विशेषज्ञ से पूछें', no: 'नहीं, ठीक है' },
@@ -2856,11 +2860,14 @@ document.addEventListener('DOMContentLoaded', () => {
         recognition.stop();
       } else {
         const preferredLang = document.getElementById('language-selector')?.value || 'English';
+        // === LANG_MAP: voice_recognition_bcp47 — UI language name → BCP-47 for inline mic button ===
+        // When adding a language: add 'FullName': 'code-REGION' here
         const voiceLangMap = {
           'Hindi': 'hi-IN',
           'Marathi': 'mr-IN',
           'Telugu': 'te-IN',
           'Swahili': 'sw-KE',
+          'Zulu': 'zu-ZA',
           'English': 'en-US'
         };
         recognition.lang = voiceLangMap[preferredLang] || 'en-US';
@@ -3788,6 +3795,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!chatMessages) return;
 
     const langCode = localStorage.getItem('aaa_preferred_language') || 'hi';
+    // === LANG_MAP: code_normalizer_escalation — identity map; add 'code':'code' when adding a language ===
     const langMap = { 'en': 'en', 'hi': 'hi', 'mr': 'mr', 'te': 'te', 'sw': 'sw', 'zu': 'zu' };
     const code = langMap[langCode] || 'hi';
 
@@ -3957,6 +3965,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Apply translations to advisor cards
     const langCode = localStorage.getItem('aaa_preferred_language') || 'hi';
+    // === LANG_MAP: code_normalizer_advisor — identity map; add 'code':'code' when adding a language ===
     const langMap = { 'en': 'en', 'hi': 'hi', 'mr': 'mr', 'te': 'te', 'sw': 'sw', 'zu': 'zu' };
     const code = langMap[langCode] || 'hi';
 
