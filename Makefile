@@ -1,7 +1,7 @@
 .PHONY: setup lint typecheck test test-integration coverage validate-schemas validate-translations validate-safety validate-skills security secret-scan dependency-scan sast container-scan build smoke-test evidence release-check ai-sdlc-check run-agent run-agents firestore-start firestore-stop serve serve-firestore
 
 PYTHON ?= .venv/bin/python
-UV ?= uv
+UV ?= env UV_CACHE_DIR=.uv-cache uv
 
 setup:
 	$(UV) sync --all-extras --dev
