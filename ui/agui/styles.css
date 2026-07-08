@@ -278,10 +278,13 @@ body {
 }
 
 .thinking-msg {
-  background-color: transparent;
+  background-color: rgba(44, 107, 55, 0.06);
+  border: 1px dashed var(--border);
+  border-left: 4px solid var(--accent);
   color: var(--text-sub);
   font-style: italic;
-  box-shadow: none;
+  align-self: flex-start;
+  border-radius: var(--radius-m) var(--radius-m) var(--radius-m) 4px;
 }
 
 .speak-msg-btn {

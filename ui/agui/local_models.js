@@ -13,6 +13,8 @@ class LocalAiEngine {
     this.llmConversation = null;
     this.llmLoaded = false;
     this.llmMode = "not_loaded";
+    this.modelInitTimeoutMs = Number(window.KRISHI_MODEL_INIT_TIMEOUT_MS || 45000);
+    this.generationTimeoutMs = Number(window.KRISHI_MODEL_GENERATION_TIMEOUT_MS || 20000);
     this.classifierLoaded = false;
     this.webGpuSupported = false;
     this.onProgressCallback = null;
@@ -43,6 +45,28 @@ class LocalAiEngine {
         }
       }
     };
+  }
+
+  async withTimeout(operation, timeoutMs, label) {
+    let timeoutId = null;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+
+    try {
+      const operationPromise = Promise.resolve().then(operation);
+      return await Promise.race([operationPromise, timeoutPromise]);
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
+
+  reportProgress(progress, stage = "downloading") {
+    if (this.onProgressCallback) {
+      this.onProgressCallback(Math.max(0, Math.min(100, Math.round(progress))), stage);
+    }
   }
 
   /**
@@ -289,8 +313,13 @@ class LocalAiEngine {
       if (cachedResponse) {
         console.log(`[Local AI] ${this.modelName} found in local browser Cache API. Initializing LiteRT-LM...`);
         const modelBlob = await cachedResponse.blob();
-        await this.initializeLiteRtLm(modelBlob);
-        if (this.onProgressCallback) this.onProgressCallback(100);
+        this.reportProgress(100, "initializing");
+        await this.withTimeout(
+          () => this.initializeLiteRtLm(modelBlob),
+          this.modelInitTimeoutMs,
+          "LiteRT-LM initialization"
+        );
+        this.reportProgress(100, "ready");
         this.llmLoaded = true;
         this.llmMode = "litert_lm_cached_model";
         return true;
@@ -321,9 +350,7 @@ class LocalAiEngine {
         receivedLength += value.length;
 
         const percent = Math.round((receivedLength / contentLength) * 100);
-        if (this.onProgressCallback) {
-          this.onProgressCallback(percent);
-        }
+        this.reportProgress(percent, "downloading");
       }
 
       // Concatenate chunks and store in cache
@@ -332,28 +359,23 @@ class LocalAiEngine {
       await cache.put(CACHE_KEY, new Response(modelBlob));
 
       console.log(`[Local AI] Local ${this.modelName} model cached. Initializing LiteRT-LM...`);
-      await this.initializeLiteRtLm(modelBlob);
+      this.reportProgress(100, "initializing");
+      await this.withTimeout(
+        () => this.initializeLiteRtLm(modelBlob),
+        this.modelInitTimeoutMs,
+        "LiteRT-LM initialization"
+      );
+      this.reportProgress(100, "ready");
       this.llmLoaded = true;
       this.llmMode = "litert_lm_cloud_model";
       return true;
     } catch (err) {
       console.warn('[Local AI] LiteRT-LM model download or initialization failed. Running deterministic local advisor.', err);
-      this.llmMode = "simulated_rule_fallback";
-      // Fallback: Run the simulated progress bar so the developer playground still works gracefully
-      return new Promise(resolve => {
-        let progress = 0;
-        const interval = setInterval(() => {
-          progress += 5;
-          if (progress > 100) progress = 100;
-          if (this.onProgressCallback) this.onProgressCallback(progress);
-          if (progress === 100) {
-            clearInterval(interval);
-            this.llmLoaded = true;
-            this.llmMode = "simulated_rule_fallback";
-            resolve(true);
-          }
-        }, 100);
-      });
+      this.llmEngine = null;
+      this.llmConversation = null;
+      this.llmLoaded = false;
+      this.llmMode = "rule_fallback_model_unavailable";
+      return false;
     }
   }
 
@@ -370,7 +392,7 @@ class LocalAiEngine {
         messages: [
           {
             role: "system",
-            content: "You are Krishi Sastri, a warm local agriculture advisor. Answer farmers briefly in their selected language. Avoid unsafe chemical dosage unless verified. Ask to consult Krishi Bisesagya for uncertain, severe, or chemical-sensitive cases."
+            content: "You are Krishi Sastri, a warm local agriculture advisor. Answer farmers briefly in their selected language. For crop disease or stress questions, always give 2-3 safe immediate actions before suggesting expert consultation. Avoid unsafe chemical dosage unless verified. Ask to consult Krishi Bisesagya only after safe first steps for uncertain, severe, or chemical-sensitive cases."
           }
         ]
       }
@@ -387,11 +409,73 @@ class LocalAiEngine {
       groundingFacts ? `Local crop facts: ${groundingFacts}` : "",
       context.visionResult ? `Local vision result: ${JSON.stringify(context.visionResult)}` : "",
       `Farmer question: ${prompt}`,
-      "Respond under 80 words. Do not use markdown. Use the farmer's selected language."
+      "Respond under 80 words. Do not use markdown. Use the farmer's selected language.",
+      "For disease/stress: state likely issue, give 2-3 safe first actions, then mention expert only if needed."
     ].filter(Boolean).join("\n");
 
-    const response = await this.llmConversation.sendMessage(farmerPrompt);
-    return response?.content?.map(item => item.text || "").join("").trim() || "";
+    const response = await this.withTimeout(
+      () => this.llmConversation.sendMessage(farmerPrompt),
+      this.generationTimeoutMs,
+      "LiteRT-LM generation"
+    );
+    return this.extractLiteRtText(response);
+  }
+
+  extractLiteRtText(response) {
+    if (!response) return "";
+    if (typeof response === "string") return response.trim();
+    if (typeof response.text === "string") return response.text.trim();
+    if (typeof response.message === "string") return response.message.trim();
+    if (Array.isArray(response.content)) {
+      return response.content.map(item => {
+        if (typeof item === "string") return item;
+        return item?.text || item?.content || "";
+      }).join("").trim();
+    }
+    if (Array.isArray(response.candidates)) {
+      return response.candidates.map(item => item?.text || item?.content || "").join("").trim();
+    }
+    return "";
+  }
+
+  isFarmerSafeReply(reply, lang, context = {}) {
+    return !this.farmerSafetyIssue(reply, lang, context);
+  }
+
+  farmerSafetyIssue(reply, lang, context = {}) {
+    const text = String(reply || "");
+    if (!text.trim()) return "empty_response";
+    if (/Coordinator|Pathologist|Irrigation Planner|Crop Analyst|profile\.|soil\.|blackclay|\*\*/i.test(text)) {
+      return "internal_or_markdown_leak";
+    }
+    const crop = String(context.crop || "").toLowerCase();
+    if (crop && this.replyMentionsDifferentCrop(text, crop)) {
+      return "crop_mismatch";
+    }
+    if (lang === "Hindi") {
+      const allowedTechnical = /\b(pH|NPK|PPM|ml|mg|kg|cm|mm|EC|ASK)\b|°C|कृषि Sastri|Krishi Sastri|Krishi Bisesagya/gi;
+      const remainingLatin = text.replace(allowedTechnical, "");
+      if (/\b(the|and|or|use|spray|apply|disease|pest|soil|crop|water|fertilizer|nitrogen|magnesium|deficiency|expert|consult)\b/i.test(remainingLatin)) {
+        return "english_phrase_in_hindi_reply";
+      }
+    }
+    return "";
+  }
+
+  replyMentionsDifferentCrop(text, expectedCrop) {
+    const cropTerms = {
+      corn: ["corn", "maize", "मक्का", "मक्के", "मका", "मकई"],
+      chilli: ["chilli", "chili", "pepper", "मिर्च", "मिर्ची", "मिरची"],
+      tomato: ["tomato", "tomatoes", "टमाटर", "टोमॅटो"],
+      wheat: ["wheat", "गेहूँ", "गेहूं", "गहू"]
+    };
+    const expectedTerms = cropTerms[expectedCrop] || [];
+    const mentionsExpected = expectedTerms.some(term => text.toLowerCase().includes(term.toLowerCase()));
+    const otherCrop = Object.entries(cropTerms).find(([cropName, terms]) => {
+      if (cropName === expectedCrop) return false;
+      return terms.some(term => text.toLowerCase().includes(term.toLowerCase()));
+    });
+    return Boolean(otherCrop && !mentionsExpected);
   }
 
   /**
@@ -473,6 +557,8 @@ class LocalAiEngine {
         crop: "crop.",
         symptomLabel: "Symptom",
         organicLabel: "Organic Remedy",
+        safeStepsLabel: "Safe first steps",
+        safeDiseaseSteps: "Improve drainage if water is standing. Keep plants airy. Remove badly affected leaves separately.",
         fallbackSymptom: "Small spots, leaf damage, or pest marks can indicate early stress.",
         fallbackRemedy: "Spray neem oil solution early in the morning and keep affected leaves separate.",
         optimalMoisture: "Optimal Moisture",
@@ -512,6 +598,8 @@ class LocalAiEngine {
         crop: "फसल के लिए।",
         symptomLabel: "लक्षण",
         organicLabel: "जैविक उपचार",
+        safeStepsLabel: "पहले सुरक्षित कदम",
+        safeDiseaseSteps: "पानी रुका हो तो निकासी सुधारें। पौधों में हवा रखें। ज्यादा प्रभावित पत्ते अलग करें।",
         fallbackSymptom: "पत्तों पर छोटे धब्बे, छेद या कीट के निशान शुरुआती तनाव दिखा सकते हैं।",
         fallbackRemedy: "सुबह नीम तेल का हल्का घोल छिड़कें और ज्यादा प्रभावित पत्तों को अलग रखें।",
         optimalMoisture: "इष्टतम नमी",
@@ -551,6 +639,8 @@ class LocalAiEngine {
         crop: "पिकासाठी.",
         symptomLabel: "लक्षणे",
         organicLabel: "सेंद्रिय उपचार",
+        safeStepsLabel: "पहिली सुरक्षित पावले",
+        safeDiseaseSteps: "पाणी साचत असेल तर निचरा सुधारा. झाडात हवा खेळती ठेवा. जास्त बाधित पाने वेगळी ठेवा.",
         fallbackSymptom: "पानांवरील छोटे डाग, छिद्रे किंवा किडीचे चिन्ह सुरुवातीचा ताण दाखवू शकतात.",
         fallbackRemedy: "सकाळी नीम तेलाचे हलके द्रावण फवारावे आणि जास्त बाधित पाने वेगळी ठेवावीत.",
         optimalMoisture: "योग्य ओलावा",
@@ -590,6 +680,8 @@ class LocalAiEngine {
         crop: "పంట కోసం.",
         symptomLabel: "లక్షణాలు",
         organicLabel: "సేంద్రీయ నివారణ",
+        safeStepsLabel: "మొదటి సురక్షిత చర్యలు",
+        safeDiseaseSteps: "నీరు నిల్వ ఉంటే పారుదల మెరుగుపరచండి. మొక్కలకు గాలి అందేలా ఉంచండి. ఎక్కువగా ప్రభావితమైన ఆకులు వేరు చేయండి.",
         fallbackSymptom: "ఆకులపై చిన్న మచ్చలు, రంధ్రాలు లేదా పురుగు గుర్తులు ప్రారంభ ఒత్తిడిని చూపవచ్చు.",
         fallbackRemedy: "ఉదయం తేలికపాటి వేపనూనె ద్రావణం పిచికారీ చేసి, ఎక్కువగా ప్రభావితమైన ఆకులను వేరు చేయండి.",
         optimalMoisture: "అనుకూలమైన తేమ",
@@ -629,6 +721,8 @@ class LocalAiEngine {
         crop: "zao.",
         symptomLabel: "Dalili",
         organicLabel: "Tiba ya Kiorgansiki",
+        safeStepsLabel: "Hatua salama za kwanza",
+        safeDiseaseSteps: "Boresha mifereji ikiwa maji yanasimama. Acha hewa ipite. Tenga majani yaliyoathirika sana.",
         fallbackSymptom: "Madoa madogo, mashimo, au alama za wadudu kwenye majani zinaweza kuonyesha msongo wa mapema.",
         fallbackRemedy: "Nyunyizia mchanganyiko mwepesi wa mafuta ya mwarobaini asubuhi na tenga majani yaliyoathirika sana.",
         optimalMoisture: "Unyevu Sahihi",
@@ -668,6 +762,8 @@ class LocalAiEngine {
         crop: "ummbila.",
         symptomLabel: "Imibhalo",
         organicLabel: "Ukwelapha Ngokwemvelo",
+        safeStepsLabel: "Izinyathelo zokuqala eziphephile",
+        safeDiseaseSteps: "Thuthukisa ukugeleza uma amanzi emi. Vumela umoya ezitshalweni. Hlukanisa amaqabunga athinteke kakhulu.",
         fallbackSymptom: "Amabala amancane, izimbobo, noma izimpawu zezinambuzane emaqabungeni zingakhombisa ukucindezeleka kokuqala.",
         fallbackRemedy: "Fafaza isixazululo esincane samafutha e-neem ekuseni bese uhlukanisa amaqabunga athinteke kakhulu.",
         optimalMoisture: "Umswakama Ohelekile",
@@ -707,12 +803,18 @@ class LocalAiEngine {
     const cropName = dict.cropNames?.[crop] || okfGuide.metadata.name || crop;
     const groundingFacts = this.buildGroundingFacts(okfGuide, cropName, lang);
 
-    if (this.llmLoaded && this.llmConversation) {
+    if (!context.forceRuleFallback && this.llmLoaded && this.llmConversation) {
       try {
         const llmResponse = await this.generateWithLiteRt(prompt, { ...context, crop, soil, language: lang }, groundingFacts);
-        if (llmResponse) {
+        if (this.isFarmerSafeReply(llmResponse, lang, { crop })) {
           return llmResponse;
         }
+        const issue = this.farmerSafetyIssue(llmResponse, lang, { crop });
+        console.warn('[Local AI] LiteRT-LM response failed farmer-safe checks; using deterministic local advisor.', {
+          issue,
+          expectedCrop: crop,
+          preview: String(llmResponse || "").slice(0, 240)
+        });
       } catch (err) {
         console.warn('[Local AI] LiteRT-LM generation failed; using deterministic local advisor.', err);
         this.llmMode = "rule_fallback_generation_failed";
@@ -781,7 +883,7 @@ class LocalAiEngine {
       const symptomVal = (rawDiag.symptom && typeof rawDiag.symptom === 'object') ? (rawDiag.symptom[lang] || rawDiag.symptom.English) : rawDiag.symptom;
       const remedyVal = (rawDiag.organic_remedy && typeof rawDiag.organic_remedy === 'object') ? (rawDiag.organic_remedy[lang] || rawDiag.organic_remedy.English) : rawDiag.organic_remedy;
 
-      response = `${dict.pranam}\n${dict.pestAdvice}\n${dict.symptomLabel}: ${symptomVal}\n${dict.organicLabel}: ${remedyVal}\n${dict.expertOffer}`;
+      response = `${dict.pranam}\n${cropName}: ${dict.pestAdvice}\n${dict.symptomLabel}: ${symptomVal}\n${dict.safeStepsLabel}: ${dict.safeDiseaseSteps}\n${dict.organicLabel}: ${remedyVal}\n${dict.expertOffer}`;
     }
     else if (irrigationKeywords.some(kw => text.includes(kw))) {
       activeAgent = dict.irrigatorName;
@@ -801,7 +903,7 @@ class LocalAiEngine {
     else {
       activeAgent = dict.coordinatorName;
       activeSkill = dict.coordinatorSkill;
-      response = `${dict.welcome}\n${cropName}: ${dict.coordinatorOffer}\n${dict.pathologistName}: ${dict.pathologistSkill}\n${dict.irrigatorName}: ${dict.irrigatorSkill}\n${dict.analystName}: ${dict.analystSkill}`;
+      response = `${dict.welcome}\n${cropName}: ${dict.soilAdvice}\n${dict.expertOffer}`;
     }
 
     return new Promise(resolve => {

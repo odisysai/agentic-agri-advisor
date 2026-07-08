@@ -35,3 +35,24 @@ def test_local_ai_engine_defaults_to_litertlm_model_name():
     """
 
     subprocess.run(["node", "-e", script], cwd=".", check=True)
+
+
+def test_local_ai_engine_reads_model_timeout_config():
+    script = r"""
+    const fs = require('fs');
+    const vm = require('vm');
+    global.window = {
+      KRISHI_MODEL_INIT_TIMEOUT_MS: 1234,
+      KRISHI_MODEL_GENERATION_TIMEOUT_MS: 5678,
+      KRISHI_MODEL_ANSWER_TIMEOUT_MS: 9012
+    };
+    global.navigator = { gpu: {}, onLine: false };
+    global.caches = { open: async () => ({ match: async () => null }) };
+    window.LocalDb = class { async getOkfGuide() { return null; } };
+    vm.runInThisContext(fs.readFileSync('ui/agui/local_models.js', 'utf8'));
+    const engine = new window.LocalAiEngine();
+    if (engine.modelInitTimeoutMs !== 1234) throw new Error(engine.modelInitTimeoutMs);
+    if (engine.generationTimeoutMs !== 5678) throw new Error(engine.generationTimeoutMs);
+    """
+
+    subprocess.run(["node", "-e", script], cwd=".", check=True)

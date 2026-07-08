@@ -20,6 +20,7 @@ import re
 import tempfile
 import time
 from datetime import datetime
+from urllib.parse import urlparse
 
 # Load .env file early so GEMINI_API_KEY and other secrets are available
 try:
@@ -168,8 +169,40 @@ def _get_google_oidc_client_id() -> str:
     return ""
 
 
+def _is_truthy_env(key: str, default: str = "0") -> bool:
+    return os.getenv(key, default) in {"1", "true", "True", "yes", "YES"}
+
+
 def _is_google_login_required() -> bool:
-    return os.getenv("REQUIRE_GOOGLE_LOGIN", "0") in {"1", "true", "True"}
+    return _is_truthy_env("REQUIRE_GOOGLE_LOGIN")
+
+
+def _request_origin(request: Request) -> str:
+    return (
+        request.headers.get("origin")
+        or request.headers.get("referer")
+        or str(request.base_url)
+    )
+
+
+def _is_local_browser_origin(origin: str) -> bool:
+    parsed = urlparse(origin)
+    hostname = parsed.hostname or ""
+    return hostname in {"localhost", "127.0.0.1", "::1"}
+
+
+def _google_auth_disabled_reason(request: Request, client_id: str) -> str:
+    if not client_id:
+        return "Google OIDC client ID is not configured."
+    if _is_local_browser_origin(_request_origin(request)) and not _is_truthy_env(
+        "GOOGLE_OIDC_ALLOW_LOCALHOST"
+    ):
+        return (
+            "Google OIDC is disabled for localhost. Add http://localhost:8000 "
+            "to the OAuth client's Authorized JavaScript origins and set "
+            "GOOGLE_OIDC_ALLOW_LOCALHOST=1 to test Google sign-in locally."
+        )
+    return ""
 
 
 def _b64url_encode(raw: bytes) -> str:
@@ -271,14 +304,16 @@ class GuestLoginBody(BaseModel):
 
 
 @app.get("/api/auth/config")
-def auth_config() -> dict:
+def auth_config(request: Request) -> dict:
     client_id = _get_google_oidc_client_id()
-    enabled = bool(client_id)
+    disabled_reason = _google_auth_disabled_reason(request, client_id)
+    enabled = not disabled_reason
     return {
         "enabled": enabled,
         "required": _is_google_login_required(),
         "allow_guest": True,
         "client_id": client_id if enabled else None,
+        "disabled_reason": disabled_reason,
     }
 
 
@@ -546,6 +581,21 @@ def model_config() -> dict:
             "KRISHI_LITERT_LM_CORE_URL",
             "https://cdn.jsdelivr.net/npm/@litert-lm/core/+esm",
         ),
+        "model_load_timeout_ms": int(
+            os.getenv("KRISHI_MODEL_LOAD_TIMEOUT_MS", "30000")
+        ),
+        "model_init_timeout_ms": int(
+            os.getenv("KRISHI_MODEL_INIT_TIMEOUT_MS", "45000")
+        ),
+        "model_generation_timeout_ms": int(
+            os.getenv("KRISHI_MODEL_GENERATION_TIMEOUT_MS", "20000")
+        ),
+        "model_answer_timeout_ms": int(
+            os.getenv("KRISHI_MODEL_ANSWER_TIMEOUT_MS", "25000")
+        ),
+        "model_foreground_wait_ms": int(
+            os.getenv("KRISHI_MODEL_FOREGROUND_WAIT_MS", "8000")
+        ),
     }
 
 
@@ -561,6 +611,11 @@ def model_config_js() -> Response:
         + "window.KRISHI_LOCAL_MODEL_URL = window.KRISHI_MODEL_CONFIG.local_model_url;\n"
         + "window.KRISHI_CROP_CLASSIFIER_MODEL_URL = window.KRISHI_MODEL_CONFIG.crop_classifier_model_url;\n"
         + "window.KRISHI_LITERT_LM_CORE_URL = window.KRISHI_MODEL_CONFIG.litert_lm_core_url;\n"
+        + "window.KRISHI_MODEL_LOAD_TIMEOUT_MS = window.KRISHI_MODEL_CONFIG.model_load_timeout_ms;\n"
+        + "window.KRISHI_MODEL_INIT_TIMEOUT_MS = window.KRISHI_MODEL_CONFIG.model_init_timeout_ms;\n"
+        + "window.KRISHI_MODEL_GENERATION_TIMEOUT_MS = window.KRISHI_MODEL_CONFIG.model_generation_timeout_ms;\n"
+        + "window.KRISHI_MODEL_ANSWER_TIMEOUT_MS = window.KRISHI_MODEL_CONFIG.model_answer_timeout_ms;\n"
+        + "window.KRISHI_MODEL_FOREGROUND_WAIT_MS = window.KRISHI_MODEL_CONFIG.model_foreground_wait_ms;\n"
     )
     return Response(
         content=script,

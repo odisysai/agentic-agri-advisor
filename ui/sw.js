@@ -1,4 +1,4 @@
-const CACHE_NAME = 'krishi-sampark-cache-v12';
+const CACHE_NAME = 'krishi-sampark-cache-v22';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -13,11 +13,12 @@ const ASSETS_TO_CACHE = [
   '/public/favicon-512.png',
   '/public/site.webmanifest',
   '/agui/styles.css',
-  '/agui/dashboard.js',
+  '/agui/styles.css?v=12',
+  '/agui/dashboard.js?v=27',
   '/agui/panel_router.js',
   '/agui/camera.js',
-  '/agui/crop_classifier.js',
-  '/agui/local_models.js',
+  '/agui/crop_classifier.js?v=4',
+  '/agui/local_models.js?v=11',
   '/agui/local_db.js',
   '/agui/pwa_config.js',
   '/agui/voice.js',
@@ -124,7 +125,7 @@ self.addEventListener('fetch', event => {
   const requestUrl = new URL(event.request.url);
 
   // Bypass cache for dynamic API endpoints and SSE stream
-  if (requestUrl.pathname.startsWith('/api/') || requestUrl.pathname.startsWith('/run_sse') || requestUrl.pathname.startsWith('/feedback')) {
+  if (requestUrl.pathname.startsWith('/api/') || requestUrl.pathname.startsWith('/run_sse') || requestUrl.pathname.startsWith('/feedback') || requestUrl.pathname === '/agui/model_config.js') {
     event.respondWith(
       fetch(event.request)
         .catch(err => {
@@ -146,6 +147,13 @@ self.addEventListener('fetch', event => {
             headers: { 'Content-Type': 'application/json' }
           });
         })
+    );
+    return;
+  }
+
+  if (event.request.mode === 'navigate' || requestUrl.pathname.endsWith('.html')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
     );
     return;
   }

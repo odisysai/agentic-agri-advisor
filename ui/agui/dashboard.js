@@ -1675,7 +1675,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // ground the answer, but they should not replace the Sastri response layer.
     // Only Krishi Bisesagya (Expert) uses cloud Gemini.
     console.log('[Triage] Routing to local Krishi Sastri.', localAi.getStatus?.());
-    const thinkingBubble = appendMessage('Krishi Sastri', 'Thinking...', 'thinking-msg');
+    const thinkingBubble = appendMessage('Krishi Sastri', sastriInitialThinkingText(langCode), 'thinking-msg');
+    if (thinkingBubble) thinkingBubble.dataset.createdAt = String(Date.now());
     handleAdvisorLocalAnswer(text, langCode, thinkingBubble);
     return;
   }
@@ -1823,11 +1824,146 @@ document.addEventListener('DOMContentLoaded', () => {
     return match ? match.crop : (fallbackCrop || 'corn').toLowerCase();
   }
 
+  function sastriModelLoadingText(langCode, progress = null, stage = 'downloading') {
+    const pct = Number.isFinite(progress) ? ` ${Math.max(0, Math.min(100, progress))}%` : '';
+    if (stage === 'initializing') {
+      const initializingCopy = {
+        hi: 'मॉडल डाउनलोड हो गया है, अब शुरू कर रहा हूँ...',
+        mr: 'मॉडेल डाउनलोड झाले आहे, आता सुरू करत आहे...',
+        te: 'మోడల్ డౌన్‌లోడ్ అయింది, ఇప్పుడు ప్రారంభిస్తున్నాను...',
+        sw: 'Mfano umepakuliwa, sasa unaanzishwa...',
+        zu: 'Imodeli isilandiwe, manje iyaqalwa...',
+        en: 'Model downloaded. Starting Krishi Sastri...'
+      };
+      return initializingCopy[langCode] || initializingCopy.en;
+    }
+    if (stage === 'ready') {
+      const readyCopy = {
+        hi: 'कृषि शास्त्री तैयार हैं...',
+        mr: 'कृषी शास्त्री तयार आहेत...',
+        te: 'కృషి శాస్త్రి సిద్ధంగా ఉన్నారు...',
+        sw: 'Krishi Sastri yuko tayari...',
+        zu: 'U-Krishi Sastri uselungile...',
+        en: 'Krishi Sastri is ready...'
+      };
+      return readyCopy[langCode] || readyCopy.en;
+    }
+    const copy = {
+      hi: `कृषि शास्त्री मॉडल तैयार हो रहा है${pct}...`,
+      mr: `कृषी शास्त्री मॉडेल तयार होत आहे${pct}...`,
+      te: `కృషి శాస్త్రి మోడల్ సిద్ధమవుతోంది${pct}...`,
+      sw: `Mfano wa Krishi Sastri unaandaliwa${pct}...`,
+      zu: `Imodeli ye-Krishi Sastri iyalungiswa${pct}...`,
+      en: `Preparing Krishi Sastri model${pct}...`
+    };
+    return copy[langCode] || copy.en;
+  }
+
+  function sastriInitialThinkingText(langCode) {
+    const copy = {
+      hi: 'कृषि शास्त्री सोच रहे हैं...',
+      mr: 'कृषी शास्त्री विचार करत आहेत...',
+      te: 'కృషి శాస్త్రి ఆలోచిస్తున్నారు...',
+      sw: 'Krishi Sastri anatafakari...',
+      zu: 'U-Krishi Sastri uyacabanga...',
+      en: 'Krishi Sastri is thinking...'
+    };
+    return copy[langCode] || copy.en;
+  }
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async function withUiTimeout(operation, timeoutMs, label) {
+    let timeoutId = null;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+    });
+    try {
+      return await Promise.race([Promise.resolve().then(operation), timeoutPromise]);
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  }
+
+  function updateThinkingBubble(thinkingBubble, text) {
+    if (!thinkingBubble) return;
+    const messageText = thinkingBubble.querySelector('.message-text') || thinkingBubble;
+    messageText.textContent = text;
+  }
+
+  function removeStaleSastriThinkingBubbles(activeBubble = null) {
+    if (!chatMessages) return;
+    chatMessages.querySelectorAll('.message.thinking-msg').forEach(node => {
+      if (activeBubble && node === activeBubble) return;
+      const label = node.querySelector('strong')?.textContent || '';
+      if (label.includes('Krishi Sastri') || label.includes('कृषि शास्त्री')) {
+        node.remove();
+      }
+    });
+  }
+
+  async function prepareSastriModel(preferredLang, thinkingBubble) {
+    if (!localAi || localAi.llmLoaded) return true;
+
+    const timeoutMs = Number(window.KRISHI_MODEL_FOREGROUND_WAIT_MS || 8000);
+    updateThinkingBubble(thinkingBubble, sastriModelLoadingText(preferredLang));
+    let activeProgress = true;
+
+    let timeoutId = null;
+    const timeoutPromise = new Promise(resolve => {
+      timeoutId = setTimeout(() => resolve(false), timeoutMs);
+    });
+
+    const loadPromise = localAi.loadLlm((progress, stage) => {
+      if (!activeProgress) return;
+      updateThinkingBubble(thinkingBubble, sastriModelLoadingText(preferredLang, progress, stage));
+    }).catch(err => {
+      console.warn('[Advisor] Sastri model preparation failed:', err);
+      return false;
+    });
+
+    const loaded = await Promise.race([loadPromise, timeoutPromise]);
+    activeProgress = false;
+    if (timeoutId) clearTimeout(timeoutId);
+
+    if (!loaded) {
+      updateThinkingBubble(thinkingBubble, preferredLang === 'hi'
+        ? 'स्थानीय जानकारी से तुरंत उत्तर दे रहा हूँ...'
+        : 'Answering now with local fallback...');
+    }
+    return !!loaded;
+  }
+
+  async function keepThinkingBubbleVisible(thinkingBubble, minVisibleMs = 900) {
+    if (!thinkingBubble?.dataset?.createdAt) return;
+    const createdAt = Number(thinkingBubble.dataset.createdAt);
+    const elapsed = Date.now() - createdAt;
+    if (elapsed < minVisibleMs) {
+      await sleep(minVisibleMs - elapsed);
+    }
+  }
+
+  async function finalizeSastriBubble(thinkingBubble, reply) {
+    if (!thinkingBubble) {
+      appendMessage('Krishi Sastri', reply, 'agent-msg');
+      return;
+    }
+    await keepThinkingBubbleVisible(thinkingBubble);
+    if (!document.body.contains(thinkingBubble)) {
+      appendMessage('Krishi Sastri', reply, 'agent-msg');
+      return;
+    }
+    thinkingBubble.className = 'message agent-msg';
+    const messageText = thinkingBubble.querySelector('.message-text') || thinkingBubble;
+    messageText.innerHTML = applySafetyKernelFilter(reply);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
   // Advisor mode local answer — uses cached crop facts as grounding, then lets
   // LocalAiEngine produce the Sastri response.
   async function handleAdvisorLocalAnswer(text, preferredLang, thinkingBubble) {
-    if (thinkingBubble) thinkingBubble.remove();
-
     const langNameMap = { 'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi', 'te': 'Telugu', 'sw': 'Swahili', 'zu': 'Zulu' };
     const langName = langNameMap[preferredLang] || 'English';
     const savedProfile = localStorage.getItem('aaa_farmer_profile');
@@ -1880,20 +2016,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let reply;
+    let modelReady = false;
     try {
-      reply = await localAi.generateText(text, {
+      modelReady = await prepareSastriModel(preferredLang, thinkingBubble);
+      const answerTimeoutMs = Number(window.KRISHI_MODEL_ANSWER_TIMEOUT_MS || 25000);
+      reply = await withUiTimeout(() => localAi.generateText(text, {
         crop: inferredCrop,
         soil: profile.soil_type || 'clay',
         language: langName,
         localFacts: localCropFacts,
-        okfGuide: localCropFacts
-      });
+        okfGuide: localCropFacts,
+        forceRuleFallback: !modelReady
+      }), answerTimeoutMs, 'Krishi Sastri answer');
     } catch (e) {
       console.warn('[Advisor] LocalAiEngine failed, using rule-based fallback:', e);
       reply = buildFarmerSafeOfflineReply(text, preferredLang);
     }
 
-    appendMessage('Krishi Sastri', reply, 'agent-msg');
+    if (!String(reply || '').trim()) {
+      reply = buildFarmerSafeOfflineReply(text, preferredLang);
+    }
+
+    await finalizeSastriBubble(thinkingBubble, reply);
+    removeStaleSastriThinkingBubbles();
     localDb.addChat({ role: 'advisor', text: reply });
 
     // Speak the response if TTS is enabled
@@ -1905,6 +2050,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (isComplexQuery(text)) {
       // Add escalation prompt after the local response
       setTimeout(() => {
+        removeStaleSastriThinkingBubbles();
         offerExpertEscalation(text, preferredLang);
       }, 1000);
     }
