@@ -49,7 +49,7 @@ Krishi Sampark uses a router-specialist multi-agent pattern aligned with Google 
 │  │  OKF Knowledge Graph │ RAG Pipeline │ Safety Kernel   │   │
 │  └──────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │  SQLite Farm Twin (farm_twin.db)                      │   │
+│  │  Firestore Farm Twin + User Content Index             │   │
 │  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -74,7 +74,7 @@ Krishi Sampark uses a router-specialist multi-agent pattern aligned with Google 
 | LLM | Configured Gemini Flash model | Gemini 2.5 Flash (expert escalation), temperature-tuned per agent |
 | Backend | FastAPI | Port 8000, SSE streaming, serves ADK + static UI |
 | Frontend | Vanilla JS PWA | Two-pane layout (content + chat), Service worker |
-| Database | SQLite / IndexedDB / Firestore | SQLite (local server), IndexedDB (client offline twin), Firestore (GCP where configured) |
+| Database | Firestore / IndexedDB / Cloud Storage | Firestore Emulator locally, Firestore Native in cloud, IndexedDB client offline twin, Cloud Storage for uploaded files |
 | MCP-Style Tools | Python | 8 tool servers (weather, market, okf, rag, image_analysis, tts, stt, translation) |
 | Voice | Web Speech API + edge-tts | Browser-native STT, backend neural TTS (edge-tts) |
 | Local Models | Experimental | Gemma-class WebGPU model where supported, device and browser dependent |
@@ -92,7 +92,7 @@ agentic-agri-advisor/
 ├── rag_pipeline/            # RAG document search pipeline
 ├── safety_kernel/           # Agricultural Safety Kernel
 ├── simulation/              # Farm simulation sandbox
-├── data/                    # SQLite database manager
+├── data/                    # Firestore data manager facade
 ├── tests/                   # Unit, integration, eval tests
 ├── .ai-sdlc/                # AI-SDLC governance (agents, skills, workflows, evidence)
 ├── tools/ai_sdlc/           # AI-SDLC validation CLI scripts

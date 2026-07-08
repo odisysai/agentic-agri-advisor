@@ -24,11 +24,11 @@ make setup                    # uv sync --all-extras --dev
 cp config/secrets.template.env .env
 # Edit .env: set GEMINI_API_KEY
 
-# Initialize database
-uv run python data/init_db.py
+# Start Firestore Emulator, then run the app
+make firestore-start
 
 # Run servers
-uv run uvicorn app.fast_api_app:app --port 8000    # FastAPI (UI + APIs)
+make serve                                         # FastAPI (UI + APIs)
 uv run python -m app.agent                           # ADK playground (port 8080)
 ```
 
@@ -45,7 +45,7 @@ uv run python -m app.agent                           # ADK playground (port 8080
 | `ui/agui/voice.js` | STT/TTS integration |
 | `ui/agui/crop_classifier.js` | TFLite disease classifier + color heuristic fallback |
 | `safety_kernel/kernel.py` | Agricultural Safety Kernel |
-| `data/db_manager.py` | SQLite database manager |
+| `data/db_manager.py` | Firestore database manager facade |
 | `config/dev.yaml` / `prod.yaml` | Environment configuration |
 
 ## Common Commands

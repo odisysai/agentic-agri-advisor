@@ -42,7 +42,7 @@ All evidence in `.ai-sdlc/evidence/` was generated on July 2 against commit `361
 |------------|-----------|------------|
 | No farmer authentication | HIGH | `user_id` passed from frontend without session |
 | No rate limiting on API/SSE | MEDIUM | DoS risk on agent endpoint |
-| Escalation queue in-memory | MEDIUM | Lost on server restart (SQLite persistence planned) |
+| Escalation queue needs production hardening | MEDIUM | Persisted through backend data APIs; add SLA alerts and queue ownership before launch |
 | EXIF metadata not stripped from photos | MEDIUM | Privacy risk from uploaded images |
 | Evidence not cryptographically signed | LOW | Hashed + commit-linked but not signed |
 | No audit trail for safety kernel decisions | MEDIUM | No logging of block/escalation decisions |

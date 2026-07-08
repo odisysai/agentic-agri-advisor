@@ -93,7 +93,7 @@ Implement an **Agricultural Safety Kernel** using ADK callback functions that va
 
 **Negative:**
 - Safety data is static markdown — requires manual updates when regulations change
-- Escalation queue is in-memory (lost on server restart) — SQLite persistence planned
+- Escalation queue still needs production queue ownership, SLA alerts, and operational dashboards
 - "Per liter" dosage format required regex fix for proper parsing
 - Only 10 pesticides registered — more comprehensive registry needed for production
 

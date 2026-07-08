@@ -44,7 +44,7 @@
         <div class="left-nav-footer">
           <div class="profile-info">
             <span class="profile-avatar">👨‍🌾</span>
-            <span class="profile-name" id="left-nav-profile-name">माधव जी</span>
+            <span class="profile-name" id="left-nav-profile-name">—</span>
           </div>
         </div>
       </aside>
@@ -309,9 +309,10 @@
           <!-- Expert Chat Screen — Cloud Gemini -->
           <div id="expert-chat-screen" style="display: none; flex-direction: column; flex-grow: 1; overflow: hidden;">
             <div class="expert-header-badge">
+              <button id="expert-chat-back-btn" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-main); margin-right: 8px;">←</button>
               <span class="expert-cloud-icon">☁️</span>
               <div>
-                <div class="expert-title" data-tr="expert_title">Krishi Visheshagya — Cloud Expert</div>
+                <div class="expert-title" data-tr="expert_title">Krishi Bisesagya — Cloud Expert</div>
                 <div class="expert-subtitle" data-tr="expert_subtitle">Powered by Gemini · Deep Agronomic Intelligence</div>
               </div>
               <span id="expert-status-dot" class="expert-status-dot online" title="Cloud connected"></span>
@@ -319,7 +320,7 @@
             <div id="expert-messages" class="chat-messages-container">
               <div class="message system-msg expert-system-msg">
                 <strong data-tr="expert_welcome_label">Cloud Expert:</strong>
-                <span data-tr="expert_welcome_msg"> Ask your toughest farming questions. Krishi Sastri will consult Gemini cloud intelligence for you.</span>
+                <span data-tr="expert_welcome_msg"> Ask your toughest farming questions. Krishi Bisesagya uses Gemini cloud intelligence for deeper analysis.</span>
               </div>
             </div>
             <div class="text-input-bar expert-input-bar">
@@ -409,7 +410,7 @@
   <script src="/agui/local_models.js?v=3"></script>
   <script src="/agui/pwa_config.js?v=4"></script>
   <script src="/agui/device_capabilities.js?v=2"></script>
-  <script src="/agui/dashboard.js?v=18"></script>
+  <script src="/agui/dashboard.js?v=20"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {

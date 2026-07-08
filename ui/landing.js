@@ -707,6 +707,7 @@
     const soilType = guestSoil?.value || '';
     const acres = guestAcres?.value || '';
     const crop = guestCrop?.value || '';
+    const fieldName = (document.getElementById('guest-field-name')?.value || '').trim() || 'My Field';
 
     if (!name) {
       guestError.textContent = getText('landing.auth.nameRequired');
@@ -742,13 +743,14 @@
     });
 
     if (!response.ok) {
-      guestError.textContent = getText('landing.auth.guestError');
-      return;
+      // API failed (e.g. SQLite not accessible in local demo) — proceed anyway
+      console.warn('Guest API failed, proceeding with local-only mode');
     }
 
     // Save the farmer profile with the collected farm details
     const profilePayload = {
       farmer_name: name,
+      field1_name: fieldName,
       region: region,
       soil_type: soilType,
       acres: parseFloat(acres),
@@ -756,6 +758,9 @@
       has_drip: 'no',
       preferred_language: currentLang || 'en'
     };
+
+    // Save to localStorage so the app dashboard can read it immediately
+    localStorage.setItem('aaa_farmer_profile', JSON.stringify(profilePayload));
 
     try {
       await fetch('/api/profile/user', {

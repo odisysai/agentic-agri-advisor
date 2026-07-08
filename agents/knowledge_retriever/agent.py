@@ -45,7 +45,7 @@ INSTRUCTION = (
 knowledge_retriever_agent = Agent(
     name="knowledge_retriever_agent",
     model=Gemini(
-        model="gemini-3.5-flash",
+        model="gemini-2.5-flash",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=INSTRUCTION,

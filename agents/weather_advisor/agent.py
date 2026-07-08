@@ -8,7 +8,7 @@ from mcp_servers.weather.server import fetch_weather_forecast
 weather_advisor_agent = Agent(
     name="weather_advisor_agent",
     model=Gemini(
-        model="gemini-3.5-flash",
+        model="gemini-2.5-flash",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=(

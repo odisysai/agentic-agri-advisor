@@ -39,6 +39,11 @@ resource "google_cloud_run_v2_service" "app" {
       }
 
       env {
+        name  = "USER_CONTENT_BUCKET_NAME"
+        value = google_storage_bucket.user_content_bucket.name
+      }
+
+      env {
         name  = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
         value = "NO_CONTENT"
       }

@@ -31,6 +31,31 @@ resource "google_storage_bucket" "assets_bucket" {
   depends_on = [resource.google_project_service.services]
 }
 
+# Bucket for farmer-owned uploads: soil reports, crop photos, expert evidence.
+resource "google_storage_bucket" "user_content_bucket" {
+  name                        = "${var.project_id}-${var.project_name}-user-content"
+  location                    = var.region
+  project                     = var.project_id
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+
+  versioning {
+    enabled = true
+  }
+
+  lifecycle_rule {
+    condition {
+      age = 365
+    }
+    action {
+      type = "SetStorageClass"
+      storage_class = "NEARLINE"
+    }
+  }
+
+  depends_on = [resource.google_project_service.services]
+}
+
 # Firestore database in Native mode
 resource "google_firestore_database" "database" {
   name                            = "(default)"

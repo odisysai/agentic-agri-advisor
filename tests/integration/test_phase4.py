@@ -11,7 +11,7 @@ def test_phase4_endpoints(server_fixture) -> None:
     assert response_plans.status_code == 200
     plans_data = response_plans.json()
     assert plans_data["status"] == "success"
-    assert len(plans_data["plans"]) >= 2  # plans seeded in init_db
+    assert len(plans_data["plans"]) >= 2  # plans seeded in Firestore
 
     # Complete a plan task
     complete_payload = {"plan_id": "plan_1", "state": "completed"}
@@ -31,7 +31,7 @@ def test_phase4_endpoints(server_fixture) -> None:
     assert response_reminders.status_code == 200
     reminders_data = response_reminders.json()
     assert reminders_data["status"] == "success"
-    assert len(reminders_data["reminders"]) >= 1  # reminders seeded in init_db
+    assert len(reminders_data["reminders"]) >= 1  # reminders seeded in Firestore
 
     # Snooze a reminder
     reminder_payload = {"reminder_id": "rem_1", "state": "snoozed"}

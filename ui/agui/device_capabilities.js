@@ -3,7 +3,7 @@
  * Detects the farmer's device capabilities and determines which features
  * can be enabled. This drives the tiered offline AI strategy:
  *
- * Tier 1 (Full AI):   WebGPU + 4GB+ RAM → Gemma 2B + TFLite + OKF cache
+ * Tier 1 (Full AI):   WebGPU + 4GB+ RAM → Gemma-4-2B + TFLite + OKF cache
  * Tier 2 (Vision AI): WebGL + 2GB+ RAM  → TFLite classifier + OKF cache
  * Tier 3 (Knowledge): Any device         → OKF cache + rule-based responses
  */
@@ -149,7 +149,7 @@
      */
     getReport() {
       const features = {
-        'WebGPU (Gemma 2B LLM)': this.webgpu,
+        'WebGPU (Gemma-4-2B LLM)': this.webgpu,
         'WebGL (TFLite Classifier)': this.webgl,
         'Camera': this.camera,
         'Geolocation': this.geolocation,

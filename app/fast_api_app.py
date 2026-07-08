@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import re
-import tempfile
 import base64
 import hashlib
 import hmac
 import json
+import os
+import re
+import tempfile
 import time
 from datetime import datetime
 
@@ -43,6 +43,7 @@ from pydantic import BaseModel, Field
 
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
+from app.app_utils.user_content_storage import upload_user_content
 from data import db_manager
 from data.db_manager import get_latest_soil_report, get_soil_reports, save_soil_report
 
@@ -122,7 +123,9 @@ LOGGED_IN_FARMER_ID = os.getenv("LOGGED_IN_FARMER_ID", "user")
 # Rate Limiting — protect paid Gemini API from abuse
 # ============================================================
 EXPERT_RATE_LIMIT = int(os.getenv("EXPERT_RATE_LIMIT", "10"))  # max requests per window
-EXPERT_RATE_WINDOW = int(os.getenv("EXPERT_RATE_WINDOW", "3600"))  # window in seconds (1 hour)
+EXPERT_RATE_WINDOW = int(
+    os.getenv("EXPERT_RATE_WINDOW", "3600")
+)  # window in seconds (1 hour)
 
 _expert_request_log: dict[str, list[float]] = {}
 
@@ -290,7 +293,9 @@ def login_with_google(payload: GoogleLoginBody, response: Response) -> dict:
             payload.credential, GoogleAuthRequest(), client_id
         )
     except Exception as exc:
-        raise HTTPException(status_code=401, detail="Invalid Google credential") from exc
+        raise HTTPException(
+            status_code=401, detail="Invalid Google credential"
+        ) from exc
 
     issuer = token_info.get("iss", "")
     if issuer not in {"accounts.google.com", "https://accounts.google.com"}:
@@ -769,16 +774,110 @@ class SoilReportSave(BaseModel):
     file_name: str = ""
     sample_date: str = ""
     lab_name: str = ""
+    storage_bucket: str = ""
+    storage_object: str = ""
+    storage_uri: str = ""
+    storage_public_url: str = ""
+    content_type: str = ""
+    file_size_bytes: int = 0
     extraction_confidence: float = 0.0
     confirmed_by_farmer: bool = True
     values: list = []
 
 
+class UserContentUpload(BaseModel):
+    """Base64 user-content upload for browser clients."""
+
+    category: str = Field("reports", description="soil_reports, crop_photos, reports")
+    file_name: str = Field("upload.bin", min_length=1)
+    content_type: str = "application/octet-stream"
+    data_base64: str = Field(..., min_length=1)
+    field_id: str = ""
+    planting_id: str = ""
+
+
+def _save_user_content_record(
+    farmer_id: str,
+    category: str,
+    file_name: str,
+    storage: dict,
+    *,
+    field_id: str = "",
+    planting_id: str = "",
+    source: str = "",
+) -> dict:
+    """Persist a searchable content index record for an uploaded object."""
+    item = {
+        "farmer_id": farmer_id,
+        "category": category,
+        "file_name": file_name,
+        "storage_bucket": storage.get("bucket", ""),
+        "storage_object": storage.get("object_name", ""),
+        "storage_uri": storage.get("gcs_uri", ""),
+        "storage_public_url": storage.get("public_url", ""),
+        "content_type": storage.get("content_type", ""),
+        "file_size_bytes": int(storage.get("size_bytes", 0) or 0),
+        "field_id": field_id,
+        "planting_id": planting_id,
+        "source": source,
+        "status": storage.get("status", ""),
+    }
+    return db_manager.save_content_item(item)
+
+
 @app.post("/api/soil/save")
-def save_soil_report_endpoint(report: SoilReportSave) -> dict:
+def save_soil_report_endpoint(report: SoilReportSave, request: Request) -> dict:
     """Save a confirmed soil test report linked to a field."""
-    result = save_soil_report(report.model_dump())
+    report_data = report.model_dump()
+    report_data["farmer_id"] = _resolve_farmer_id(
+        request, report_data.get("farmer_id") or "user"
+    )
+    result = save_soil_report(report_data)
     return result
+
+
+@app.post("/api/uploads/user-content")
+def upload_user_content_endpoint(payload: UserContentUpload, request: Request) -> dict:
+    """Store a farmer-owned file under the user's Cloud Storage folder."""
+    farmer_id = _resolve_farmer_id(request, "user")
+    try:
+        content = base64.b64decode(payload.data_base64, validate=True)
+        storage = upload_user_content(
+            farmer_id=farmer_id,
+            category=payload.category,
+            file_name=payload.file_name,
+            content=content,
+            content_type=payload.content_type,
+            metadata={
+                "field_id": payload.field_id,
+                "planting_id": payload.planting_id,
+            },
+        )
+        content_record = _save_user_content_record(
+            farmer_id,
+            payload.category,
+            payload.file_name,
+            storage,
+            field_id=payload.field_id,
+            planting_id=payload.planting_id,
+            source="api_upload",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Upload failed: {exc}") from exc
+
+    return {"status": "success", "storage": storage, "content_record": content_record}
+
+
+@app.get("/api/uploads/user-content")
+def list_user_content_endpoint(
+    request: Request, category: str = "", limit: int = 50
+) -> dict:
+    """List uploaded farmer content metadata from Firestore."""
+    farmer_id = _resolve_farmer_id(request, "user")
+    items = db_manager.get_content_items(farmer_id, category or None, limit)
+    return {"status": "success", "count": len(items), "items": items}
 
 
 @app.get("/api/soil/reports/{field_id}")
@@ -798,7 +897,7 @@ def get_latest_soil_endpoint(field_id: str) -> dict:
 
 
 @app.post("/api/soil/extract")
-async def extract_soil_report(file: bytes = Body(...)) -> dict:
+async def extract_soil_report(request: Request, file: bytes = Body(...)) -> dict:
     """Extract values from an uploaded soil report using Gemini Vision."""
     import json as json_mod
     import os
@@ -807,12 +906,50 @@ async def extract_soil_report(file: bytes = Body(...)) -> dict:
     from google import genai
     from PIL import Image
 
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if not api_key:
-        return {"status": "error", "message": "No API key", "values": []}
-
     tmp_path = None
+    farmer_id = _resolve_farmer_id(request, "user")
+    file_name = request.headers.get("X-File-Name", "soil-report-upload.jpg")
+    content_type = request.headers.get("Content-Type", "application/octet-stream")
+    storage = {}
     try:
+        try:
+            storage = upload_user_content(
+                farmer_id=farmer_id,
+                category="soil_reports",
+                file_name=file_name,
+                content=file,
+                content_type=content_type,
+                metadata={"source": "soil_extract"},
+            )
+            _save_user_content_record(
+                farmer_id,
+                "soil_reports",
+                file_name,
+                storage,
+                source="soil_extract",
+            )
+        except Exception as storage_exc:
+            storage = {
+                "status": "error",
+                "message": str(storage_exc),
+                "bucket": "",
+                "object_name": "",
+                "gcs_uri": "",
+                "public_url": "",
+                "size_bytes": len(file or b""),
+                "content_type": content_type,
+            }
+
+        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            return {
+                "status": "error",
+                "message": "No API key",
+                "file_name": file_name,
+                "storage": storage,
+                "values": [],
+            }
+
         client = genai.Client(api_key=api_key)
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
             tmp.write(file)
@@ -866,14 +1003,21 @@ Return ONLY JSON."""
                 "sample_date": values.get("sample_date"),
                 "lab_name": values.get("lab_name"),
                 "soil_type": values.get("soil_type"),
+                "file_name": file_name,
+                "storage": storage,
                 "values": value_list,
                 "extraction_confidence": 0.8,
             }
-        return {"status": "error", "message": "Could not parse", "values": []}
+        return {
+            "status": "error",
+            "message": "Could not parse",
+            "storage": storage,
+            "values": [],
+        }
     except Exception as e:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
-        return {"status": "error", "message": str(e), "values": []}
+        return {"status": "error", "message": str(e), "storage": storage, "values": []}
 
 
 # Edge Neural Text-To-Speech Endpoint
@@ -1075,22 +1219,8 @@ def admin_list_users(request: Request):
     current_user = _current_user_from_request(request)
     if not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Admin access required")
-    conn = db_manager.get_connection()
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT farmer_id, name, language FROM farmers ORDER BY farmer_id")
-        farmers = [dict(row) for row in cursor.fetchall()]
-        # Get field counts per farmer
-        for f in farmers:
-            cursor.execute(
-                "SELECT COUNT(*) as cnt FROM fields WHERE farmer_id = ?",
-                (f["farmer_id"],),
-            )
-            f["field_count"] = cursor.fetchone()["cnt"]
-        return {"status": "success", "users": farmers, "total": len(farmers)}
-    finally:
-        conn.close()
+    farmers = db_manager.get_admin_users()
+    return {"status": "success", "users": farmers, "total": len(farmers)}
 
 
 @app.get("/api/admin/observability")
@@ -1119,34 +1249,7 @@ def admin_stats(request: Request):
     current_user = _current_user_from_request(request)
     if not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Admin access required")
-    conn = db_manager.get_connection()
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    try:
-        cursor.execute("SELECT COUNT(*) as cnt FROM farmers")
-        farmer_count = cursor.fetchone()["cnt"]
-        cursor.execute("SELECT COUNT(*) as cnt FROM fields")
-        field_count = cursor.fetchone()["cnt"]
-        cursor.execute("SELECT COUNT(*) as cnt FROM observability_logs")
-        log_count = cursor.fetchone()["cnt"]
-        cursor.execute("SELECT COUNT(*) as cnt FROM escalations")
-        escalation_count = cursor.fetchone()["cnt"]
-        cursor.execute(
-            "SELECT COUNT(*) as cnt FROM observability_logs WHERE event_type = 'expert_chat'"
-        )
-        expert_calls = cursor.fetchone()["cnt"]
-        return {
-            "status": "success",
-            "stats": {
-                "farmers": farmer_count,
-                "fields": field_count,
-                "observability_events": log_count,
-                "escalations": escalation_count,
-                "expert_calls": expert_calls,
-            },
-        }
-    finally:
-        conn.close()
+    return {"status": "success", "stats": db_manager.get_admin_stats()}
 
 
 @app.post("/api/privacy/preferences")
@@ -1203,7 +1306,9 @@ class ExpertChatRequest(BaseModel):
     context: str = Field("", description="Optional farm context (crop, field, region)")
 
 
-EXPERT_SYSTEM_PROMPT = """You are Krishi Sastri, a wise and experienced agricultural expert consultant backed by cloud AI.
+EXPERT_MODEL_NAME = os.environ.get("EXPERT_MODEL_NAME", "gemini-2.5-flash")
+
+EXPERT_SYSTEM_PROMPT = """You are Krishi Bisesagya, a wise and experienced agricultural expert consultant backed by Gemini cloud AI.
 You have deep knowledge of agronomy, soil science, integrated pest management, irrigation systems, market pricing, government schemes, and sustainable farming practices.
 You serve smallholder farmers across India and East Africa with empathetic, precise, and actionable guidance.
 
@@ -1236,6 +1341,7 @@ async def expert_chat_stream(req: ExpertChatRequest, request: Request):
     allowed, remaining = _check_expert_rate_limit(rate_key)
     if not allowed:
         reset_in = int(EXPERT_RATE_WINDOW / 60)
+
         async def rate_limited_gen():
             yield (
                 json.dumps(
@@ -1281,6 +1387,7 @@ async def expert_chat_stream(req: ExpertChatRequest, request: Request):
     farmer_name = ""
     if req.context:
         import re as _re
+
         name_match = _re.search(r"Farmer:\s*([^,]+)", req.context, _re.IGNORECASE)
         if name_match:
             farmer_name = name_match.group(1).strip()
@@ -1304,7 +1411,7 @@ async def expert_chat_stream(req: ExpertChatRequest, request: Request):
             full_prompt = f"{greeting}{user_message}"
 
             response = client.models.generate_content_stream(
-                model="gemini-2.5-flash",
+                model=EXPERT_MODEL_NAME,
                 contents=full_prompt,
                 config=genai_types.GenerateContentConfig(
                     system_instruction=EXPERT_SYSTEM_PROMPT,
@@ -1325,7 +1432,10 @@ async def expert_chat_stream(req: ExpertChatRequest, request: Request):
     return StreamingResponse(
         generate_stream(),
         media_type="text/plain",
-        headers={"X-RateLimit-Remaining": str(remaining), "X-RateLimit-Limit": str(EXPERT_RATE_LIMIT)},
+        headers={
+            "X-RateLimit-Remaining": str(remaining),
+            "X-RateLimit-Limit": str(EXPERT_RATE_LIMIT),
+        },
     )
 
 

@@ -27,6 +27,11 @@ output "assets_bucket_name" {
   value       = google_storage_bucket.assets_bucket.name
 }
 
+output "user_content_bucket_name" {
+  description = "Private bucket for farmer-owned uploads and reports"
+  value       = google_storage_bucket.user_content_bucket.name
+}
+
 output "firestore_database" {
   description = "Firestore database name"
   value       = google_firestore_database.database.name

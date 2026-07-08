@@ -14,7 +14,7 @@ The system detects device capabilities at startup and classifies into 3 tiers:
 
 | Tier | Detection | Classification | Capability |
 |------|-----------|---------------|------------|
-| Tier 1 | WebGPU + ≥4GB RAM | High-end | Full local models (Gemma 2B + TFLite) |
+| Tier 1 | WebGPU + ≥4GB RAM | High-end | Full local models (Gemma-4-2B + TFLite) |
 | Tier 2 | WebGL + ≥2GB RAM | Mid-range | TFLite classifier + rule-based fallback |
 | Tier 3 | No GPU or <2GB RAM | Budget | Rule-based responses only |
 
@@ -38,14 +38,14 @@ const hasVoice = !!window.speechRecognition || !!window.webkitSpeechRecognition;
 const ram = navigator.deviceMemory || 2; // GB, not precise
 ```
 
-## Local LLM: Gemma 2B
+## Local LLM: Gemma-4-2B
 
 **File:** `ui/agui/local_models.js`
 
 ### Architecture
 
 - **Engine:** MediaPipe WebGenAI (`@mediapipe/tasks-genai`)
-- **Model:** Gemma 2B INT4 (quantized for browser)
+- **Model:** Gemma-4-2B INT4 (quantized for browser)
 - **Acceleration:** WebGPU (preferred) or WebGL (fallback)
 - **Size:** ~1.4GB (one-time download)
 - **Cache:** Browser Cache API (`gemma-model-cache`)
@@ -54,7 +54,7 @@ const ram = navigator.deviceMemory || 2; // GB, not precise
 
 | Component | Status |
 |-----------|--------|
-| `loadLlm()` | ⚠️ Stub — tries to fetch from `/models/gemma-2b-it-gpu-int4.bin` (not bundled) |
+| `loadLlm()` | ⚠️ Stub — tries to fetch from `/models/gemma-4-2b-it-gpu-int4.bin` (not bundled) |
 | `generateText()` | ⚠️ Stub — uses hardcoded `offlineDatabase` responses instead of real model |
 | Model binary | ❌ Not bundled |
 | WebGPU detection | ✅ Working |
@@ -62,7 +62,7 @@ const ram = navigator.deviceMemory || 2; // GB, not precise
 
 ### Production Requirements
 
-1. Host Gemma 2B INT4 model on CDN or Google Cloud Storage
+1. Host Gemma-4-2B INT4 model on CDN or Google Cloud Storage
 2. Implement real `@mediapipe/tasks-genai` Web LLM API integration
 3. Add one-time download prompt with storage warning (~1.4GB)
 4. Graceful fallback for devices without WebGPU

@@ -19,7 +19,7 @@ from mcp_servers.image_analysis.server import analyze_crop_image
 pest_detector_agent = Agent(
     name="pest_detector_agent",
     model=Gemini(
-        model="gemini-3.5-flash",
+        model="gemini-2.5-flash",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=(

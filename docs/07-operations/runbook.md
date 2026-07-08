@@ -44,34 +44,27 @@ lsof -i :8080 | grep LISTEN | awk '{print $2}' | xargs kill
 
 ## Database Operations
 
-### Initialize Database
+### Start Local Database
 
 ```bash
-uv run python data/init_db.py
+make firestore-start
+make serve
 ```
 
 ### Inspect Database
 
 ```bash
-# List tables
-sqlite3 data/farm_twin.db ".tables"
-
-# Check farmers
-sqlite3 data/farm_twin.db "SELECT * FROM farmers;"
-
-# Check fields
-sqlite3 data/farm_twin.db "SELECT * FROM fields;"
-
-# Check soil reports
-sqlite3 data/farm_twin.db "SELECT * FROM soil_reports;"
-sqlite3 data/farm_twin.db "SELECT * FROM soil_test_values;"
+# Firestore Emulator listens on localhost:8081.
+# Use the app APIs to inspect records:
+curl -s http://localhost:8000/api/profile/user | python3 -m json.tool
+curl -s "http://localhost:8000/api/uploads/user-content?category=crop_photos" | python3 -m json.tool
 ```
 
 ### Reset Database (Development Only)
 
 ```bash
-rm data/farm_twin.db
-uv run python data/init_db.py
+make firestore-stop
+make firestore-start
 ```
 
 ## Common Issues

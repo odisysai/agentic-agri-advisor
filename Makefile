@@ -84,14 +84,13 @@ firestore-stop:
 	@pkill -f "cloud-firestore-emulator" 2>/dev/null || true
 	@echo "Firestore Emulator stopped"
 
-# Serve with Firestore Emulator (local dev, no SQLite)
-serve-firestore:
+# Serve with Firestore Emulator (local dev)
+serve:
 	@echo "Starting FastAPI with Firestore Emulator..."
 	FIRESTORE_EMULATOR_HOST=localhost:8081 \
 	FIRESTORE_PROJECT_ID=emulator-project \
 	USE_FIRESTORE=1 \
 	$(UV) run uvicorn app.fast_api_app:app --port 8000 --reload
 
-# Serve with SQLite (default local dev — no emulator needed)
-serve:
-	$(UV) run uvicorn app.fast_api_app:app --port 8000 --reload
+# Backward-compatible alias while docs/scripts converge on `make serve`.
+serve-firestore: serve

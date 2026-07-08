@@ -92,9 +92,9 @@ cp config/secrets.template.env .env
 
 ## Local Development
 
-### Option A: SQLite (Simplest — Default)
+### Option A: Firestore Emulator (Recommended Local Path)
 
-No extra setup needed. The app auto-detects that Firestore env vars are not set and uses SQLite.
+Local development uses the Firestore Emulator so the same Firestore data path is exercised before production.
 
 ```bash
 # Clone your fork
@@ -108,20 +108,22 @@ make setup
 cp config/secrets.template.env .env
 # Edit .env with your GEMINI_API_KEY
 
-# Initialize SQLite database
-uv run python data/init_db.py
+# Start Firestore Emulator in background
+make firestore-start
+# → Emulator runs at localhost:8081
 
 # Start the server
 make serve
 # → http://localhost:8000/agui/index.html
 ```
 
-### Option B: Firestore Emulator (Same code path as production)
+### Option B: Firestore Native (GCP Project)
 
 ```bash
-# Start Firestore Emulator in background
-make firestore-start
-# → Emulator runs at localhost:8081
+# Authenticate and point the app at your GCP project
+gcloud auth application-default login
+export FIRESTORE_PROJECT_ID=your-gcp-project
+export USE_FIRESTORE=1
 
 # Start the server with Firestore Emulator
 make serve-firestore
@@ -409,13 +411,13 @@ curl -sf "${SERVICE_URL}/api/profile/user" | python3 -m json.tool
 
 ## Environment Variables Reference
 
-| Variable | Local (SQLite) | Local (Emulator) | Local (GCP) | Cloud Run |
-|----------|---------------|-------------------|-------------|-----------|
-| `GEMINI_API_KEY` | `.env` file | `.env` file | `.env` file | GitHub Secret → Terraform env var |
-| `FIRESTORE_EMULATOR_HOST` | not set | `localhost:8081` | not set | not set |
-| `FIRESTORE_PROJECT_ID` | not set | `emulator-project` | `your-gcp-project` | set by Terraform |
-| `USE_FIRESTORE` | not set | `1` | `1` | `1` (set by Terraform) |
-| `GOOGLE_CLOUD_PROJECT` | not set | not set | `your-gcp-project` | set by Terraform |
+| Variable | Local (Emulator) | Local (GCP) | Cloud Run |
+|----------|-------------------|-------------|-----------|
+| `GEMINI_API_KEY` | `.env` file | `.env` file | GitHub Secret → Terraform env var |
+| `FIRESTORE_EMULATOR_HOST` | `localhost:8081` | not set | not set |
+| `FIRESTORE_PROJECT_ID` | `emulator-project` | `your-gcp-project` | set by Terraform |
+| `USE_FIRESTORE` | `1` | `1` | `1` (set by Terraform) |
+| `GOOGLE_CLOUD_PROJECT` | not set | `your-gcp-project` | set by Terraform |
 
 ---
 

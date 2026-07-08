@@ -7,7 +7,7 @@ from agents.dashboard_agent.tools import get_ui_schema, refresh_crop_schema
 crop_analyst_agent = Agent(
     name="crop_analyst_agent",
     model=Gemini(
-        model="gemini-3.5-flash",
+        model="gemini-2.5-flash",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=(

@@ -1,8 +1,7 @@
 """
 Firestore database manager for Krishi Sampark.
 
-Replaces the SQLite db_manager for Cloud Run deployment.
-Uses Firestore in Native mode for all farmer data.
+Uses Firestore Native mode in production and the Firestore Emulator locally.
 
 Collection Structure:
   /farmers/{farmer_id}
@@ -15,14 +14,15 @@ Collection Structure:
                 └── /feedbacks/{feedback_id}
     └── /soil_reports/{report_id}
           └── /soil_test_values/{value_id}  (subcollection)
+    └── /content_items/{content_id}
   /regional_outbreaks/{outbreak_id}
+  /content_items/{content_id}
   /okf_governance/{content_id}
   /observability_logs/{log_id}
   /privacy_preferences/{user_id}
   /sync_dlq/{dlq_id}
 
-Locally: Falls back to SQLite when FIRESTORE_PROJECT_ID env var is not set.
-This allows local development without Firestore credentials.
+Local development must run with FIRESTORE_EMULATOR_HOST.
 """
 
 import os
@@ -32,19 +32,11 @@ from typing import Optional
 
 # Firestore imports (lazy)
 _firestore_client = None
-_use_firestore = None
 
 
 def _should_use_firestore():
-    """Determine if we should use Firestore or fall back to SQLite."""
-    global _use_firestore
-    if _use_firestore is None:
-        _use_firestore = bool(
-            os.getenv("FIRESTORE_PROJECT_ID")
-            or os.getenv("USE_FIRESTORE")
-            or os.getenv("FIRESTORE_EMULATOR_HOST")
-        )
-    return _use_firestore
+    """Firestore is the only active backend."""
+    return True
 
 
 def _get_firestore():
@@ -81,10 +73,6 @@ def _get_firestore():
 
 def get_profile_data(farmer_id="user"):
     """Fetch farmer profile with fields and plantings."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import get_profile_data as _sqlite_get
-
-        return _sqlite_get(farmer_id)
 
     db = _get_firestore()
     farmer_ref = db.collection("farmers").document(farmer_id)
@@ -148,19 +136,6 @@ def save_farmer_field(
     stage="germination",
 ):
     """Add a new field and seed an initial crop planting."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import save_farmer_field as _sqlite_save
-
-        return _sqlite_save(
-            farmer_id,
-            name,
-            soil_type,
-            acres,
-            irrigation_type,
-            crop_type,
-            variety,
-            stage,
-        )
 
     db = _get_firestore()
     field_id = f"field_{uuid.uuid4().hex[:8]}"
@@ -204,10 +179,6 @@ def save_farmer_field(
 
 def update_planting_telemetry(planting_id, moisture_pct, health_pct, nitrogen_ppm):
     """Update planting telemetry values."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import update_planting_telemetry as _sqlite_update
-
-        return _sqlite_update(planting_id, moisture_pct, health_pct, nitrogen_ppm)
 
     db = _get_firestore()
     # Search across all farmers/fields for this planting_id
@@ -240,12 +211,6 @@ def log_activity_record(
     planting_id, activity_type, quantity, unit, details, timestamp=None
 ):
     """Log a farm activity."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import log_activity_record as _sqlite_log
-
-        return _sqlite_log(
-            planting_id, activity_type, quantity, unit, details, timestamp
-        )
 
     db = _get_firestore()
     activity_id = f"act_{uuid.uuid4().hex[:8]}"
@@ -273,10 +238,6 @@ def log_activity_record(
 
 def get_activities_log(planting_id):
     """Get activities for a planting."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import get_activities_log as _sqlite_get
-
-        return _sqlite_get(planting_id)
 
     db = _get_firestore()
     planting_path = _find_planting_path(db, planting_id)
@@ -299,10 +260,6 @@ def get_activities_log(planting_id):
 
 def get_daily_plans(planting_id):
     """Get farm plans for a planting."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import get_daily_plans as _sqlite_get
-
-        return _sqlite_get(planting_id)
 
     db = _get_firestore()
     planting_path = _find_planting_path(db, planting_id)
@@ -319,10 +276,6 @@ def get_daily_plans(planting_id):
 
 def update_plan_state(plan_id, state):
     """Update a farm plan state."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import update_plan_state as _sqlite_update
-
-        return _sqlite_update(plan_id, state)
 
     db = _get_firestore()
     # Search across all plantings for this plan_id
@@ -345,10 +298,6 @@ def update_plan_state(plan_id, state):
 
 def get_reminders(planting_id):
     """Get reminders for a planting."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import get_reminders as _sqlite_get
-
-        return _sqlite_get(planting_id)
 
     db = _get_firestore()
     planting_path = _find_planting_path(db, planting_id)
@@ -365,10 +314,6 @@ def get_reminders(planting_id):
 
 def update_reminder_state(reminder_id, state):
     """Update a reminder state."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import update_reminder_state as _sqlite_update
-
-        return _sqlite_update(reminder_id, state)
 
     db = _get_firestore()
     for farmer_doc in db.collection("farmers").stream():
@@ -390,10 +335,6 @@ def update_reminder_state(reminder_id, state):
 
 def save_escalation_request(esc):
     """Save an escalation request."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import save_escalation_request as _sqlite_save
-
-        return _sqlite_save(esc)
 
     db = _get_firestore()
     esc_id = esc.get("escalation_id") or f"esc_{uuid.uuid4().hex[:8]}"
@@ -416,10 +357,6 @@ def save_escalation_request(esc):
 
 def get_escalations(planting_id):
     """Get escalations for a planting."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import get_escalations as _sqlite_get
-
-        return _sqlite_get(planting_id)
 
     db = _get_firestore()
     planting_path = _find_planting_path(db, planting_id)
@@ -436,10 +373,6 @@ def get_escalations(planting_id):
 
 def get_expert_queue():
     """Get all escalations for the agronomist queue."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import get_expert_queue as _sqlite_get
-
-        return _sqlite_get()
 
     db = _get_firestore()
     results = []
@@ -457,10 +390,6 @@ def get_expert_queue():
 
 def update_expert_case_state(escalation_id, state, expert_response=None):
     """Update escalation state and expert response."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import update_expert_case_state as _sqlite_update
-
-        return _sqlite_update(escalation_id, state, expert_response)
 
     db = _get_firestore()
     update_data = {"state": state}
@@ -486,10 +415,6 @@ def update_expert_case_state(escalation_id, state, expert_response=None):
 
 def log_outcome_feedback(f):
     """Log outcome feedback."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import log_outcome_feedback as _sqlite_log
-
-        return _sqlite_log(f)
 
     db = _get_firestore()
     feedback_id = f.get("feedback_id") or f"feed_{uuid.uuid4().hex[:8]}"
@@ -520,10 +445,6 @@ def log_outcome_feedback(f):
 
 def get_outbreaks():
     """Get regional outbreaks."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import get_outbreaks as _sqlite_get
-
-        return _sqlite_get()
 
     db = _get_firestore()
     docs = (
@@ -536,10 +457,6 @@ def get_outbreaks():
 
 def confirm_outbreak(outbreak_id, status):
     """Update outbreak status."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import confirm_outbreak as _sqlite_update
-
-        return _sqlite_update(outbreak_id, status)
 
     db = _get_firestore()
     ref = db.collection("regional_outbreaks").document(outbreak_id)
@@ -556,10 +473,6 @@ def confirm_outbreak(outbreak_id, status):
 
 def get_governance_metadata():
     """Get OKF governance records."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import get_governance_metadata as _sqlite_get
-
-        return _sqlite_get()
 
     db = _get_firestore()
     docs = db.collection("okf_governance").stream()
@@ -568,10 +481,6 @@ def get_governance_metadata():
 
 def rollback_governance_version(content_id):
     """Rollback governance content to previous version."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import rollback_governance_version as _sqlite_rollback
-
-        return _sqlite_rollback(content_id)
 
     db = _get_firestore()
     ref = db.collection("okf_governance").document(content_id)
@@ -605,20 +514,6 @@ def log_observability_event(
     device_tier="",
 ):
     """Save an observability trace event."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import log_observability_event as _sqlite_log
-
-        return _sqlite_log(
-            correlation_id,
-            event_type,
-            screen,
-            agent,
-            tool,
-            route,
-            safety_decision,
-            latency,
-            device_tier,
-        )
 
     db = _get_firestore()
     log_id = f"log_{uuid.uuid4().hex[:12]}"
@@ -641,10 +536,6 @@ def log_observability_event(
 
 def get_observability_logs():
     """Get latest 50 observability logs."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import get_observability_logs as _sqlite_get
-
-        return _sqlite_get()
 
     db = _get_firestore()
     docs = (
@@ -663,10 +554,6 @@ def get_observability_logs():
 
 def save_privacy_preferences(payload):
     """Save privacy consent settings."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import save_privacy_preferences as _sqlite_save
-
-        return _sqlite_save(payload)
 
     db = _get_firestore()
     user_id = payload.get("user_id", "user")
@@ -694,20 +581,10 @@ def save_privacy_preferences(payload):
 
 def init_soil_tables():
     """No-op for Firestore — collections are created on demand."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import init_soil_tables as _sqlite_init
-
-        return _sqlite_init()
-    # Firestore creates collections on demand — nothing to do
-    pass
 
 
 def save_soil_report(report_data):
     """Save a soil test report with confirmed values."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import save_soil_report as _sqlite_save
-
-        return _sqlite_save(report_data)
 
     db = _get_firestore()
     report_id = report_data.get("report_id") or f"soil_{uuid.uuid4().hex[:8]}"
@@ -727,6 +604,12 @@ def save_soil_report(report_data):
             "field_id": field_id,
             "source": report_data.get("source", "manual"),
             "file_name": report_data.get("file_name", ""),
+            "storage_bucket": report_data.get("storage_bucket", ""),
+            "storage_object": report_data.get("storage_object", ""),
+            "storage_uri": report_data.get("storage_uri", ""),
+            "storage_public_url": report_data.get("storage_public_url", ""),
+            "content_type": report_data.get("content_type", ""),
+            "file_size_bytes": int(report_data.get("file_size_bytes", 0) or 0),
             "sample_date": report_data.get("sample_date", ""),
             "lab_name": report_data.get("lab_name", ""),
             "extraction_confidence": float(
@@ -759,15 +642,16 @@ def save_soil_report(report_data):
             }
         )
 
-    return {"report_id": report_id, "status": "success"}
+    return {
+        "report_id": report_id,
+        "status": "success",
+        "storage_uri": report_data.get("storage_uri", ""),
+        "storage_object": report_data.get("storage_object", ""),
+    }
 
 
 def get_soil_reports(field_id):
     """Get all soil reports for a field."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import get_soil_reports as _sqlite_get
-
-        return _sqlite_get(field_id)
 
     db = _get_firestore()
     farmer_id = os.getenv("FARMER_ID", "user")
@@ -791,10 +675,6 @@ def get_soil_reports(field_id):
 
 def get_latest_soil_report(field_id):
     """Get the most recent confirmed soil report for a field."""
-    if not _should_use_firestore():
-        from data.sqlite_manager import get_latest_soil_report as _sqlite_get
-
-        return _sqlite_get(field_id)
 
     db = _get_firestore()
     farmer_id = os.getenv("FARMER_ID", "user")
@@ -818,6 +698,180 @@ def get_latest_soil_report(field_id):
 
 
 # ---------------------------------------------------------------------------
+# User Content Index
+# ---------------------------------------------------------------------------
+
+
+def save_content_item(item):
+    """Save a farmer-owned content metadata record."""
+
+    db = _get_firestore()
+    content_id = item.get("content_id") or f"content_{uuid.uuid4().hex[:8]}"
+    farmer_id = item.get("farmer_id", "user")
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    record = {
+        "content_id": content_id,
+        "farmer_id": farmer_id,
+        "category": item.get("category", ""),
+        "file_name": item.get("file_name", ""),
+        "storage_bucket": item.get("storage_bucket", ""),
+        "storage_object": item.get("storage_object", ""),
+        "storage_uri": item.get("storage_uri", ""),
+        "storage_public_url": item.get("storage_public_url", ""),
+        "content_type": item.get("content_type", ""),
+        "file_size_bytes": int(item.get("file_size_bytes", 0) or 0),
+        "field_id": item.get("field_id", ""),
+        "planting_id": item.get("planting_id", ""),
+        "source": item.get("source", ""),
+        "status": item.get("status", ""),
+        "created_at": item.get("created_at", now),
+        "updated_at": now,
+    }
+
+    farmer_ref = (
+        db.collection("farmers")
+        .document(farmer_id)
+        .collection("content_items")
+        .document(content_id)
+    )
+    farmer_ref.set(record)
+    db.collection("content_items").document(content_id).set(record)
+    return {
+        "content_id": content_id,
+        "status": "success",
+        "storage_uri": record["storage_uri"],
+    }
+
+
+def get_content_items(farmer_id, category=None, limit=50):
+    """Get farmer-owned content metadata records."""
+
+    db = _get_firestore()
+    query = (
+        db.collection("farmers")
+        .document(farmer_id)
+        .collection("content_items")
+        .order_by("updated_at", direction="DESCENDING")
+        .limit(int(limit or 50))
+    )
+    if category:
+        query = (
+            db.collection("farmers")
+            .document(farmer_id)
+            .collection("content_items")
+            .where("category", "==", category)
+            .order_by("updated_at", direction="DESCENDING")
+            .limit(int(limit or 50))
+        )
+    return [doc.to_dict() for doc in query.stream()]
+
+
+# ---------------------------------------------------------------------------
+# Admin and Privacy Helpers
+# ---------------------------------------------------------------------------
+
+
+def get_admin_users():
+    """List farmers with field counts for admin views."""
+    db = _get_firestore()
+    users = []
+    for farmer_doc in db.collection("farmers").stream():
+        farmer = farmer_doc.to_dict() or {}
+        fields = list(farmer_doc.reference.collection("fields").stream())
+        users.append(
+            {
+                "farmer_id": farmer_doc.id,
+                "name": farmer.get("name", "Farmer"),
+                "language": farmer.get("language", "Hindi"),
+                "field_count": len(fields),
+            }
+        )
+    return users
+
+
+def get_admin_stats():
+    """Return Firestore summary stats."""
+    db = _get_firestore()
+    farmers = list(db.collection("farmers").stream())
+    field_count = 0
+    for farmer_doc in farmers:
+        field_count += len(list(farmer_doc.reference.collection("fields").stream()))
+
+    logs = get_observability_logs()
+    escalations = get_expert_queue()
+    expert_calls = sum(1 for log in logs if log.get("event_type") == "expert_chat")
+    return {
+        "farmers": len(farmers),
+        "fields": field_count,
+        "observability_events": len(logs),
+        "escalations": len(escalations),
+        "expert_calls": expert_calls,
+    }
+
+
+def export_farm_data(user_id):
+    """Export farmer-scoped data from Firestore."""
+    db = _get_firestore()
+    farmer_ref = db.collection("farmers").document(user_id)
+    farmer_doc = farmer_ref.get()
+    data = {
+        "farmer": farmer_doc.to_dict() if farmer_doc.exists else {},
+        "fields": [],
+        "soil_reports": [],
+        "content_items": [],
+        "escalations": [],
+        "feedbacks": [],
+    }
+
+    for field_doc in farmer_ref.collection("fields").stream():
+        field = field_doc.to_dict() or {}
+        field["field_id"] = field_doc.id
+        field["plantings"] = [
+            {**(planting.to_dict() or {}), "planting_id": planting.id}
+            for planting in field_doc.reference.collection("plantings").stream()
+        ]
+        data["fields"].append(field)
+
+    for report_doc in farmer_ref.collection("soil_reports").stream():
+        report = report_doc.to_dict() or {}
+        report["values"] = [
+            value.to_dict()
+            for value in report_doc.reference.collection("soil_test_values").stream()
+        ]
+        data["soil_reports"].append(report)
+
+    data["content_items"] = [
+        doc.to_dict() for doc in farmer_ref.collection("content_items").stream()
+    ]
+
+    for field in data["fields"]:
+        for planting in field.get("plantings", []):
+            planting_id = planting.get("planting_id", "")
+            if planting_id:
+                data["escalations"].extend(get_escalations(planting_id))
+
+    return data
+
+
+def delete_farm_data(user_id):
+    """Delete farmer-scoped Firestore data for privacy requests."""
+    db = _get_firestore()
+    farmer_ref = db.collection("farmers").document(user_id)
+
+    def delete_collection(collection_ref):
+        for doc in collection_ref.stream():
+            for subcollection in doc.reference.collections():
+                delete_collection(subcollection)
+            doc.reference.delete()
+
+    for subcollection in farmer_ref.collections():
+        delete_collection(subcollection)
+    farmer_ref.delete()
+    db.collection("privacy_preferences").document(user_id).delete()
+    return {"status": "success", "deleted_user_id": user_id}
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -835,10 +889,10 @@ def _find_planting_path(db, planting_id):
 
 
 def get_connection():
-    """SQLite compatibility — return a sqlite connection for local dev."""
-    from data.sqlite_manager import get_connection as _sqlite_conn
-
-    return _sqlite_conn()
+    """No raw SQL connection is available in Firestore-only mode."""
+    raise RuntimeError(
+        "Raw SQL connections are unavailable; use Firestore manager functions."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -957,11 +1011,3 @@ def seed_default_data():
                     "health_pct": 95.0,
                 }
             )
-
-
-# Auto-seed on module load
-try:
-    if _should_use_firestore():
-        seed_default_data()
-except Exception as e:
-    print(f"Warning: Could not seed Firestore default data: {e}")

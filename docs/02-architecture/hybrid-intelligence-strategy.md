@@ -84,7 +84,7 @@ Farmer photographs emerging sprout → TFLite identifies V3 vegetative stage →
 
 ### 2. Voice-First Field Action Logger
 
-Farmer speaks: "I added wood ash to the hillside field and applied 15 liters of water" → Browser STT transcribes → Gemma parses into structured action `{ treatment: "wood_ash", irrigation_liters: 15.0 }` → Saves to IndexedDB queue → Syncs to SQLite when online.
+Farmer speaks: "I added wood ash to the hillside field and applied 15 liters of water" → Browser STT transcribes → Gemma parses into structured action `{ treatment: "wood_ash", irrigation_liters: 15.0 }` → Saves to IndexedDB queue → Syncs to Firestore through backend APIs when online.
 
 ### 3. Offline Quarantine & Alert System
 

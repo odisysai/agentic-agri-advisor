@@ -42,6 +42,9 @@ def start_server() -> subprocess.Popen[str]:
     ]
     env = os.environ.copy()
     env["INTEGRATION_TEST"] = "TRUE"
+    env.setdefault("FIRESTORE_EMULATOR_HOST", "localhost:8081")
+    env.setdefault("FIRESTORE_PROJECT_ID", "emulator-project")
+    env.setdefault("USE_FIRESTORE", "1")
     process = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
@@ -81,21 +84,7 @@ def wait_for_server(timeout: int = 90, interval: int = 1) -> bool:
 @pytest.fixture(scope="session")
 def server_fixture(request: Any) -> Iterator[subprocess.Popen[str]]:
     """Pytest fixture to start and stop the server for testing."""
-    logger.info("Purging database file before E2E tests")
-    db_path = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "data", "farm_twin.db")
-    )
-    if os.path.exists(db_path):
-        try:
-            os.remove(db_path)
-            logger.info(
-                f"Successfully deleted database file at {db_path} for fresh test run"
-            )
-        except Exception as e:
-            logger.error(f"Failed to delete database file: {e}")
-    from data.init_db import init_database
-
-    init_database()
+    logger.info("Using Firestore Emulator for E2E tests")
     logger.info("Starting server process")
     server_process = start_server()
     if not wait_for_server():

@@ -8,7 +8,7 @@ from agents.farmer_interaction.tools import record_farm_activity_details
 farmer_interaction_agent = Agent(
     name="farmer_interaction_agent",
     model=Gemini(
-        model="gemini-3.5-flash",
+        model="gemini-2.5-flash",
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=(

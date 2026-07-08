@@ -1,12 +1,15 @@
 /**
  * local_models.js
- * In-browser Local LLM (Gemma 2B) and TFLite Crop Disease Classification management.
+ * In-browser Local LLM (Gemma-4-2B) and TFLite Crop Disease Classification management.
  * Integrates with MediaPipe WebGenAI and Tasks-Vision APIs with fallback support.
  */
 
 class LocalAiEngine {
   constructor() {
+    this.modelName = window.KRISHI_LOCAL_MODEL_NAME || "Gemma-4-2B";
+    this.modelUrl = window.KRISHI_LOCAL_MODEL_URL || "/models/gemma-4-2b-it-gpu-int4.bin";
     this.llmLoaded = false;
+    this.llmMode = "not_loaded";
     this.classifierLoaded = false;
     this.webGpuSupported = false;
     this.onProgressCallback = null;
@@ -49,8 +52,18 @@ class LocalAiEngine {
     return this.webGpuSupported;
   }
 
+  getStatus() {
+    return {
+      advisor: "Krishi Sastri",
+      model: this.modelName,
+      mode: this.llmMode,
+      loaded: this.llmLoaded,
+      webGpuSupported: this.webGpuSupported
+    };
+  }
+
   /**
-   * Downloads and caches the client-side Gemma 2B model (~1.4GB) using the Cache API.
+   * Downloads and caches the client-side Gemma-4-2B model using the Cache API.
    * Falls back to high-fidelity client-side dialog simulator if offline or hardware fails.
    * @param {function} onProgress - Callback with percentage loaded
    * @returns {Promise<boolean>} Load status
@@ -61,35 +74,37 @@ class LocalAiEngine {
 
     if (this.llmLoaded) return true;
 
-    const MODEL_URL = "/models/gemma-2b-it-gpu-int4.bin";
-    const CACHE_KEY = "gemma-2b-model";
+    const MODEL_URL = this.modelUrl;
+    const CACHE_KEY = `${this.modelName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-model`;
 
-    console.log('[Local AI] Checking Cache API for local Gemma-2B model...');
+    console.log(`[Local AI] Checking Cache API for local ${this.modelName} model...`);
 
     try {
       const cache = await caches.open('gemma-model-cache');
       const cachedResponse = await cache.match(CACHE_KEY);
 
       if (cachedResponse) {
-        console.log('[Local AI] Model found in local browser Cache API! Loading instantly...');
+        console.log(`[Local AI] ${this.modelName} found in local browser Cache API! Loading instantly...`);
         if (this.onProgressCallback) this.onProgressCallback(100);
         this.llmLoaded = true;
+        this.llmMode = "cached_model";
         return true;
       }
 
       // If not cached, we need to download it from the network
       if (!navigator.onLine) {
         console.warn('[Local AI] Device is offline and model is not cached. Falling back to offline rule engine.');
+        this.llmMode = "offline_rule_fallback";
         return false;
       }
 
-      console.log('[Local AI] Model cache miss. Downloading Gemma-2B IT model from public Google Cloud Storage bucket (~1.4GB)...');
+      console.log(`[Local AI] Model cache miss. Downloading ${this.modelName} from ${MODEL_URL}...`);
 
       const response = await fetch(MODEL_URL);
       if (!response.ok) throw new Error(`Failed to fetch model: ${response.statusText}`);
 
       const reader = response.body.getReader();
-      const contentLength = +response.headers.get('Content-Length') || 1430000000; // fallback approx size of Gemma 2B
+      const contentLength = +response.headers.get('Content-Length') || 1430000000; // fallback approx size for the local Gemma model
       let receivedLength = 0;
       let chunks = [];
 
@@ -111,11 +126,13 @@ class LocalAiEngine {
       const modelBlob = new Blob(chunks);
       await cache.put(CACHE_KEY, new Response(modelBlob));
 
-      console.log('[Local AI] Local Gemma-2B model cached in browser Cache API successfully.');
+      console.log(`[Local AI] Local ${this.modelName} model cached in browser Cache API successfully.`);
       this.llmLoaded = true;
+      this.llmMode = "cached_model";
       return true;
     } catch (err) {
       console.warn('[Local AI] Actual binary download failed or was aborted. Running client-side simulation.', err);
+      this.llmMode = "simulated_rule_fallback";
       // Fallback: Run the simulated progress bar so the developer playground still works gracefully
       return new Promise(resolve => {
         let progress = 0;
@@ -126,6 +143,7 @@ class LocalAiEngine {
           if (progress === 100) {
             clearInterval(interval);
             this.llmLoaded = true;
+            this.llmMode = "simulated_rule_fallback";
             resolve(true);
           }
         }, 100);
@@ -175,6 +193,9 @@ class LocalAiEngine {
    * @returns {Promise<string>} Translated Krishi Sastri response
    */
   async generateText(prompt, context = {}) {
+    if (!this.llmLoaded) {
+      this.llmMode = this.webGpuSupported ? "rule_fallback_model_not_loaded" : "rule_fallback_no_webgpu";
+    }
     const text = prompt.toLowerCase();
     const crop = (context.crop || 'corn').toLowerCase();
     const soil = (context.soil || 'clay').toLowerCase();
@@ -213,6 +234,8 @@ class LocalAiEngine {
         crop: "crop.",
         symptomLabel: "Symptom",
         organicLabel: "Organic Remedy",
+        fallbackSymptom: "Small spots, leaf damage, or pest marks can indicate early stress.",
+        fallbackRemedy: "Spray neem oil solution early in the morning and keep affected leaves separate.",
         optimalMoisture: "Optimal Moisture",
         criticalLimit: "Critical Limit",
         dripStrategy: "Drip Strategy",
@@ -233,18 +256,25 @@ class LocalAiEngine {
         analystName: "Crop Analyst",
         analystSkill: "Soil Profile & NPK Calibration",
         coordinatorName: "Coordinator",
-        coordinatorSkill: "General Orchestration"
+        coordinatorSkill: "General Orchestration",
+        cropNames: { corn: "corn", wheat: "wheat" },
+        pestAdvice: "This can be a crop disease or pest issue.",
+        irrigationAdvice: "Give water in small cycles and avoid waterlogging near roots.",
+        soilAdvice: "Check soil nutrients and add compost before increasing fertilizer.",
+        expertOffer: "If the spots are spreading quickly, ask Krishi Bisesagya for deeper review."
       },
       Hindi: {
         pranam: "प्रणाम किसान भाई।",
-        ramram: "राम राम किसान भाई। रनिंग द",
-        namaste: "नमस्ते किसान भाई। रनिंग",
+        ramram: "राम राम किसान भाई।",
+        namaste: "नमस्ते किसान भाई।",
         welcome: "नमस्ते किसान भाई।",
         triggered: "मैंने सक्रिय किया है अपना",
         skillFor: "स्किल हमारी",
         crop: "फसल के लिए।",
         symptomLabel: "लक्षण",
         organicLabel: "जैविक उपचार",
+        fallbackSymptom: "पत्तों पर छोटे धब्बे, छेद या कीट के निशान शुरुआती तनाव दिखा सकते हैं।",
+        fallbackRemedy: "सुबह नीम तेल का हल्का घोल छिड़कें और ज्यादा प्रभावित पत्तों को अलग रखें।",
         optimalMoisture: "इष्टतम नमी",
         criticalLimit: "महत्वपूर्ण सीमा",
         dripStrategy: "ड्रिप सिंचाई रणनीति",
@@ -258,14 +288,19 @@ class LocalAiEngine {
         onSoil: "को",
         soilSuffix: "मिट्टी पर।",
         coordinatorOffer: "मैं स्थानीय रूप से विशेष स्किल्स ट्रिगर कर सकता हूँ:",
-        pathologistName: "फसल रोग विशेषज्ञ (Pathologist)",
+        pathologistName: "फसल रोग सलाह",
         pathologistSkill: "रोग उपचार और जैविक उपचार",
-        irrigatorName: "सिंचाई योजनाकार (Irrigation Planner)",
+        irrigatorName: "सिंचाई सलाह",
         irrigatorSkill: "ड्रिप शेड्यूलिंग और नमी अनुकूलन",
-        analystName: "फसल विश्लेषक (Crop Analyst)",
+        analystName: "मिट्टी सलाह",
         analystSkill: "मिट्टी प्रोफाइल और NPK अंशांकन",
-        coordinatorName: "समन्वयक (Coordinator)",
-        coordinatorSkill: "सामान्य ऑर्केस्ट्रेशन"
+        coordinatorName: "कृषि शास्त्री",
+        coordinatorSkill: "सामान्य सलाह",
+        cropNames: { corn: "मक्का", wheat: "गेहूँ" },
+        pestAdvice: "यह फसल रोग या कीट की समस्या हो सकती है।",
+        irrigationAdvice: "पानी छोटे-छोटे चक्रों में दें और जड़ों के पास पानी जमा न होने दें।",
+        soilAdvice: "खाद बढ़ाने से पहले मिट्टी की नमी और पोषक तत्व जांचें।",
+        expertOffer: "अगर धब्बे तेजी से फैल रहे हैं, तो कृषि विशेषज्ञ से गहरी जांच कराएं।"
       },
       Marathi: {
         pranam: "नमस्कार शेतकरी बंधू.",
@@ -277,6 +312,8 @@ class LocalAiEngine {
         crop: "पिकासाठी.",
         symptomLabel: "लक्षणे",
         organicLabel: "सेंद्रिय उपचार",
+        fallbackSymptom: "पानांवरील छोटे डाग, छिद्रे किंवा किडीचे चिन्ह सुरुवातीचा ताण दाखवू शकतात.",
+        fallbackRemedy: "सकाळी नीम तेलाचे हलके द्रावण फवारावे आणि जास्त बाधित पाने वेगळी ठेवावीत.",
         optimalMoisture: "योग्य ओलावा",
         criticalLimit: "धोकादायक मर्यादा",
         dripStrategy: "ठिबक सिंचन धोरण",
@@ -290,14 +327,19 @@ class LocalAiEngine {
         onSoil: "या",
         soilSuffix: "मातीवर.",
         coordinatorOffer: "मी स्थानिक पातळीवर खालील विशेष स्किल्स ट्रिगर करू शकतो:",
-        pathologistName: "पीक रोग तज्ञ (Crop Pathologist)",
+        pathologistName: "पीक रोग सल्ला",
         pathologistSkill: "रोग उपचार आणि सेंद्रिय उपाय",
-        irrigatorName: "सिंचन नियोजक (Irrigation Planner)",
+        irrigatorName: "सिंचन सल्ला",
         irrigatorSkill: "ठिबक नियोजन आणि ओलावा अनुकूलन",
-        analystName: "पीक विश्लेषक (Crop Analyst)",
+        analystName: "माती सल्ला",
         analystSkill: "माती प्रोफाइल आणि NPK कॅलिब्रेशन",
-        coordinatorName: "समन्वयक (Coordinator)",
-        coordinatorSkill: "सामान्य नियोजन"
+        coordinatorName: "कृषी शास्त्री",
+        coordinatorSkill: "सामान्य सल्ला",
+        cropNames: { corn: "मका", wheat: "गहू" },
+        pestAdvice: "ही पीक रोग किंवा किडीची समस्या असू शकते.",
+        irrigationAdvice: "पाणी लहान चक्रांत द्या आणि मुळांजवळ पाणी साचू देऊ नका.",
+        soilAdvice: "खत वाढवण्यापूर्वी मातीतील ओलावा आणि पोषक घटक तपासा.",
+        expertOffer: "डाग जलद पसरत असतील तर कृषी तज्ज्ञांकडून सखोल तपासणी करून घ्या."
       },
       Telugu: {
         pranam: "నమస్కారం రైతు సోదరులారా.",
@@ -309,6 +351,8 @@ class LocalAiEngine {
         crop: "పంట కోసం.",
         symptomLabel: "లక్షణాలు",
         organicLabel: "సేంద్రీయ నివారణ",
+        fallbackSymptom: "ఆకులపై చిన్న మచ్చలు, రంధ్రాలు లేదా పురుగు గుర్తులు ప్రారంభ ఒత్తిడిని చూపవచ్చు.",
+        fallbackRemedy: "ఉదయం తేలికపాటి వేపనూనె ద్రావణం పిచికారీ చేసి, ఎక్కువగా ప్రభావితమైన ఆకులను వేరు చేయండి.",
         optimalMoisture: "అనుకూలమైన తేమ",
         criticalLimit: "క్లిష్టమైన పరిమితి",
         dripStrategy: "డ్రిప్ వ్యూహం",
@@ -322,14 +366,19 @@ class LocalAiEngine {
         onSoil: "ఆ",
         soilSuffix: "నేలలో.",
         coordinatorOffer: "నేను ఇక్కడ ప్రత్యేక నైపుణ్యాలను ప్రారంభించగలను:",
-        pathologistName: "పంట నిపుణుడు (Crop Pathologist)",
+        pathologistName: "పంట రోగ సలహా",
         pathologistSkill: "వ్యాధి నివారణ & సేంద్రీయ పరిష్కారాలు",
-        irrigatorName: "నీటిపారుదల ప్రణాళిక (Irrigation Planner)",
+        irrigatorName: "నీటిపారుదల సలహా",
         irrigatorSkill: "డ్రిప్ షెడ్యూలింగ్ & తేమ ఆప్టిమైజేషన్",
-        analystName: "పంట విశ్లేషకుడు (Crop Analyst)",
+        analystName: "నేల సలహా",
         analystSkill: "నేల ప్రొఫైల్ & NPK అమరిక",
-        coordinatorName: "సమన్వయకర్త (Coordinator)",
-        coordinatorSkill: "సాధారణ ఆర్కెస్ట్రేషన్"
+        coordinatorName: "కృషి శాస్త్రి",
+        coordinatorSkill: "సాధారణ సలహా",
+        cropNames: { corn: "మొక్కజొన్న", wheat: "గోధుమ" },
+        pestAdvice: "ఇది పంట రోగం లేదా పురుగు సమస్య కావచ్చు.",
+        irrigationAdvice: "నీటిని చిన్న చక్రాల్లో ఇవ్వండి; వేర్ల దగ్గర నీరు నిల్వ ఉండకూడదు.",
+        soilAdvice: "ఎరువు పెంచే ముందు నేల తేమ, పోషకాలను తనిఖీ చేయండి.",
+        expertOffer: "మచ్చలు త్వరగా వ్యాపిస్తే కృషి విశేషజ్ఞతో లోతైన పరిశీలన చేయించండి."
       },
       Swahili: {
         pranam: "Jambo Mkulima.",
@@ -341,6 +390,8 @@ class LocalAiEngine {
         crop: "zao.",
         symptomLabel: "Dalili",
         organicLabel: "Tiba ya Kiorgansiki",
+        fallbackSymptom: "Madoa madogo, mashimo, au alama za wadudu kwenye majani zinaweza kuonyesha msongo wa mapema.",
+        fallbackRemedy: "Nyunyizia mchanganyiko mwepesi wa mafuta ya mwarobaini asubuhi na tenga majani yaliyoathirika sana.",
         optimalMoisture: "Unyevu Sahihi",
         criticalLimit: "Kiwango cha Chini",
         dripStrategy: "Mkakati wa Kudondosha Maji",
@@ -354,14 +405,19 @@ class LocalAiEngine {
         onSoil: "kwenye udongo wa",
         soilSuffix: ".",
         coordinatorOffer: "Ninaweza kuanzisha ujuzi maalum hapa:",
-        pathologistName: "Mtaalamu wa Magonjwa (Crop Pathologist)",
+        pathologistName: "Ushauri wa Magonjwa ya Mazao",
         pathologistSkill: "Matibabu ya Magonjwa ya Mazao",
-        irrigatorName: "Mratibu wa Umwagiliaji (Irrigation Planner)",
+        irrigatorName: "Ushauri wa Umwagiliaji",
         irrigatorSkill: "Mkakati wa Umwagiliaji wa Unyevu",
-        analystName: "Mchambuzi wa Mazao (Crop Analyst)",
+        analystName: "Ushauri wa Udongo",
         analystSkill: "Kipimo cha Udongo NPK",
-        coordinatorName: "Mratibu (Coordinator)",
-        coordinatorSkill: "Usimamizi Mkuu"
+        coordinatorName: "Krishi Sastri",
+        coordinatorSkill: "Ushauri wa jumla",
+        cropNames: { corn: "mahindi", wheat: "ngano" },
+        pestAdvice: "Hili linaweza kuwa tatizo la ugonjwa wa mmea au wadudu.",
+        irrigationAdvice: "Mwagilia kwa vipindi vidogo na epuka maji kusimama karibu na mizizi.",
+        soilAdvice: "Kagua unyevu na virutubisho vya udongo kabla ya kuongeza mbolea.",
+        expertOffer: "Ikiwa madoa yanaenea haraka, muulize Krishi Bisesagya kwa uchunguzi wa kina."
       },
       Zulu: {
         pranam: "Sawubona Mlimi.",
@@ -373,6 +429,8 @@ class LocalAiEngine {
         crop: "ummbila.",
         symptomLabel: "Imibhalo",
         organicLabel: "Ukwelapha Ngokwemvelo",
+        fallbackSymptom: "Amabala amancane, izimbobo, noma izimpawu zezinambuzane emaqabungeni zingakhombisa ukucindezeleka kokuqala.",
+        fallbackRemedy: "Fafaza isixazululo esincane samafutha e-neem ekuseni bese uhlukanisa amaqabunga athinteke kakhulu.",
         optimalMoisture: "Umswakama Ohelekile",
         criticalLimit: "Izinga Elingaphansi",
         dripStrategy: "Isu Lokunisela Ngamathontsi",
@@ -386,14 +444,19 @@ class LocalAiEngine {
         onSoil: "kumhlabathi we-",
         soilSuffix: ".",
         coordinatorOffer: "Ngingakuvusa izikhathi ezithile lapha:",
-        pathologistName: "Uchwepheshe Wezifo (Crop Pathologist)",
+        pathologistName: "Iseluleko Sezifo Zezitshalo",
         pathologistSkill: "Ukwelapha Izifo Zommbila",
-        irrigatorName: "Umqambi Wokunisela (Irrigation Planner)",
+        irrigatorName: "Iseluleko Sokunisela",
         irrigatorSkill: "Isu Lokunisela Umswakama",
-        analystName: "Umlinganisi Wommbila (Crop Analyst)",
+        analystName: "Iseluleko Somhlabathi",
         analystSkill: "Ukuhlola Umhlabathi I-NPK",
-        coordinatorName: "Umalekeleli (Coordinator)",
-        coordinatorSkill: "Ukuphatha Okuyinhloko"
+        coordinatorName: "Krishi Sastri",
+        coordinatorSkill: "Iseluleko esijwayelekile",
+        cropNames: { corn: "ummbila", wheat: "ukolweni" },
+        pestAdvice: "Lokhu kungaba yisifo sesitshalo noma inkinga yezinambuzane.",
+        irrigationAdvice: "Nisela ngezikhathi ezincane futhi ugweme amanzi ame eduze kwezimpande.",
+        soilAdvice: "Hlola umswakama nomanyolo womhlabathi ngaphambi kokwandisa umanyolo.",
+        expertOffer: "Uma amabala esabalala ngokushesha, cela u-Krishi Bisesagya ahlole ngokujulile."
       }
     };
 
@@ -401,6 +464,7 @@ class LocalAiEngine {
     let response = "";
     let activeAgent = "Coordinator";
     let activeSkill = "General Advisory";
+    const cropName = dict.cropNames?.[crop] || okfGuide.metadata.name || crop;
 
     // 2. Multi-Agent Skill Routing (multilingual keyword matching)
     const pestKeywords = ['pest', 'insect', 'disease', 'borer', 'rust', 'aphid', 'blight', 'outbreak', 'pathology',
@@ -449,21 +513,21 @@ class LocalAiEngine {
       else if (text.includes('aphid') || text.includes('माहू') || text.includes('ఆకుపురుగు')) diseaseMatch = "Aphids";
 
       const rawDiag = okfGuide.diagnostics[diseaseMatch] || {
-        symptom: { English: "General crop leaf damage and pest sightings." },
-        organic_remedy: { English: "Spray neem oil solution (5ml/L) early in the morning and isolate infected crops." }
+        symptom: { [lang]: dict.fallbackSymptom, English: labels.English.fallbackSymptom },
+        organic_remedy: { [lang]: dict.fallbackRemedy, English: labels.English.fallbackRemedy }
       };
 
       const symptomVal = (rawDiag.symptom && typeof rawDiag.symptom === 'object') ? (rawDiag.symptom[lang] || rawDiag.symptom.English) : rawDiag.symptom;
       const remedyVal = (rawDiag.organic_remedy && typeof rawDiag.organic_remedy === 'object') ? (rawDiag.organic_remedy[lang] || rawDiag.organic_remedy.English) : rawDiag.organic_remedy;
 
-      response = `[Offline AI - ${activeAgent}] ${dict.pranam} ${dict.triggered} **${activeSkill}** ${dict.skillFor} ${okfGuide.metadata.name} ${dict.crop} \n\n📋 **${dict.symptomLabel}:** ${symptomVal}\n🌱 **${dict.organicLabel}:** ${remedyVal}`;
+      response = `${dict.pranam}\n${dict.pestAdvice}\n${dict.symptomLabel}: ${symptomVal}\n${dict.organicLabel}: ${remedyVal}\n${dict.expertOffer}`;
     }
     else if (irrigationKeywords.some(kw => text.includes(kw))) {
       activeAgent = dict.irrigatorName;
       activeSkill = dict.irrigatorSkill;
 
       const specs = okfGuide.specifications;
-      response = `[Offline AI - ${activeAgent}] ${dict.ramram} **${activeSkill}** ${dict.skillFor} ${okfGuide.metadata.name} ${dict.crop} \n\n💧 **${dict.optimalMoisture}:** ${specs.soil_moisture.optimal_pct}%\n📉 **${dict.criticalLimit}:** ${specs.soil_moisture.min_pct}%\n🧬 **${dict.dripStrategy}:** ${dict.strategyDesc}`;
+      response = `${dict.ramram}\n${cropName}: ${dict.irrigationAdvice}\n${dict.optimalMoisture}: ${specs.soil_moisture.optimal_pct}%\n${dict.criticalLimit}: ${specs.soil_moisture.min_pct}%`;
     }
     else if (soilKeywords.some(kw => text.includes(kw))) {
       activeAgent = dict.analystName;
@@ -471,12 +535,12 @@ class LocalAiEngine {
 
       const specs = okfGuide.specifications;
       const NPK = specs.npk_ratio;
-      response = `[Offline AI - ${activeAgent}] ${dict.namaste} **${activeSkill}** ${dict.skillFor} ${okfGuide.metadata.name} ${dict.crop} \n\n🧪 **${dict.targetNpk}:** ${dict.nitrogen}: ${NPK.nitrogen_ppm}, ${dict.phosphorus}: ${NPK.phosphorus_ppm}, ${dict.potassium}: ${NPK.potassium_ppm}\n🧪 **${dict.optimalPh}:** ${specs.optimal_soil_ph}`;
+      response = `${dict.namaste}\n${cropName}: ${dict.soilAdvice}\n${dict.targetNpk}: ${dict.nitrogen}: ${NPK.nitrogen_ppm}, ${dict.phosphorus}: ${NPK.phosphorus_ppm}, ${dict.potassium}: ${NPK.potassium_ppm}\n${dict.optimalPh}: ${specs.optimal_soil_ph}`;
     }
     else {
       activeAgent = dict.coordinatorName;
       activeSkill = dict.coordinatorSkill;
-      response = `[Offline AI - ${activeAgent}] ${dict.welcome} ${dict.coordinatorIntro} ${okfGuide.metadata.name} ${dict.onSoil} ${soil} ${dict.soilSuffix} \n\n${dict.coordinatorOffer} \n* 🦠 *${dict.pathologistName}* (${dict.pathologistSkill})\n* 💧 *${dict.irrigatorName}* (${dict.irrigatorSkill})\n* 🧪 *${dict.analystName}* (${dict.analystSkill})`;
+      response = `${dict.welcome}\n${cropName}: ${dict.coordinatorOffer}\n${dict.pathologistName}: ${dict.pathologistSkill}\n${dict.irrigatorName}: ${dict.irrigatorSkill}\n${dict.analystName}: ${dict.analystSkill}`;
     }
 
     return new Promise(resolve => {

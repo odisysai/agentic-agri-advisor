@@ -19,10 +19,78 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function farmerDisplayNameForLanguage(language) {
+    // Try to get the actual farmer name from profile or auth
+    try {
+      const savedProfile = localStorage.getItem('aaa_farmer_profile');
+      if (savedProfile) {
+        const profile = JSON.parse(savedProfile);
+        if (profile.farmer_name && profile.farmer_name !== 'unnamed' && profile.farmer_name.trim()) {
+          return profile.farmer_name;
+        }
+        if (profile.field1_name && profile.field1_name !== 'My Field' && profile.field1_name.trim()) {
+          return profile.field1_name;
+        }
+      }
+    } catch (e) { /* ignore */ }
+    // Fallback to default
     const code = normalizeLanguageCode(language);
     if (code === 'hi' || code === 'mr') return 'माधव जी';
     if (code === 'te') return 'మాధవ్ జీ';
     return 'Madhav Ji';
+  }
+
+  function dataUrlToBase64(dataUrl) {
+    const value = String(dataUrl || '');
+    const commaIndex = value.indexOf(',');
+    return commaIndex >= 0 ? value.slice(commaIndex + 1) : value;
+  }
+
+  function contentTypeFromDataUrl(dataUrl, fallback = 'image/jpeg') {
+    const match = String(dataUrl || '').match(/^data:([^;]+);base64,/);
+    return match ? match[1] : fallback;
+  }
+
+  async function uploadCropPhoto(dataUrl, source = 'crop_photo') {
+    if (!dataUrl) return null;
+    if (!navigator.onLine) {
+      return {
+        status: 'offline_queued_locally',
+        bucket: '',
+        object_name: '',
+        gcs_uri: '',
+        public_url: '',
+        size_bytes: dataUrl.length,
+        content_type: contentTypeFromDataUrl(dataUrl),
+      };
+    }
+
+    try {
+      const response = await fetch('/api/uploads/user-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: 'crop_photos',
+          file_name: `${source}_${Date.now()}.jpg`,
+          content_type: contentTypeFromDataUrl(dataUrl),
+          data_base64: dataUrlToBase64(dataUrl),
+        })
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      return data.storage || null;
+    } catch (err) {
+      console.warn('[Storage] Crop photo upload failed:', err);
+      return {
+        status: 'error',
+        message: err.message || String(err),
+        bucket: '',
+        object_name: '',
+        gcs_uri: '',
+        public_url: '',
+        size_bytes: dataUrl.length,
+        content_type: contentTypeFromDataUrl(dataUrl),
+      };
+    }
   }
 
   function updateFarmerDisplayNames(language) {
@@ -571,7 +639,9 @@ document.addEventListener('DOMContentLoaded', () => {
     step: 1,
     affectedArea: null,
     photos: [],
+    photoStorage: [],
     currentPhoto: null,
+    currentPhotoStorage: null,
     diagnosis: null
   };
 
@@ -670,7 +740,8 @@ document.addEventListener('DOMContentLoaded', () => {
       confidence: confidence,
       organic_remedy: organic,
       chemical_remedy: chem,
-      alternatives: alternatives
+      alternatives: alternatives,
+      photo_storage: cropDiagnosisState.photoStorage || []
     };
 
     await localDb.saveDiagnosisState(cropDiagnosisState);
@@ -685,12 +756,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Hook Custom A2UI 2.0 Actions Dispatcher
-  document.addEventListener('a2ui-action', (e) => {
+  document.addEventListener('a2ui-action', async (e) => {
     const action = e.detail.action;
     console.log(`[A2UI Action] Captured action trigger: ${action}`);
 
     if (action === 'TAKE_CROP_PHOTO' || action === 'START_CROP_DIAGNOSIS') {
-      cropDiagnosisState = { step: 1, affectedArea: null, photos: [], currentPhoto: null, diagnosis: null };
+      cropDiagnosisState = { step: 1, affectedArea: null, photos: [], photoStorage: [], currentPhoto: null, currentPhotoStorage: null, diagnosis: null };
       localDb.saveDiagnosisState(cropDiagnosisState);
       loadStepSchema();
       showToast("Diagnosis Wizard Started", "Select the affected plant region", "success");
@@ -706,11 +777,17 @@ document.addEventListener('DOMContentLoaded', () => {
       loadStepSchema();
     } else if (action === 'ACCEPT_IMAGE') {
       if (cropDiagnosisState.currentPhoto) {
+        if (!cropDiagnosisState.currentPhotoStorage) {
+          cropDiagnosisState.currentPhotoStorage = await uploadCropPhoto(cropDiagnosisState.currentPhoto, 'crop_wizard_accept');
+        }
         cropDiagnosisState.photos.push(cropDiagnosisState.currentPhoto);
+        if (!Array.isArray(cropDiagnosisState.photoStorage)) cropDiagnosisState.photoStorage = [];
+        cropDiagnosisState.photoStorage.push(cropDiagnosisState.currentPhotoStorage);
         cropDiagnosisState.currentPhoto = null;
+        cropDiagnosisState.currentPhotoStorage = null;
       }
       if (cropDiagnosisState.photos.length === 3) {
-        runEdgeAiDiagnosis();
+        await runEdgeAiDiagnosis();
       } else {
         cropDiagnosisState.step = 5;
         localDb.saveDiagnosisState(cropDiagnosisState);
@@ -718,6 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } else if (action === 'RETAKE_IMAGE') {
       cropDiagnosisState.currentPhoto = null;
+      cropDiagnosisState.currentPhotoStorage = null;
       cropDiagnosisState.step = 3;
       localDb.saveDiagnosisState(cropDiagnosisState);
       loadStepSchema();
@@ -908,13 +986,71 @@ document.addEventListener('DOMContentLoaded', () => {
     const hasTrigger = triggers.some(t => textLower.includes(t));
 
     if (hasTrigger && !textLower.includes('safety kernel')) {
+      const langCode = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language')) || window.currentLanguageState?.code || 'en';
+      const safetyCopy = {
+        en: {
+          title: 'Agricultural Safety Warnings',
+          ppeLabel: 'PPE',
+          ppe: 'Wear face mask, goggles, and protective gloves during application.',
+          windLabel: 'Wind Limit',
+          wind: 'Ensure wind speed is under 15 km/h to prevent chemical drift.',
+          runoffLabel: 'Runoff Risk',
+          runoff: 'Confirm zero rain forecast for the next 24 hours to prevent chemical runoff.'
+        },
+        hi: {
+          title: 'कृषि सुरक्षा चेतावनी',
+          ppeLabel: 'सुरक्षा उपकरण',
+          ppe: 'छिड़काव के समय मास्क, चश्मा और दस्ताने पहनें।',
+          windLabel: 'हवा की सीमा',
+          wind: 'रसायन उड़ने से रोकने के लिए हवा 15 किमी/घंटा से कम हो।',
+          runoffLabel: 'बहाव जोखिम',
+          runoff: 'अगले 24 घंटे बारिश न हो, यह पक्का करें।'
+        },
+        mr: {
+          title: 'कृषी सुरक्षा सूचना',
+          ppeLabel: 'सुरक्षा साधने',
+          ppe: 'फवारणी करताना मास्क, चष्मा आणि हातमोजे वापरा.',
+          windLabel: 'वाऱ्याची मर्यादा',
+          wind: 'रसायन उडू नये म्हणून वारा 15 किमी/तासपेक्षा कमी असावा.',
+          runoffLabel: 'वाहून जाण्याचा धोका',
+          runoff: 'पुढील 24 तास पाऊस नाही याची खात्री करा.'
+        },
+        te: {
+          title: 'వ్యవసాయ భద్రతా హెచ్చరికలు',
+          ppeLabel: 'రక్షణ పరికరాలు',
+          ppe: 'పిచికారీ సమయంలో మాస్క్, కళ్లద్దాలు, గ్లోవ్స్ ధరించండి.',
+          windLabel: 'గాలి పరిమితి',
+          wind: 'రసాయనం ఎగరకుండా గాలి వేగం 15 కిమీ/గం కంటే తక్కువగా ఉండాలి.',
+          runoffLabel: 'నీటి ప్రవాహ ప్రమాదం',
+          runoff: 'తదుపరి 24 గంటల్లో వర్షం లేదని నిర్ధారించండి.'
+        },
+        sw: {
+          title: 'Tahadhari za Usalama wa Kilimo',
+          ppeLabel: 'Vifaa vya kinga',
+          ppe: 'Vaa barakoa, miwani, na glavu wakati wa kunyunyizia.',
+          windLabel: 'Kiwango cha upepo',
+          wind: 'Hakikisha upepo uko chini ya km 15 kwa saa.',
+          runoffLabel: 'Hatari ya kusombwa',
+          runoff: 'Hakikisha hakuna mvua kwa saa 24 zijazo.'
+        },
+        zu: {
+          title: 'Izexwayiso Zokuphepha Kwezolimo',
+          ppeLabel: 'Izivikelo',
+          ppe: 'Gqoka imaski, izibuko, namagilavu ngesikhathi sokufafaza.',
+          windLabel: 'Umkhawulo womoya',
+          wind: 'Qinisekisa ukuthi umoya ungaphansi kuka-15 km/h.',
+          runoffLabel: 'Ingozi yokugeleza',
+          runoff: 'Qinisekisa ukuthi akukho mvula emahoreni angu-24 alandelayo.'
+        }
+      };
+      const copy = safetyCopy[langCode] || safetyCopy.en;
       const warningText = `
 <div class="safety-kernel-alert" style="margin-top: 10px; padding: 10px; border-left: 4px solid var(--accent); background-color: rgba(44, 107, 55, 0.1); border-radius: 4px; font-size: 0.85rem;">
-  <strong>🛡️ Agricultural Safety Kernel (ASK) Warnings:</strong>
+  <strong>🛡️ ${copy.title}:</strong>
   <ul style="margin: 5px 0 0 15px; padding: 0; text-align: left;">
-    <li><strong>PPE:</strong> Wear face mask, goggles, and protective gloves during application.</li>
-    <li><strong>Wind Limit:</strong> Ensure wind speed is under 15 km/h to prevent chemical drift.</li>
-    <li><strong>Runoff Risk:</strong> Confirm zero rain forecast for the next 24 hours to prevent chemical runoff.</li>
+    <li><strong>${copy.ppeLabel}:</strong> ${copy.ppe}</li>
+    <li><strong>${copy.windLabel}:</strong> ${copy.wind}</li>
+    <li><strong>${copy.runoffLabel}:</strong> ${copy.runoff}</li>
   </ul>
 </div>`;
       return text + warningText;
@@ -1251,6 +1387,27 @@ document.addEventListener('DOMContentLoaded', () => {
       const currentLang = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language'));
       translateSchemaData(data, currentLang);
 
+      // Replace hardcoded "Madhav Ji" greeting with actual farmer name
+      const farmerName = farmerDisplayNameForLanguage(currentLang);
+      if (farmerName && farmerName !== 'Madhav Ji' && farmerName !== 'माधव जी') {
+        // Walk through all components and replace Madhav Ji in titles/subtitles
+        function replaceNameInSchema(obj) {
+          if (!obj || typeof obj !== 'object') return;
+          for (const key of ['title', 'subtitle', 'description', 'text', 'value', 'label', 'placeholder']) {
+            if (obj[key] && typeof obj[key] === 'string') {
+              obj[key] = obj[key].replace(/Madhav Ji/gi, farmerName)
+                                 .replace(/माधव जी/g, farmerName)
+                                 .replace(/माधवव जी/g, farmerName)
+                                 .replace(/మాధవ్ జీ/g, farmerName);
+            }
+          }
+          for (const key in obj) {
+            if (typeof obj[key] === 'object') replaceNameInSchema(obj[key]);
+          }
+        }
+        replaceNameInSchema(data);
+      }
+
       if (schemaName === 'simulation') {
         bindSimulationState(data);
       } else if (schemaName === 'farmer_profile') {
@@ -1369,6 +1526,39 @@ document.addEventListener('DOMContentLoaded', () => {
       populateFieldSelector();
     } catch (e) {
       console.warn("SQLite database not accessible, running in purely local demo state.", e);
+      // Fallback: load from localStorage profile saved by landing page guest form
+      try {
+        const savedProfile = localStorage.getItem('aaa_farmer_profile');
+        if (savedProfile) {
+          const profile = JSON.parse(savedProfile);
+          // Build a fields array from the profile
+          if (profile.field1_name || profile.farmer_name) {
+            activeFields = [{
+              field_id: 'local_field_1',
+              name: profile.field1_name || 'My Field',
+              soil_type: profile.soil_type || 'Alluvial',
+              acres: profile.acres || 5,
+              irrigation_type: profile.has_drip === 'yes' ? 'Drip' : 'Sprinkler',
+              planting: {
+                planting_id: 'local_planting_1',
+                crop_type: profile.primary_crop || 'Corn',
+                variety: 'Default',
+                planting_date: new Date().toISOString().split('T')[0],
+                stage: 'germination',
+                nitrogen_ppm: 45,
+                moisture_pct: 40,
+                health_pct: 100
+              }
+            }];
+            localStorage.setItem('aaa_fields_cached', JSON.stringify(activeFields));
+            populateFieldSelector();
+          }
+          // Update farmer display name
+          updateFarmerDisplayNames(normalizeLanguageCode(profile.preferred_language) || 'en');
+        }
+      } catch (err) {
+        console.warn("Local profile fallback failed:", err);
+      }
     }
   }
 
@@ -1432,9 +1622,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const langCode = window.currentLanguageState?.code || 'en';
     const preferredLang = window.currentLanguageState?.displayName || 'English';
 
-    // Krishi Sastri always uses local knowledge (OKF + rule-based + Gemma if available)
-    // Only Krishi Visheshagya (Expert) uses cloud Gemini
-    console.log(`[Triage] Routing to local Krishi Sastri (OKF + rule-based).`);
+    // Krishi Sastri always uses local knowledge (OKF + rule-based + Gemma if available).
+    // Only Krishi Bisesagya (Expert) uses cloud Gemini.
+    console.log('[Triage] Routing to local Krishi Sastri.', localAi.getStatus?.());
     const thinkingBubble = appendMessage('Krishi Sastri', 'Thinking...', 'thinking-msg');
     handleAdvisorLocalAnswer(text, langCode, thinkingBubble);
     return;
@@ -1461,10 +1651,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return complexKeywords.some(kw => lower.includes(kw));
   }
 
-  // Offer to escalate a complex query to the cloud Expert (Krishi Visheshagya)
+  // Offer to escalate a complex query to the cloud Expert (Krishi Bisesagya)
   function offerExpertEscalation(originalQuery, langCode) {
     const escalationMessages = {
-      'en': { text: 'This seems like a complex issue. Shall I send this to Krishi Visheshagya (Expert) for deeper analysis?', yes: 'Yes, ask the Expert', no: 'No, thanks' },
+      'en': { text: 'This seems like a complex issue. Shall I send this to Krishi Bisesagya (Expert) for deeper analysis?', yes: 'Yes, ask the Expert', no: 'No, thanks' },
       'hi': { text: 'यह एक जटिल समस्या लग रही है। क्या मैं इसे कृषि विशेषज्ञ को गहन विश्लेषण के लिए भेजूँ?', yes: 'हाँ, विशेषज्ञ से पूछें', no: 'नहीं, ठीक है' },
       'mr': { text: 'ही एक गुंतागुंतीची समस्या वाटते. मी हे कृषी तज्ज्ञांकडे सविस्तर विश्लेषणासाठी पाठवू?', yes: 'होय, तज्ज्ञांना विचारा', no: 'नाही, ठीक आहे' },
       'te': { text: 'ఇది క్లిష్టమైన సమస్య అనిపిస్తోంది. నేను దీన్ని నిపుణుడికి సవివర విశ్లేషణ కోసం పంపాలా?', yes: 'అవును, నిపుణుడిని అడగండి', no: 'లేదు, సరే' },
@@ -1508,7 +1698,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Delegate a query to the cloud Expert (Krishi Visheshagya)
+  // Delegate a query to the cloud Expert (Krishi Bisesagya)
   async function delegateToExpert(originalQuery, langCode) {
     // Switch to Ask tab
     window.switchTab('ask');
@@ -1540,14 +1730,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // The expert form uses a textarea (expert-question-input), while the expert chat uses an input (expert-input-field)
     const expertQuestionInput = document.getElementById('expert-question-input');
     const expertInputField = document.getElementById('expert-input-field');
+
+    // Rephrase the query with farm context for the expert
+    const rephrasedQuery = context 
+      ? `[Context: ${context}] Farmer's question: ${originalQuery}`
+      : originalQuery;
     
     if (expertQuestionInput) {
-      // Pre-fill the expert form textarea with the original query
       expertQuestionInput.value = originalQuery;
     }
     if (expertInputField) {
-      // Also pre-fill the expert chat input
-      expertInputField.value = originalQuery;
+      expertInputField.value = rephrasedQuery;
       // Trigger the expert send — this sends to cloud Gemini
       if (typeof sendExpertMessage === 'function') {
         sendExpertMessage();
@@ -1561,7 +1754,7 @@ document.addEventListener('DOMContentLoaded', () => {
       expertChatScreen.style.display = 'flex';
     }
 
-    showToast("Sent to Expert", "Your question has been sent to Krishi Visheshagya for deeper analysis.", "info");
+    showToast("Sent to Expert", "Your question has been sent to Krishi Bisesagya for deeper analysis.", "info");
   }
 
   // Advisor mode local answer — searches OKF cache in IndexedDB first
@@ -1636,8 +1829,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const savedProfile = localStorage.getItem('aaa_farmer_profile');
         const profile = savedProfile ? JSON.parse(savedProfile) : {};
-        const engine = new window.LocalAiEngine();
-        reply = await engine.generateText(text, {
+        reply = await localAi.generateText(text, {
           crop: profile.primary_crop || 'corn',
           soil: profile.soil_type || 'clay',
           language: langName
@@ -1815,7 +2007,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!navigator.onLine) {
       thinkingEl.remove();
-      appendExpertMessage('Krishi Sastri', '⚠️ No internet connection. The cloud expert requires an active connection. Please try again when online.', 'expert-msg');
+      appendExpertMessage('Krishi Bisesagya', '⚠️ No internet connection. The cloud expert requires an active connection. Please try again when online.', 'expert-msg');
       return;
     }
 
@@ -1841,7 +2033,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Streaming: response is newline-delimited JSON
-      const { element: msgBubble, textSpan: msgText } = appendExpertMessage('Krishi Sastri', '', 'expert-msg');
+      const { element: msgBubble, textSpan: msgText } = appendExpertMessage('Krishi Bisesagya', '', 'expert-msg');
       let fullText = '';
 
       const reader = resp.body.getReader();
@@ -1875,7 +2067,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (err) {
       thinkingEl.remove();
-      appendExpertMessage('Krishi Sastri', `⚠️ Could not reach cloud expert: ${err.message}. Please check your connection and try again.`, 'expert-msg');
+      appendExpertMessage('Krishi Bisesagya', `⚠️ Could not reach cloud expert: ${err.message}. Please check your connection and try again.`, 'expert-msg');
     }
   }
 
@@ -2306,9 +2498,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!navigator.onLine) {
         showToast("Profile Saved Offline", "Profile details cached locally. Sync queued.", "warning");
-        const prompt = `Profile updated: saved profile details for farmer. Name is ${profile.farmer_name || 'unnamed'}, Location is ${profile.region}, Size is ${profile.acres} acres, Soil is ${profile.soil_type}, Crop is ${profile.primary_crop}, Drip Irrigation is ${profile.has_drip}. Please acknowledge and update your advisory guidelines.`;
-        userInputField.value = prompt;
-        handleSend();
         return;
       }
 
@@ -2329,15 +2518,11 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast("Profile Synced", "Farmer profile saved locally and synced with advisors.", "success");
         fetchFieldsAndProfile();
       });
-
-      const prompt = `Profile updated: saved profile details for farmer. Name is ${profile.farmer_name || 'unnamed'}, Location is ${profile.region}, Size is ${profile.acres} acres, Soil is ${profile.soil_type}, Crop is ${profile.primary_crop}, Drip Irrigation is ${profile.has_drip}. Please acknowledge and update your advisory guidelines.`;
-      userInputField.value = prompt;
-      handleSend();
     } else if (action === 'ADD_FIELD_ONBOARDING') {
       // After saving first field, show the add-field schema for additional fields
       loadSchema('add_field', 'more-canvas');
     } else if (action === 'SAVE_ADDITIONAL_FIELD') {
-      // Save an additional field to the farmer's profile
+      // Save or update a field
       const activeCanvas = getActiveCanvas();
       if (!activeCanvas) return;
       const form = activeCanvas.querySelector('form') || activeCanvas.querySelector('.a2ui-form');
@@ -2360,6 +2545,9 @@ document.addEventListener('DOMContentLoaded', () => {
         has_drip: fieldData.has_drip || 'no'
       };
 
+      // Check if this is an edit (has editFieldId in actionParams)
+      const isEdit = actionParams && actionParams.editFieldId;
+      
       fetch('/api/profile/user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2367,41 +2555,40 @@ document.addEventListener('DOMContentLoaded', () => {
       })
       .then(res => res.json())
       .then(() => {
-        showToast("Field Added", `${fieldName} (${fieldData.primary_crop || 'Crop'}) added to your farm.`, "success");
+        showToast(isEdit ? "Field Updated" : "Field Added", `${fieldName} (${fieldData.primary_crop || 'Crop'}) ${isEdit ? 'updated' : 'added'} successfully.`, "success");
         fetchFieldsAndProfile();
-        // Show add-field again in case they want to add more
-        setTimeout(() => loadSchema('add_field', 'more-canvas'), 500);
+        // Go to My Fields list after save
+        setTimeout(() => renderFieldsList(), 500);
       })
       .catch(err => {
-        console.warn('Failed to save additional field:', err);
-        showToast("Save Failed", "Could not save field. Please try again.", "danger");
+        console.warn('Failed to save field:', err);
+        // Fallback: save to localStorage
+        try {
+          const savedProfile = localStorage.getItem('aaa_farmer_profile') || '{}';
+          const profile = JSON.parse(savedProfile);
+          profile.field1_name = fieldName;
+          profile.soil_type = payload.soil_type;
+          profile.acres = payload.acres;
+          profile.primary_crop = payload.primary_crop;
+          profile.has_drip = payload.has_drip;
+          localStorage.setItem('aaa_farmer_profile', JSON.stringify(profile));
+          showToast(isEdit ? "Field Updated (Local)" : "Field Added (Local)", `${fieldName} saved locally.`, "success");
+          fetchFieldsAndProfile();
+          setTimeout(() => renderFieldsList(), 500);
+        } catch(e) {
+          showToast("Save Failed", "Could not save field. Please try again.", "danger");
+        }
       });
     } else if (action === 'CANCEL_ADD_FIELD') {
       // Go to home after cancelling add field
       window.switchTab('home');
       showToast("Onboarding Complete", "You can add more fields anytime from More → Profile.", "info");
     } else {
-      // General Form Submission to Agent
-      const activeCanvas = getActiveCanvas();
-      if (!activeCanvas) return;
-      const form = activeCanvas.querySelector('form') || activeCanvas.querySelector('.a2ui-form');
-      const params = {};
-      if (form) {
-        const inputs = form.querySelectorAll('input, select');
-        inputs.forEach(input => {
-          if (input.name) {
-            params[input.name] = input.value;
-          }
-        });
+      // Unhandled action — show toast, don't send to chat
+      console.log(`[A2UI Action] Unhandled action: ${action}`);
+      if (typeof showToast === 'function') {
+        showToast("Action", `Action: ${action}`, "info");
       }
-
-      let prompt = `Action triggered: '${action}'`;
-      if (Object.keys(params).length > 0) {
-        prompt += ` with fields: ` + Object.entries(params).map(([k, v]) => `${k}='${v}'`).join(', ');
-      }
-
-      userInputField.value = prompt;
-      handleSend();
     }
   });
 
@@ -2503,10 +2690,28 @@ document.addEventListener('DOMContentLoaded', () => {
     img.src = dataUrl;
   }
 
+  async function acceptCropWizardPhoto(dataUrl, source) {
+    const storage = await uploadCropPhoto(dataUrl, source);
+    if (!Array.isArray(cropDiagnosisState.photos)) cropDiagnosisState.photos = [];
+    if (!Array.isArray(cropDiagnosisState.photoStorage)) cropDiagnosisState.photoStorage = [];
+    cropDiagnosisState.photos.push(dataUrl);
+    cropDiagnosisState.photoStorage.push(storage);
+    cropDiagnosisState.currentPhoto = null;
+    cropDiagnosisState.currentPhotoStorage = null;
+
+    if (cropDiagnosisState.photos.length === 3) {
+      await runEdgeAiDiagnosis();
+    } else {
+      cropDiagnosisState.step = 5;
+      await localDb.saveDiagnosisState(cropDiagnosisState);
+      loadStepSchema();
+    }
+  }
+
   // Camera event listeners re-targeted to the crop wizard steps
   if (cameraBtn) {
     cameraBtn.addEventListener('click', async () => {
-      cropDiagnosisState = { step: 1, affectedArea: null, photos: [], currentPhoto: null, diagnosis: null };
+      cropDiagnosisState = { step: 1, affectedArea: null, photos: [], photoStorage: [], currentPhoto: null, currentPhotoStorage: null, diagnosis: null };
       localDb.saveDiagnosisState(cropDiagnosisState);
       loadStepSchema();
     });
@@ -2532,22 +2737,14 @@ document.addEventListener('DOMContentLoaded', () => {
           cropCamera.stop();
         }
 
-        analyzeImageQuality(activeDataUrl, (warning) => {
+        analyzeImageQuality(activeDataUrl, async (warning) => {
           if (warning) {
             cropDiagnosisState.step = 4;
             localDb.saveDiagnosisState(cropDiagnosisState);
             loadStepSchema();
             showToast("Quality Warning", `Poor photo quality: ${warning.replace('_', ' ')}`, "warning");
           } else {
-            cropDiagnosisState.photos.push(activeDataUrl);
-            cropDiagnosisState.currentPhoto = null;
-            if (cropDiagnosisState.photos.length === 3) {
-              runEdgeAiDiagnosis();
-            } else {
-              cropDiagnosisState.step = 5;
-              localDb.saveDiagnosisState(cropDiagnosisState);
-              loadStepSchema();
-            }
+            await acceptCropWizardPhoto(activeDataUrl, 'crop_wizard_capture');
           }
         });
       }
@@ -2574,22 +2771,14 @@ document.addEventListener('DOMContentLoaded', () => {
             cropCamera.stop();
           }
 
-          analyzeImageQuality(activeDataUrl, (warning) => {
+          analyzeImageQuality(activeDataUrl, async (warning) => {
             if (warning) {
               cropDiagnosisState.step = 4;
               localDb.saveDiagnosisState(cropDiagnosisState);
               loadStepSchema();
               showToast("Quality Warning", `Poor photo quality: ${warning.replace('_', ' ')}`, "warning");
             } else {
-              cropDiagnosisState.photos.push(activeDataUrl);
-              cropDiagnosisState.currentPhoto = null;
-              if (cropDiagnosisState.photos.length === 3) {
-                runEdgeAiDiagnosis();
-              } else {
-                cropDiagnosisState.step = 5;
-                localDb.saveDiagnosisState(cropDiagnosisState);
-                loadStepSchema();
-              }
+              await acceptCropWizardPhoto(activeDataUrl, 'crop_wizard_upload');
             }
           });
         };
@@ -2608,12 +2797,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Local Gemma-2B Model Downloader listener
+  // Local Gemma Model Downloader listener
   const downloadModelBtn = document.getElementById('download-model-btn');
   if (downloadModelBtn) {
     downloadModelBtn.addEventListener('click', () => {
       if (localAi.llmLoaded) {
-        showToast("Local AI Active", "Local Gemma-2B model is already compiled and ready.", "success");
+        showToast("Local AI Active", `${localAi.modelName} is already compiled and ready.`, "success");
         return;
       }
 
@@ -2627,7 +2816,7 @@ document.addEventListener('DOMContentLoaded', () => {
           downloadModelBtn.textContent = '🟢 Edge AI Active';
           downloadModelBtn.style.backgroundColor = 'var(--trend-up)';
           downloadModelBtn.disabled = false;
-          showToast("Local LLM Ready", "Gemma-2B successfully cached. Mobile WebGPU active.", "success");
+          showToast("Local LLM Ready", `${localAi.modelName} ready for Krishi Sastri.`, "success");
         }
       });
     });
@@ -3038,6 +3227,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('sastri-chat-screen').style.display = 'none';
     document.getElementById('expert-form-screen').style.display = 'flex';
     document.getElementById('expert-status-display').style.display = 'none';
+    latestExpertPhotoStorage = null;
+    latestExpertPhotoUploadPromise = null;
+    const photoImg = document.getElementById('expert-photo-img');
+    const photoPreview = document.getElementById('expert-photo-preview');
+    const expertPhotoBtn = document.getElementById('expert-photo-btn');
+    if (photoImg) photoImg.removeAttribute('src');
+    if (photoPreview) photoPreview.style.display = 'none';
+    if (expertPhotoBtn) expertPhotoBtn.textContent = '📷 फोटो जोड़ें';
   }
 
   // Keywords that indicate a complex/risky question needing expert escalation
@@ -3115,6 +3312,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  let latestExpertPhotoStorage = null;
+  let latestExpertPhotoUploadPromise = null;
+
   async function createExpertRequest(question, photoData) {
     // Include farm context
     const profile = localStorage.getItem('aaa_farmer_profile');
@@ -3127,6 +3327,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const langCode = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language')) || 'en';
+    let requestPhotoStorage = null;
+    if (photoData) {
+      if (!latestExpertPhotoStorage && latestExpertPhotoUploadPromise) {
+        latestExpertPhotoStorage = await latestExpertPhotoUploadPromise;
+      } else if (!latestExpertPhotoStorage) {
+        latestExpertPhotoStorage = await uploadCropPhoto(photoData, 'expert_attachment');
+      }
+      requestPhotoStorage = latestExpertPhotoStorage;
+    }
+    const photoEvidence = requestPhotoStorage?.gcs_uri || requestPhotoStorage?.object_name || '';
+    const expertQuestion = photoEvidence
+      ? `${question}\n\nPhoto evidence: ${photoEvidence}`
+      : question;
 
     // Switch to expert chat view
     const expertForm = document.getElementById('expert-form-screen');
@@ -3137,7 +3350,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Pre-fill the expert chat input and send
     const expertInput = document.getElementById('expert-input-field');
     if (expertInput) {
-      expertInput.value = question;
+      expertInput.value = expertQuestion;
       if (typeof sendExpertMessage === 'function') {
         await sendExpertMessage();
       }
@@ -3165,6 +3378,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (backFromExpertBtn) backFromExpertBtn.addEventListener('click', showAdvisorSelection);
     if (expertBackToChatBtn) expertBackToChatBtn.addEventListener('click', () => { showAdvisorSelection(); showSastriChat(); });
 
+    // Expert chat back button — go back to advisor selection
+    const expertChatBackBtn = document.getElementById('expert-chat-back-btn');
+    if (expertChatBackBtn) expertChatBackBtn.addEventListener('click', () => {
+      const expertChat = document.getElementById('expert-chat-screen');
+      const advisorSelection = document.getElementById('advisor-selection-screen');
+      if (expertChat) expertChat.style.display = 'none';
+      if (advisorSelection) advisorSelection.style.display = 'flex';
+    });
+
     // Expert photo upload
     if (expertPhotoBtn && expertPhotoInput) {
       expertPhotoBtn.addEventListener('click', () => expertPhotoInput.click());
@@ -3178,6 +3400,11 @@ document.addEventListener('DOMContentLoaded', () => {
           if (img) img.src = event.target.result;
           if (preview) preview.style.display = 'block';
           expertPhotoBtn.textContent = '✅ फोटो जोड़ी गई';
+          latestExpertPhotoStorage = null;
+          latestExpertPhotoUploadPromise = uploadCropPhoto(event.target.result, 'expert_attachment');
+          latestExpertPhotoUploadPromise.then(storage => {
+            latestExpertPhotoStorage = storage;
+          });
         };
         reader.readAsDataURL(file);
       });
@@ -3185,7 +3412,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Expert submit
     if (expertSubmitBtn) {
-      expertSubmitBtn.addEventListener('click', () => {
+      expertSubmitBtn.addEventListener('click', async () => {
         const question = document.getElementById('expert-question-input')?.value?.trim();
         if (!question) {
           if (typeof window.showToast === 'function') {
@@ -3195,7 +3422,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const photoImg = document.getElementById('expert-photo-img');
         const photoData = photoImg ? photoImg.src : null;
-        createExpertRequest(question, photoData);
+        await createExpertRequest(question, photoData);
       });
     }
 
@@ -3370,6 +3597,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (analysisResult) analysisResult.style.display = 'none';
 
     try {
+      const photoStorage = await uploadCropPhoto(base64Image, 'ask_image_analysis');
       // Use the CropClassifier for local diagnosis
       const classifier = new window.CropClassifier();
       const context = {
@@ -3379,6 +3607,7 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       const result = await classifier.classifyImage(base64Image, context);
+      result.photo_storage = photoStorage;
 
       // Build the response HTML
       let html = '';
@@ -3466,6 +3695,8 @@ document.addEventListener('DOMContentLoaded', () => {
     { key: 'boron', label: 'Boron', label_hi: 'बोरोन' },
     { key: 'iron', label: 'Iron', label_hi: 'आयरन' },
   ];
+  let latestSoilUploadStorage = null;
+  let latestSoilUploadFileName = '';
 
   function showSoilTestHome() {
     const home = document.getElementById('soil-home');
@@ -3494,6 +3725,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const fieldsContainer = document.getElementById('soil-form-fields');
     if (!fieldsContainer) return;
     fieldsContainer.innerHTML = '';
+    latestSoilUploadStorage = extractedData?.storage || null;
+    latestSoilUploadFileName = extractedData?.file_name || '';
 
     const langCode = localStorage.getItem('aaa_preferred_language') || 'hi';
     const isHindi = langCode === 'hi';
@@ -3640,9 +3873,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const reportData = {
       farmer_id: 'user',
       field_id: fieldId,
-      source: 'manual',
+      source: latestSoilUploadStorage ? 'upload' : 'manual',
+      file_name: latestSoilUploadFileName,
+      storage_bucket: latestSoilUploadStorage?.bucket || '',
+      storage_object: latestSoilUploadStorage?.object_name || '',
+      storage_uri: latestSoilUploadStorage?.gcs_uri || '',
+      storage_public_url: latestSoilUploadStorage?.public_url || '',
+      content_type: latestSoilUploadStorage?.content_type || '',
+      file_size_bytes: latestSoilUploadStorage?.size_bytes || 0,
       sample_date: document.getElementById('soil-sample-date')?.value || '',
       lab_name: document.getElementById('soil-lab-name')?.value || '',
+      extraction_confidence: latestSoilUploadStorage ? 0.8 : 0.0,
       confirmed_by_farmer: true,
       values: values
     };
@@ -3682,12 +3923,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      const fileBytes = await file.arrayBuffer();
 
       const response = await fetch('/api/soil/extract', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+          'X-File-Name': file.name || 'soil-report-upload'
+        },
+        body: fileBytes
       });
 
       const data = await response.json();

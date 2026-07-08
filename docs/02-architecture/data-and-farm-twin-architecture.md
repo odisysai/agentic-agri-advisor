@@ -8,7 +8,9 @@
 
 ## Farm Digital Twin
 
-The Farm Digital Twin is a SQLite database (`data/farm_twin.db`) that maintains a live representation of each farmer's fields, crops, and telemetry. This data is injected into every agent prompt for personalized advice.
+The Farm Digital Twin is stored in Firestore. Production uses Firestore Native
+mode, and local development uses the Firestore Emulator. The browser keeps an
+IndexedDB offline twin and syncs farmer actions back to Firestore when online.
 
 ### Schema
 
@@ -77,12 +79,12 @@ File: `data/db_manager.py`
 
 | Function | Purpose |
 |----------|---------|
-| `init_db()` | Create all tables if not exist |
-| `init_soil_tables()` | Create soil_reports and soil_test_values tables |
+| `init_soil_tables()` | No-op compatibility hook; Firestore creates collections on demand |
 | `get_profile_data(farmer_id)` | Get farmer + fields + plantings as nested dict |
 | `save_farmer_field(farmer_id, ...)` | Create or update a field |
 | `update_planting_telemetry(planting_id, ...)` | Update moisture, nitrogen, health |
 | `save_soil_report(field_id, ...)` | Save soil test report + values |
+| `save_content_item(...)` | Save Cloud Storage metadata for uploaded farmer content |
 | `get_soil_reports(field_id)` | Get all soil reports for a field |
 | `get_latest_soil_report(field_id)` | Get most recent soil report |
 
@@ -103,6 +105,24 @@ The PWA uses IndexedDB with 11 object stores for offline operation:
 | `soil_reports` | Cached soil reports | Bidirectional |
 | `market_cache` | Cached market prices | Server → Client |
 | `weather_cache` | Cached weather data | Server → Client |
+
+## User Content Storage
+
+Farmer-owned files are stored in a private Cloud Storage bucket configured by
+`USER_CONTENT_BUCKET_NAME`. Objects use one canonical per-user prefix:
+
+```text
+users/{farmer_id}/{category}/{YYYY}/{MM}/{uuid}_{filename}
+```
+
+Supported categories are `soil_reports`, `crop_photos`, `expert_uploads`,
+`reports`, and `profile_documents`. Firestore stores the object metadata
+(`storage_bucket`, `storage_object`, `storage_uri`, content type, and size)
+with the related farmer record, such as a soil report. Crop photo capture,
+image analysis, and expert photo attachments upload through the `crop_photos`
+category when online. Local development can run without a bucket; upload APIs
+return `storage.status = "not_configured"` while preserving the rest of the
+farmer workflow.
 
 ## OKF Knowledge Graph
 

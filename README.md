@@ -104,7 +104,7 @@ graph TB
     subgraph "Safety & Knowledge"
         SK[Safety Kernel<br/>ADK Callbacks]
         OKF_DATA[OKF Knowledge Files<br/>Crops, Diseases, Soil, Pests]
-        DB[(SQLite + IndexedDB<br/>Offline Twin)]
+        DB[(Firestore + IndexedDB<br/>Offline Twin)]
     end
 
     subgraph "Cloud AI (Optional)"
@@ -417,10 +417,10 @@ Current limitations:
 | Tool Protocol | MCP-style tool servers |
 | Backend | FastAPI (Python) |
 | Frontend | Vanilla JS PWA, A2UI declarative canvas |
-| Local AI | Gemma 2B (WebGPU, in-browser) — experimental, device-capability dependent |
+| Local AI | Gemma-4-2B (WebGPU, in-browser) — experimental, device-capability dependent |
 | Cloud AI | Gemini 2.5 Flash (expert escalation) |
 | Knowledge | OKF (Open Knowledge Format) + RAG |
-| Database | SQLite (server) + IndexedDB (client offline twin) |
+| Database | Firestore (cloud/emulator) + IndexedDB (client offline twin) |
 | TTS/STT | Web Speech API + edge-tts + Gemini |
 | Auth | Google OIDC + guest mode + HMAC-signed sessions |
 | Deployment | Docker, Terraform, Cloud Run |
@@ -490,4 +490,3 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening pull requests.
 ---
 
 > **Krishi Sampark** — *A guided agriculture support assistant for smallholder farmers, designed for limited-connectivity environments.* 🌾
-

@@ -70,7 +70,9 @@ def test_google_button_text_is_clean(server_fixture: subprocess.Popen[str]) -> N
     assert "G Sign in with Google" not in html
 
 
-def test_guest_can_continue_without_email(server_fixture: subprocess.Popen[str]) -> None:
+def test_guest_can_continue_without_email(
+    server_fixture: subprocess.Popen[str],
+) -> None:
     r = requests.post(
         f"{BASE_URL}/api/auth/guest",
         json={"email": "", "name": "Guest"},
@@ -132,7 +134,9 @@ def test_farmer_facing_page_avoids_internal_terms(
         assert re.search(rf"\b{word}\b", html) is None
 
 
-def test_capstone_section_avoids_production_claim(server_fixture: subprocess.Popen[str]) -> None:
+def test_capstone_section_avoids_production_claim(
+    server_fixture: subprocess.Popen[str],
+) -> None:
     html = _landing_html()
     assert "Krishi Sampark Platform" in html
     assert "Capstone demo platform" in html
@@ -144,7 +148,9 @@ def test_english_first_title_default(server_fixture: subprocess.Popen[str]) -> N
     assert "Your farming companion for better decisions" in html
 
 
-def test_translation_placeholders_exist_in_js(server_fixture: subprocess.Popen[str]) -> None:
+def test_translation_placeholders_exist_in_js(
+    server_fixture: subprocess.Popen[str],
+) -> None:
     js = requests.get(f"{BASE_URL}/landing.js", timeout=20)
     assert js.status_code == 200
     body = js.text
@@ -163,7 +169,9 @@ def test_translation_placeholders_exist_in_js(server_fixture: subprocess.Popen[s
         assert key in body
 
 
-def test_mobile_layout_usability_hooks_exist(server_fixture: subprocess.Popen[str]) -> None:
+def test_mobile_layout_usability_hooks_exist(
+    server_fixture: subprocess.Popen[str],
+) -> None:
     css = requests.get(f"{BASE_URL}/landing.css", timeout=20)
     assert css.status_code == 200
     body = css.text
@@ -171,7 +179,9 @@ def test_mobile_layout_usability_hooks_exist(server_fixture: subprocess.Popen[st
     assert ".hero-actions .btn { width: 100%; }" in body
 
 
-def test_enhanced_hero_image_reference_exists(server_fixture: subprocess.Popen[str]) -> None:
+def test_enhanced_hero_image_reference_exists(
+    server_fixture: subprocess.Popen[str],
+) -> None:
     css = requests.get(f"{BASE_URL}/landing.css", timeout=20)
     assert css.status_code == 200
     assert "farm_tech_innovation_in_agriculture.png" in css.text
