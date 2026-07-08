@@ -1757,12 +1757,31 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast("Sent to Expert", "Your question has been sent to Krishi Bisesagya for deeper analysis.", "info");
   }
 
+  function inferAdvisorCropFromText(text, fallbackCrop = 'corn') {
+    const lowerText = (text || '').toLowerCase();
+    const crops = [
+      { crop: 'tomato', terms: ['tomato', 'tomatoes', 'टमाटर', 'टोमॅटो', 'టమాట', 'టమోటా', 'nyanya', 'utamatisi'] },
+      { crop: 'chilli', terms: ['chilli', 'chili', 'pepper', 'मिर्च', 'मिरची', 'మిరప', 'pilipili'] },
+      { crop: 'wheat', terms: ['wheat', 'गेहूँ', 'गेहूं', 'गहू', 'గోధుమ', 'ngano', 'ukolweni'] },
+      { crop: 'corn', terms: ['corn', 'maize', 'मक्का', 'मका', 'మొక్కజొన్న', 'mahindi', 'ummbila'] },
+      { crop: 'cotton', terms: ['cotton', 'कपास'] },
+      { crop: 'rice', terms: ['rice', 'paddy', 'चावल', 'धान'] },
+      { crop: 'soybean', terms: ['soybean', 'soybeans', 'सोयाबीन'] },
+      { crop: 'sugarcane', terms: ['sugarcane', 'गन्ना'] }
+    ];
+    const match = crops.find(item => item.terms.some(term => lowerText.includes(term)));
+    return match ? match.crop : (fallbackCrop || 'corn').toLowerCase();
+  }
+
   // Advisor mode local answer — searches OKF cache in IndexedDB first
   async function handleAdvisorLocalAnswer(text, preferredLang, thinkingBubble) {
     if (thinkingBubble) thinkingBubble.remove();
 
     const langNameMap = { 'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi', 'te': 'Telugu', 'sw': 'Swahili', 'zu': 'Zulu' };
     const langName = langNameMap[preferredLang] || 'English';
+    const savedProfile = localStorage.getItem('aaa_farmer_profile');
+    const profile = savedProfile ? JSON.parse(savedProfile) : {};
+    const inferredCrop = inferAdvisorCropFromText(text, profile.primary_crop || 'corn');
 
     // Try to search OKF knowledge from IndexedDB
     let okfResult = null;
@@ -1772,16 +1791,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Extract keywords from the question
       const lowerText = text.toLowerCase();
-      const cropKeywords = ['wheat', 'गेहूँ', 'corn', 'मक्का', 'cotton', 'कपास', 'rice', 'चावल', 'सोयाबीन', 'soybean', 'sugarcane', 'गन्ना'];
+      const cropKeywords = ['tomato', 'टमाटर', 'टोमॅटो', 'chilli', 'chili', 'pepper', 'मिर्च', 'wheat', 'गेहूँ', 'गेहूं', 'corn', 'maize', 'मक्का', 'cotton', 'कपास', 'rice', 'चावल', 'सोयाबीन', 'soybean', 'sugarcane', 'गन्ना'];
       const diseaseKeywords = ['rust', 'रतुआ', 'blight', 'झुलसन', 'bollworm', 'बोलवर्म', 'pest', 'कीट', 'disease', 'रोग', 'mildew', 'फफूंद'];
       const soilKeywords = ['soil', 'मिट्टी', 'clay', 'चिकनी', 'sandy', 'बलुई'];
 
+      okfResult = await db.getOkfGuide(inferredCrop);
+
       // Search for each keyword in OKF
       for (const kw of [...cropKeywords, ...diseaseKeywords, ...soilKeywords]) {
+        if (okfResult) break;
         if (lowerText.includes(kw)) {
           // Try to get the OKF guide for this keyword
-          const guide = await db.getOkfGuide(kw);
-          if (guide && guide.body) {
+          const guideCrop = inferAdvisorCropFromText(kw, kw);
+          const guide = await db.getOkfGuide(guideCrop);
+          if (guide) {
             okfResult = guide;
             break;
           }
@@ -1791,10 +1814,10 @@ document.addEventListener('DOMContentLoaded', () => {
       // Also try broader search — check all cached OKF entities
       if (!okfResult) {
         // Try matching crop names
-        for (const crop of ['wheat', 'corn', 'cotton', 'rice', 'soybeans', 'sugarcane']) {
+        for (const crop of ['tomato', 'chilli', 'wheat', 'corn', 'cotton', 'rice', 'soybean', 'sugarcane']) {
           if (lowerText.includes(crop)) {
             const guide = await db.getOkfGuide(crop);
-            if (guide && guide.body) {
+            if (guide) {
               okfResult = guide;
               break;
             }
@@ -1827,12 +1850,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // response based on the farmer's profile crop/soil. This gives a much richer
       // reply than the static canned fallback, especially for non-English queries.
       try {
-        const savedProfile = localStorage.getItem('aaa_farmer_profile');
-        const profile = savedProfile ? JSON.parse(savedProfile) : {};
         reply = await localAi.generateText(text, {
-          crop: profile.primary_crop || 'corn',
+          crop: inferredCrop,
           soil: profile.soil_type || 'clay',
-          language: langName
+          language: langName,
+          okfGuide: okfResult && !okfResult.body ? okfResult : null
         });
       } catch (e) {
         console.warn('[Advisor] LocalAiEngine failed, using rule-based fallback:', e);

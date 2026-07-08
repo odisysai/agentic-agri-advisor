@@ -442,6 +442,58 @@ class LocalDb {
             }
           }
         }
+      },
+      {
+        crop_type: "tomato",
+        metadata: {
+          name: "Tomato (टमाटर / टोमॅटो)",
+          category: "vegetables",
+          description: "Warm season vegetable crop sensitive to waterlogging, nutrient imbalance, and fungal disease."
+        },
+        specifications: {
+          optimal_soil_ph: "6.0-6.8",
+          npk_ratio: { nitrogen_ppm: 55, phosphorus_ppm: 35, potassium_ppm: 70 },
+          soil_moisture: { min_pct: 45.0, max_pct: 70.0, optimal_pct: 55.0 },
+          growth_stages: ["nursery", "vegetative", "flowering", "fruiting", "harvest"]
+        },
+        diagnostics: {
+          "Tomato Yellow Leaf Stress": {
+            symptom: {
+              English: "Yellow tomato leaves can come from excess water, nitrogen or magnesium deficiency, root stress, or early disease.",
+              Hindi: "टमाटर के पत्ते पीले होना अधिक पानी, नाइट्रोजन या मैग्नीशियम की कमी, जड़ तनाव या शुरुआती रोग का संकेत हो सकता है।",
+              Marathi: "टोमॅटोची पाने पिवळी होणे जास्त पाणी, नायट्रोजन किंवा मॅग्नेशियम कमतरता, मुळांचा ताण किंवा सुरुवातीचा रोग दाखवू शकते.",
+              Telugu: "టమాట ఆకులు పసుపుగా మారడం అధిక నీరు, నత్రజని లేదా మెగ్నీషియం లోపం, వేరు ఒత్తిడి లేదా ప్రారంభ తెగులును సూచించవచ్చు.",
+              Swahili: "Majani ya nyanya kuwa manjano yanaweza kutokana na maji mengi, upungufu wa nitrojeni au magnesiamu, msongo wa mizizi, au ugonjwa wa mapema.",
+              Zulu: "Amaqabunga katamatisi aphuzi angavela emanzini amaningi, ukuswela initrogeni noma imagnesium, ukucindezeleka kwezimpande, noma isifo sokuqala."
+            },
+            organic_remedy: {
+              English: "Check soil moisture first. Stop irrigation if water is standing, improve drainage, add compost, and remove leaves with spreading spots.",
+              Hindi: "पहले मिट्टी की नमी जांचें। पानी जमा हो तो सिंचाई रोकें, निकासी सुधारें, कम्पोस्ट दें और फैलते धब्बों वाली पत्तियां हटाएं।",
+              Marathi: "आधी मातीतील ओलावा तपासा. पाणी साचले असेल तर सिंचन थांबवा, निचरा सुधारा, कंपोस्ट द्या आणि पसरणारे डाग असलेली पाने काढा.",
+              Telugu: "ముందుగా నేల తేమ తనిఖీ చేయండి. నీరు నిల్వ ఉంటే సాగు ఆపి, నీటి పారుదల మెరుగుపరచి, కంపోస్ట్ ఇవ్వండి.",
+              Swahili: "Kagua unyevu wa udongo kwanza. Maji yakisimama, simamisha umwagiliaji, boresha mifereji, ongeza mboji, na ondoa majani yenye madoa yanayoenea.",
+              Zulu: "Hlola umswakama womhlabathi kuqala. Uma amanzi emi, misa ukunisela, thuthukisa ukugeleza, faka umquba, ususe amaqabunga anamabala asabalalayo."
+            }
+          },
+          "Tomato Late Blight": {
+            symptom: {
+              English: "Dark spreading leaf spots with humid weather can indicate tomato late blight.",
+              Hindi: "नमी वाले मौसम में तेजी से फैलते गहरे धब्बे टमाटर में लेट ब्लाइट का संकेत हो सकते हैं।",
+              Marathi: "ओलसर हवेत जलद पसरणारे काळे डाग टोमॅटोतील लेट ब्लाइट दाखवू शकतात.",
+              Telugu: "తేమ వాతావరణంలో వేగంగా వ్యాపించే ముదురు మచ్చలు టమాట లేట్ బ్లైట్‌ను సూచించవచ్చు.",
+              Swahili: "Madoa meusi yanayoenea haraka wakati wa unyevu yanaweza kuonyesha ugonjwa wa late blight kwenye nyanya.",
+              Zulu: "Amabala amnyama asabalala ngokushesha ngesikhathi somswakama angakhombisa late blight katamatisi."
+            },
+            organic_remedy: {
+              English: "Remove badly infected leaves, avoid overhead watering, keep plants airy, and ask an expert if the spread is fast.",
+              Hindi: "बहुत प्रभावित पत्तियां हटाएं, ऊपर से पानी न दें, पौधों में हवा रखें और तेजी से फैलने पर विशेषज्ञ से सलाह लें।",
+              Marathi: "जास्त बाधित पाने काढा, वरून पाणी देऊ नका, झाडांमध्ये हवा खेळती ठेवा आणि वेगाने पसरल्यास तज्ज्ञांचा सल्ला घ्या.",
+              Telugu: "బాగా ప్రభావితమైన ఆకులను తొలగించి, పై నుంచి నీరు పోయకండి, మొక్కలకు గాలి అందేలా ఉంచండి.",
+              Swahili: "Ondoa majani yaliyoathirika sana, epuka kumwagilia juu ya majani, acha hewa ipite, na muulize mtaalamu ikiendelea haraka.",
+              Zulu: "Susa amaqabunga atheleleke kakhulu, gwema ukunisela ngaphezulu, vumela umoya, bese ubuza uchwepheshe uma kusabalala ngokushesha."
+            }
+          }
+        }
       }
     ];
 
@@ -451,7 +503,7 @@ class LocalDb {
     staticOkfData.forEach(item => {
       store.put(item);
     });
-    console.log('[IndexedDB] Pre-seeded 2 OKF crop guides with multilingual schemas.');
+    console.log('[IndexedDB] Pre-seeded 3 OKF crop guides with multilingual schemas.');
   }
 
   /**

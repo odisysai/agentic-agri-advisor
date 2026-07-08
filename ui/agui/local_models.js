@@ -62,6 +62,100 @@ class LocalAiEngine {
     };
   }
 
+  inferCropFromPrompt(prompt, fallbackCrop = "corn") {
+    const text = (prompt || "").toLowerCase();
+    const normalizedFallback = (fallbackCrop || "corn").toLowerCase();
+    const cropPatterns = [
+      { crop: "tomato", terms: ["tomato", "tomatoes", "टमाटर", "टोमॅटो", "టమాట", "టమోటా", "nyanya", "utamatisi"] },
+      { crop: "chilli", terms: ["chilli", "chili", "pepper", "मिर्च", "मिरची", "మిరప", "pilipili"] },
+      { crop: "wheat", terms: ["wheat", "गेहूँ", "गेहूं", "गहू", "గోధుమ", "ngano", "ukolweni"] },
+      { crop: "corn", terms: ["corn", "maize", "मक्का", "मका", "మొక్కజొన్న", "mahindi", "ummbila"] }
+    ];
+
+    const match = cropPatterns.find(item => item.terms.some(term => text.includes(term)));
+    return match ? match.crop : normalizedFallback;
+  }
+
+  buildFallbackOkfGuide(crop) {
+    const fallbackGuides = {
+      wheat: {
+        metadata: { name: "Wheat" },
+        specifications: {
+          optimal_soil_ph: "6.0-7.0",
+          npk_ratio: { nitrogen_ppm: 60, phosphorus_ppm: 30, potassium_ppm: 40 },
+          soil_moisture: { min_pct: 35.0, max_pct: 65.0, optimal_pct: 45.0 }
+        },
+        diagnostics: {}
+      },
+      corn: {
+        metadata: { name: "Corn" },
+        specifications: {
+          optimal_soil_ph: "5.8-7.0",
+          npk_ratio: { nitrogen_ppm: 80, phosphorus_ppm: 40, potassium_ppm: 50 },
+          soil_moisture: { min_pct: 40.0, max_pct: 70.0, optimal_pct: 55.0 }
+        },
+        diagnostics: {}
+      },
+      tomato: {
+        metadata: { name: "Tomato" },
+        specifications: {
+          optimal_soil_ph: "6.0-6.8",
+          npk_ratio: { nitrogen_ppm: 55, phosphorus_ppm: 35, potassium_ppm: 70 },
+          soil_moisture: { min_pct: 45.0, max_pct: 70.0, optimal_pct: 55.0 }
+        },
+        diagnostics: {
+          "Tomato Yellow Leaf Stress": {
+            symptom: {
+              English: "Yellow tomato leaves can come from excess water, nitrogen or magnesium deficiency, root stress, or early disease.",
+              Hindi: "टमाटर के पत्ते पीले होना अधिक पानी, नाइट्रोजन या मैग्नीशियम की कमी, जड़ तनाव या शुरुआती रोग का संकेत हो सकता है।",
+              Marathi: "टोमॅटोची पाने पिवळी होणे जास्त पाणी, नायट्रोजन किंवा मॅग्नेशियम कमतरता, मुळांचा ताण किंवा सुरुवातीचा रोग दाखवू शकते.",
+              Telugu: "టమాట ఆకులు పసుపుగా మారడం అధిక నీరు, నత్రజని లేదా మెగ్నీషియం లోపం, వేరు ఒత్తిడి లేదా ప్రారంభ తెగులును సూచించవచ్చు.",
+              Swahili: "Majani ya nyanya kuwa manjano yanaweza kutokana na maji mengi, upungufu wa nitrojeni au magnesiamu, msongo wa mizizi, au ugonjwa wa mapema.",
+              Zulu: "Amaqabunga katamatisi aphuzi angavela emanzini amaningi, ukuswela initrogeni noma imagnesium, ukucindezeleka kwezimpande, noma isifo sokuqala."
+            },
+            organic_remedy: {
+              English: "Check soil moisture first. Stop irrigation if water is standing, improve drainage, add compost, and remove leaves with spreading spots.",
+              Hindi: "पहले मिट्टी की नमी जांचें। पानी जमा हो तो सिंचाई रोकें, निकासी सुधारें, कम्पोस्ट दें और फैलते धब्बों वाली पत्तियां हटाएं।",
+              Marathi: "आधी मातीतील ओलावा तपासा. पाणी साचले असेल तर सिंचन थांबवा, निचरा सुधारा, कंपोस्ट द्या आणि पसरणारे डाग असलेली पाने काढा.",
+              Telugu: "ముందుగా నేల తేమ తనిఖీ చేయండి. నీరు నిల్వ ఉంటే సాగు ఆపి, నీటి పారుదల మెరుగుపరచి, కంపోస్ట్ ఇవ్వండి.",
+              Swahili: "Kagua unyevu wa udongo kwanza. Maji yakisimama, simamisha umwagiliaji, boresha mifereji, ongeza mboji, na ondoa majani yenye madoa yanayoenea.",
+              Zulu: "Hlola umswakama womhlabathi kuqala. Uma amanzi emi, misa ukunisela, thuthukisa ukugeleza, faka umquba, ususe amaqabunga anamabala asabalalayo."
+            }
+          },
+          "Tomato Late Blight": {
+            symptom: {
+              English: "Dark spreading leaf spots with humid weather can indicate tomato late blight.",
+              Hindi: "नमी वाले मौसम में तेजी से फैलते गहरे धब्बे टमाटर में लेट ब्लाइट का संकेत हो सकते हैं।",
+              Marathi: "ओलसर हवेत जलद पसरणारे काळे डाग टोमॅटोतील लेट ब्लाइट दाखवू शकतात.",
+              Telugu: "తేమ వాతావరణంలో వేగంగా వ్యాపించే ముదురు మచ్చలు టమాట లేట్ బ్లైట్‌ను సూచించవచ్చు.",
+              Swahili: "Madoa meusi yanayoenea haraka wakati wa unyevu yanaweza kuonyesha ugonjwa wa late blight kwenye nyanya.",
+              Zulu: "Amabala amnyama asabalala ngokushesha ngesikhathi somswakama angakhombisa late blight katamatisi."
+            },
+            organic_remedy: {
+              English: "Remove badly infected leaves, avoid overhead watering, keep plants airy, and ask an expert if the spread is fast.",
+              Hindi: "बहुत प्रभावित पत्तियां हटाएं, ऊपर से पानी न दें, पौधों में हवा रखें और तेजी से फैलने पर विशेषज्ञ से सलाह लें।",
+              Marathi: "जास्त बाधित पाने काढा, वरून पाणी देऊ नका, झाडांमध्ये हवा खेळती ठेवा आणि वेगाने पसरल्यास तज्ज्ञांचा सल्ला घ्या.",
+              Telugu: "బాగా ప్రభావితమైన ఆకులను తొలగించి, పై నుంచి నీరు పోయకండి, మొక్కలకు గాలి అందేలా ఉంచండి.",
+              Swahili: "Ondoa majani yaliyoathirika sana, epuka kumwagilia juu ya majani, acha hewa ipite, na muulize mtaalamu ikiendelea haraka.",
+              Zulu: "Susa amaqabunga atheleleke kakhulu, gwema ukunisela ngaphezulu, vumela umoya, bese ubuza uchwepheshe uma kusabalala ngokushesha."
+            }
+          }
+        }
+      },
+      chilli: {
+        metadata: { name: "Chilli" },
+        specifications: {
+          optimal_soil_ph: "6.0-7.0",
+          npk_ratio: { nitrogen_ppm: 50, phosphorus_ppm: 35, potassium_ppm: 60 },
+          soil_moisture: { min_pct: 40.0, max_pct: 65.0, optimal_pct: 52.0 }
+        },
+        diagnostics: {}
+      }
+    };
+
+    return fallbackGuides[crop] || fallbackGuides.corn;
+  }
+
   /**
    * Downloads and caches the client-side Gemma-4-2B model using the Cache API.
    * Falls back to high-fidelity client-side dialog simulator if offline or hardware fails.
@@ -197,30 +291,22 @@ class LocalAiEngine {
       this.llmMode = this.webGpuSupported ? "rule_fallback_model_not_loaded" : "rule_fallback_no_webgpu";
     }
     const text = prompt.toLowerCase();
-    const crop = (context.crop || 'corn').toLowerCase();
+    const crop = this.inferCropFromPrompt(prompt, context.crop || 'corn');
     const soil = (context.soil || 'clay').toLowerCase();
     const lang = context.language || 'English';
 
     // 1. Initialize DB and query local OKF guide
     const localDb = new window.LocalDb();
-    let okfGuide = null;
+    let okfGuide = context.okfGuide || null;
     try {
-      okfGuide = await localDb.getOkfGuide(crop);
+      okfGuide = okfGuide || await localDb.getOkfGuide(crop);
     } catch (e) {
       console.warn("Could not load OKF guide from IndexedDB, using static backup", e);
     }
 
     // Fallback static guide if DB fetch fails
     if (!okfGuide) {
-      okfGuide = {
-        metadata: { name: crop === 'wheat' ? 'Wheat' : 'Corn' },
-        specifications: {
-          optimal_soil_ph: "6.0-7.0",
-          npk_ratio: { nitrogen_ppm: 60, phosphorus_ppm: 30, potassium_ppm: 40 },
-          soil_moisture: { min_pct: 35.0, max_pct: 65.0, optimal_pct: 45.0 }
-        },
-        diagnostics: {}
-      };
+      okfGuide = this.buildFallbackOkfGuide(crop);
     }
 
     const labels = {
@@ -257,7 +343,7 @@ class LocalAiEngine {
         analystSkill: "Soil Profile & NPK Calibration",
         coordinatorName: "Coordinator",
         coordinatorSkill: "General Orchestration",
-        cropNames: { corn: "corn", wheat: "wheat" },
+        cropNames: { corn: "corn", wheat: "wheat", tomato: "tomato", chilli: "chilli" },
         pestAdvice: "This can be a crop disease or pest issue.",
         irrigationAdvice: "Give water in small cycles and avoid waterlogging near roots.",
         soilAdvice: "Check soil nutrients and add compost before increasing fertilizer.",
@@ -296,7 +382,7 @@ class LocalAiEngine {
         analystSkill: "मिट्टी प्रोफाइल और NPK अंशांकन",
         coordinatorName: "कृषि शास्त्री",
         coordinatorSkill: "सामान्य सलाह",
-        cropNames: { corn: "मक्का", wheat: "गेहूँ" },
+        cropNames: { corn: "मक्का", wheat: "गेहूँ", tomato: "टमाटर", chilli: "मिर्च" },
         pestAdvice: "यह फसल रोग या कीट की समस्या हो सकती है।",
         irrigationAdvice: "पानी छोटे-छोटे चक्रों में दें और जड़ों के पास पानी जमा न होने दें।",
         soilAdvice: "खाद बढ़ाने से पहले मिट्टी की नमी और पोषक तत्व जांचें।",
@@ -335,7 +421,7 @@ class LocalAiEngine {
         analystSkill: "माती प्रोफाइल आणि NPK कॅलिब्रेशन",
         coordinatorName: "कृषी शास्त्री",
         coordinatorSkill: "सामान्य सल्ला",
-        cropNames: { corn: "मका", wheat: "गहू" },
+        cropNames: { corn: "मका", wheat: "गहू", tomato: "टोमॅटो", chilli: "मिरची" },
         pestAdvice: "ही पीक रोग किंवा किडीची समस्या असू शकते.",
         irrigationAdvice: "पाणी लहान चक्रांत द्या आणि मुळांजवळ पाणी साचू देऊ नका.",
         soilAdvice: "खत वाढवण्यापूर्वी मातीतील ओलावा आणि पोषक घटक तपासा.",
@@ -374,7 +460,7 @@ class LocalAiEngine {
         analystSkill: "నేల ప్రొఫైల్ & NPK అమరిక",
         coordinatorName: "కృషి శాస్త్రి",
         coordinatorSkill: "సాధారణ సలహా",
-        cropNames: { corn: "మొక్కజొన్న", wheat: "గోధుమ" },
+        cropNames: { corn: "మొక్కజొన్న", wheat: "గోధుమ", tomato: "టమాట", chilli: "మిరప" },
         pestAdvice: "ఇది పంట రోగం లేదా పురుగు సమస్య కావచ్చు.",
         irrigationAdvice: "నీటిని చిన్న చక్రాల్లో ఇవ్వండి; వేర్ల దగ్గర నీరు నిల్వ ఉండకూడదు.",
         soilAdvice: "ఎరువు పెంచే ముందు నేల తేమ, పోషకాలను తనిఖీ చేయండి.",
@@ -413,7 +499,7 @@ class LocalAiEngine {
         analystSkill: "Kipimo cha Udongo NPK",
         coordinatorName: "Krishi Sastri",
         coordinatorSkill: "Ushauri wa jumla",
-        cropNames: { corn: "mahindi", wheat: "ngano" },
+        cropNames: { corn: "mahindi", wheat: "ngano", tomato: "nyanya", chilli: "pilipili" },
         pestAdvice: "Hili linaweza kuwa tatizo la ugonjwa wa mmea au wadudu.",
         irrigationAdvice: "Mwagilia kwa vipindi vidogo na epuka maji kusimama karibu na mizizi.",
         soilAdvice: "Kagua unyevu na virutubisho vya udongo kabla ya kuongeza mbolea.",
@@ -452,7 +538,7 @@ class LocalAiEngine {
         analystSkill: "Ukuhlola Umhlabathi I-NPK",
         coordinatorName: "Krishi Sastri",
         coordinatorSkill: "Iseluleko esijwayelekile",
-        cropNames: { corn: "ummbila", wheat: "ukolweni" },
+        cropNames: { corn: "ummbila", wheat: "ukolweni", tomato: "utamatisi", chilli: "upelepele" },
         pestAdvice: "Lokhu kungaba yisifo sesitshalo noma inkinga yezinambuzane.",
         irrigationAdvice: "Nisela ngezikhathi ezincane futhi ugweme amanzi ame eduze kwezimpande.",
         soilAdvice: "Hlola umswakama nomanyolo womhlabathi ngaphambi kokwandisa umanyolo.",
@@ -503,13 +589,16 @@ class LocalAiEngine {
       // Zulu
       'umhlabathi', 'isikhathi'
     ];
+    const yellowLeafKeywords = ['yellow', 'yellowing', 'chlorosis', 'पीले', 'पीली', 'पीला', 'पिवळी', 'పసుపు', 'manjano', 'aphuzi'];
 
-    if (pestKeywords.some(kw => text.includes(kw))) {
+    if (pestKeywords.some(kw => text.includes(kw)) || yellowLeafKeywords.some(kw => text.includes(kw))) {
       activeAgent = dict.pathologistName;
       activeSkill = dict.pathologistSkill;
 
       let diseaseMatch = "Maize Stalk Borer Infestation";
-      if (text.includes('rust') || text.includes('रतुआ') || text.includes('తుప్పు') || text.includes('kutu')) diseaseMatch = "Brown Leaf Rust";
+      if (crop === "tomato" && yellowLeafKeywords.some(kw => text.includes(kw))) diseaseMatch = "Tomato Yellow Leaf Stress";
+      else if (crop === "tomato" && (text.includes('blight') || text.includes('झुलसन') || text.includes('धब्ब') || text.includes('spot'))) diseaseMatch = "Tomato Late Blight";
+      else if (text.includes('rust') || text.includes('रतुआ') || text.includes('తుప్పు') || text.includes('kutu')) diseaseMatch = "Brown Leaf Rust";
       else if (text.includes('aphid') || text.includes('माहू') || text.includes('ఆకుపురుగు')) diseaseMatch = "Aphids";
 
       const rawDiag = okfGuide.diagnostics[diseaseMatch] || {
