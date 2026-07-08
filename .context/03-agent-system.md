@@ -126,22 +126,63 @@ These callbacks intercept every agent turn. They read OKF safety YAML files at m
 
 ---
 
-## Running and Testing Agents
+## Agent Development Cycle (run in this order)
 
+### 1. Lint — check code quality
 ```bash
-# Interactive playground (no frontend needed)
-agents-cli playground
-
-# Unit tests for agents
-make test
-
-# Eval dataset generation and grading (ADK eval loop)
-agents-cli eval dataset synthesize
-agents-cli eval generate
-agents-cli eval grade
-agents-cli eval compare    # regression diff
-agents-cli eval analyze    # failure mode clusters
+agents-cli lint
+# Equivalent shortcut:
+make lint
 ```
+
+### 2. Test — unit + integration tests
+```bash
+make test                   # unit tests only (fast)
+make test-integration       # integration tests (requires Firestore emulator)
+make coverage               # tests + write evidence artifact
+```
+
+### 3. Run locally — interactive agent testing (no frontend needed)
+```bash
+agents-cli playground
+# Or full stack (agents + UI):
+make serve
+```
+
+### 4. Eval — quality flywheel (iterate until satisfied)
+```bash
+# Step 1: Synthesize or write eval dataset
+agents-cli eval dataset synthesize
+# Dataset lives at: artifacts/eval_dataset.json (or specify --dataset-path)
+
+# Step 2: Run agent against dataset, produce traces
+agents-cli eval generate
+
+# Step 3: Grade traces with LLM-as-judge
+agents-cli eval grade
+
+# Step 4: Iterate — make changes, repeat steps 2-3 until scores improve
+# Expect 5-10+ iterations before a stable baseline
+
+# Step 5: Regression check (compare two grade results)
+agents-cli eval compare
+
+# Step 6: Cluster failure modes
+agents-cli eval analyze
+
+# Step 7: Auto-tune prompts from eval data
+agents-cli eval optimize
+```
+
+### 5. Deploy (requires explicit human approval)
+```bash
+agents-cli deploy           # deploy to dev
+agents-cli infra single-project  # set up Terraform infrastructure
+```
+
+### Note: `make lint` vs `agents-cli lint`
+These are identical — `make lint` is just a `uv`-wrapped shortcut for `agents-cli lint`.
+Same applies to `make test` (wraps `uv run pytest`).
 
 ---
 
