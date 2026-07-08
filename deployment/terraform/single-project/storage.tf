@@ -28,7 +28,20 @@ resource "google_storage_bucket" "assets_bucket" {
   project                     = var.project_id
   uniform_bucket_level_access = true
 
+  cors {
+    origin          = var.model_asset_cors_origins
+    method          = ["GET", "HEAD", "OPTIONS"]
+    response_header = ["Content-Type", "Content-Length", "Accept-Ranges", "Content-Range", "ETag"]
+    max_age_seconds = 3600
+  }
+
   depends_on = [resource.google_project_service.services]
+}
+
+resource "google_storage_bucket_iam_member" "assets_public_read" {
+  bucket = google_storage_bucket.assets_bucket.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
 }
 
 # Bucket for farmer-owned uploads: soil reports, crop photos, expert evidence.
@@ -48,7 +61,7 @@ resource "google_storage_bucket" "user_content_bucket" {
       age = 365
     }
     action {
-      type = "SetStorageClass"
+      type          = "SetStorageClass"
       storage_class = "NEARLINE"
     }
   }
@@ -58,11 +71,11 @@ resource "google_storage_bucket" "user_content_bucket" {
 
 # Firestore database in Native mode
 resource "google_firestore_database" "database" {
-  name                            = "(default)"
-  location_id                     = var.region == "us-east1" ? "nam5" : var.region
-  type                            = "FIRESTORE_NATIVE"
+  name                              = "(default)"
+  location_id                       = var.region == "us-east1" ? "nam5" : var.region
+  type                              = "FIRESTORE_NATIVE"
   point_in_time_recovery_enablement = "POINT_IN_TIME_RECOVERY_DISABLED"
-  delete_protection_state         = "DELETE_PROTECTION_DISABLED"
+  delete_protection_state           = "DELETE_PROTECTION_DISABLED"
 
   depends_on = [resource.google_project_service.services]
 }

@@ -174,6 +174,89 @@ class LocalAiEngine {
     return parts.filter(Boolean).join("; ");
   }
 
+  parseConfidencePercent(confidence) {
+    const match = String(confidence || "").match(/\d+/);
+    return match ? Number(match[0]) : 0;
+  }
+
+  buildVisionFindingReply(visionResult, dict, cropName) {
+    let diseaseName = visionResult.disease_name || visionResult.label || "";
+    if (dict.langName === "Hindi") {
+      if (visionResult.hindi_name) diseaseName = visionResult.hindi_name;
+      else if (/nutrient deficiency|yellowing/i.test(diseaseName)) diseaseName = "पत्तों में पीलापन या पोषक कमी का संकेत";
+      else if (/fungal|brown spots/i.test(diseaseName)) diseaseName = "भूरे धब्बे या फफूंद संक्रमण का संकेत";
+      else if (/healthy/i.test(diseaseName)) diseaseName = "फसल सामान्य दिख रही है";
+      else if (/unable/i.test(diseaseName)) diseaseName = "फोटो से पक्की पहचान नहीं हो पाई";
+    }
+    const confidence = visionResult.confidence || "";
+    const severity = visionResult.severity || "";
+    const isFallback = visionResult.mode === "fallback_heuristic" || visionResult.ml_runtime_used === false;
+    const confidencePct = this.parseConfidencePercent(confidence);
+    const shouldEscalate = isFallback || confidencePct < 70 || severity === "Critical" || severity === "Unknown";
+
+    const localized = {
+      English: {
+        intro: "I checked the crop photo locally.",
+        finding: "Finding",
+        confidence: "Confidence",
+        safe: "Safe first step",
+        fallbackNote: "This is only a local visual estimate.",
+        action: "Keep the plant airy, avoid extra watering, and remove badly affected leaves.",
+        expert: "For exact diagnosis, send the photo to Krishi Bisesagya."
+      },
+      Hindi: {
+        intro: "मैंने फोटो की स्थानीय जांच की।",
+        finding: "संकेत",
+        confidence: "विश्वास",
+        safe: "पहला सुरक्षित कदम",
+        fallbackNote: "यह केवल स्थानीय फोटो अनुमान है।",
+        action: "पौधे में हवा रखें, ज्यादा पानी न दें और बहुत प्रभावित पत्तियां हटाएं।",
+        expert: "पक्की जांच के लिए फोटो कृषि विशेषज्ञ को भेजें।"
+      },
+      Marathi: {
+        intro: "मी फोटोची स्थानिक तपासणी केली.",
+        finding: "संकेत",
+        confidence: "विश्वास",
+        safe: "पहिले सुरक्षित पाऊल",
+        fallbackNote: "हा फक्त स्थानिक फोटो अंदाज आहे.",
+        action: "झाडात हवा खेळती ठेवा, जास्त पाणी देऊ नका आणि बाधित पाने काढा.",
+        expert: "अचूक तपासणीसाठी फोटो कृषी तज्ज्ञाला पाठवा."
+      },
+      Telugu: {
+        intro: "నేను ఫోటోను స్థానికంగా పరిశీలించాను.",
+        finding: "సూచన",
+        confidence: "నమ్మకం",
+        safe: "మొదటి సురక్షిత చర్య",
+        fallbackNote: "ఇది స్థానిక ఫోటో అంచనా మాత్రమే.",
+        action: "మొక్కలకు గాలి అందేలా ఉంచండి, అధిక నీరు ఇవ్వకండి, ప్రభావిత ఆకులు తొలగించండి.",
+        expert: "ఖచ్చితమైన నిర్ధారణకు ఫోటోను నిపుణుడికి పంపండి."
+      },
+      Swahili: {
+        intro: "Nimekagua picha hapa kwenye kifaa.",
+        finding: "Dalili",
+        confidence: "Uhakika",
+        safe: "Hatua salama ya kwanza",
+        fallbackNote: "Huu ni makadirio ya picha ya ndani tu.",
+        action: "Acha hewa ipite, epuka maji mengi, na ondoa majani yaliyoathirika sana.",
+        expert: "Kwa utambuzi wa uhakika, tuma picha kwa Krishi Bisesagya."
+      },
+      Zulu: {
+        intro: "Ngihlole isithombe kudivayisi.",
+        finding: "Okubonakele",
+        confidence: "Ukuqiniseka",
+        safe: "Isinyathelo sokuqala esiphephile",
+        fallbackNote: "Lokhu kuwukulinganisa kwesithombe kwasendaweni kuphela.",
+        action: "Vumela umoya, gwema amanzi amaningi, ususe amaqabunga athinteke kakhulu.",
+        expert: "Ukuze kuqinisekiswe, thumela isithombe ku-Krishi Bisesagya."
+      }
+    };
+    const v = localized[dict.langName] || localized.English;
+    const escalationLine = shouldEscalate ? `\n${v.expert}` : "";
+    const fallbackLine = isFallback ? `\n${v.fallbackNote}` : "";
+
+    return `${v.intro}\n${cropName}: ${v.finding}: ${diseaseName}\n${v.confidence}: ${confidence}\n${v.safe}: ${v.action}${fallbackLine}${escalationLine}`;
+  }
+
   /**
    * Downloads and caches the client-side Gemma-4-2B model using the Cache API.
    * Falls back to high-fidelity client-side dialog simulator if offline or hardware fails.
@@ -569,6 +652,7 @@ class LocalAiEngine {
     };
 
     const dict = labels[lang] || labels.English;
+    dict.langName = lang;
     let response = "";
     let activeAgent = "Coordinator";
     let activeSkill = "General Advisory";
@@ -614,7 +698,12 @@ class LocalAiEngine {
     ];
     const yellowLeafKeywords = ['yellow', 'yellowing', 'chlorosis', 'पीले', 'पीली', 'पीला', 'पिवळी', 'పసుపు', 'manjano', 'aphuzi'];
 
-    if (pestKeywords.some(kw => text.includes(kw)) || yellowLeafKeywords.some(kw => text.includes(kw))) {
+    if (context.visionResult) {
+      activeAgent = dict.pathologistName;
+      activeSkill = dict.pathologistSkill;
+      response = this.buildVisionFindingReply(context.visionResult, dict, cropName);
+    }
+    else if (pestKeywords.some(kw => text.includes(kw)) || yellowLeafKeywords.some(kw => text.includes(kw))) {
       activeAgent = dict.pathologistName;
       activeSkill = dict.pathologistSkill;
 

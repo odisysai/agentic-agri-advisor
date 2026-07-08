@@ -20,7 +20,7 @@ resource "google_cloud_run_v2_service" "app" {
   deletion_protection = false
   ingress             = "INGRESS_TRAFFIC_ALL"
   labels = {
-    "created-by"                  = "adk"
+    "created-by" = "adk"
   }
 
   template {
@@ -41,6 +41,26 @@ resource "google_cloud_run_v2_service" "app" {
       env {
         name  = "USER_CONTENT_BUCKET_NAME"
         value = google_storage_bucket.user_content_bucket.name
+      }
+
+      env {
+        name  = "MODEL_ASSETS_BUCKET_NAME"
+        value = google_storage_bucket.assets_bucket.name
+      }
+
+      env {
+        name  = "MODEL_ASSETS_BASE_URL"
+        value = "https://storage.googleapis.com/${google_storage_bucket.assets_bucket.name}/models"
+      }
+
+      env {
+        name  = "KRISHI_LOCAL_MODEL_URL"
+        value = "https://storage.googleapis.com/${google_storage_bucket.assets_bucket.name}/models/gemma-4-2b-it-gpu-int4.bin"
+      }
+
+      env {
+        name  = "KRISHI_CROP_CLASSIFIER_MODEL_URL"
+        value = "https://storage.googleapis.com/${google_storage_bucket.assets_bucket.name}/models/crop_disease_classifier.tflite"
       }
 
       env {
@@ -74,7 +94,7 @@ resource "google_cloud_run_v2_service" "app" {
       }
     }
 
-    service_account = google_service_account.app_sa.email
+    service_account                  = google_service_account.app_sa.email
     max_instance_request_concurrency = 8
 
     scaling {

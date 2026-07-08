@@ -42,6 +42,12 @@ variable "google_oidc_client_id" {
   default     = ""
 }
 
+variable "model_asset_cors_origins" {
+  type        = list(string)
+  description = "Origins allowed to download public model assets from the assets bucket."
+  default     = ["*"]
+}
+
 variable "telemetry_logs_filter" {
   type        = string
   description = "Log Sink filter for capturing telemetry data. Captures logs with the `traceloop.association.properties.log_type` attribute set to `tracing`."

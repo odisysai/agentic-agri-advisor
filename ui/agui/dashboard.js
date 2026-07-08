@@ -703,6 +703,55 @@ document.addEventListener('DOMContentLoaded', () => {
     cropDiagnosisState.step = 6;
 
     const area = cropDiagnosisState.affectedArea || 'leaf';
+    const latestPhoto = Array.isArray(cropDiagnosisState.photos) ? cropDiagnosisState.photos[cropDiagnosisState.photos.length - 1] : null;
+    const savedProfile = localStorage.getItem('aaa_farmer_profile');
+    const profile = savedProfile ? JSON.parse(savedProfile) : {};
+
+    if (latestPhoto && window.CropClassifier) {
+      try {
+        const classifier = new window.CropClassifier();
+        const context = {
+          crop: profile.primary_crop || localStorage.getItem('aaa_active_crop') || 'corn',
+          soil: profile.soil_type || localStorage.getItem('aaa_active_soil') || 'clay',
+          language: localStorage.getItem('aaa_preferred_language') || 'hi'
+        };
+        const result = await classifier.classifyImage(latestPhoto, context);
+        result.photo_storage = cropDiagnosisState.photoStorage || [];
+
+        cropDiagnosisState.diagnosis = {
+          disease_name: result.disease_name,
+          confidence: result.confidence,
+          severity: result.severity,
+          organic_remedy: result.organic_remedy,
+          chemical_remedy: result.chemical_remedy,
+          alternatives: result.alternatives || [],
+          mode: result.mode,
+          model_status: result.model_status,
+          photo_storage: cropDiagnosisState.photoStorage || []
+        };
+
+        await localDb.saveDiagnosisState(cropDiagnosisState);
+        loadStepSchema();
+
+        const langNameMap = { 'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi', 'te': 'Telugu', 'sw': 'Swahili', 'zu': 'Zulu' };
+        const langName = langNameMap[context.language] || 'Hindi';
+        const sastriReply = await localAi.generateText(
+          `Farmer uploaded crop photos. Local vision result: ${result.disease_name}. Confidence: ${result.confidence}. Severity: ${result.severity}.`,
+          {
+            crop: result.crop || context.crop,
+            soil: context.soil,
+            language: langName,
+            visionResult: result
+          }
+        );
+        appendMessage('Krishi Sastri', sastriReply, 'agent-msg');
+        await localDb.addChat({ role: 'advisor', text: sastriReply, source: 'crop_photo_wizard' });
+        return;
+      } catch (err) {
+        console.warn('[Crop Diagnosis] Local classifier failed, using legacy fallback diagnosis:', err);
+      }
+    }
+
     let disease = "Late Blight (झुलसा रोग)";
     let confidence = "94%";
     let organic = "Dissolve 5kg wood ash and 5L cow urine in 100L water, then spray.";
@@ -3604,9 +3653,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const photoStorage = await uploadCropPhoto(base64Image, 'ask_image_analysis');
       // Use the CropClassifier for local diagnosis
       const classifier = new window.CropClassifier();
+      const savedProfile = localStorage.getItem('aaa_farmer_profile');
+      const profile = savedProfile ? JSON.parse(savedProfile) : {};
       const context = {
-        crop: localStorage.getItem('aaa_active_crop') || 'corn',
-        soil: localStorage.getItem('aaa_active_soil') || 'clay',
+        crop: localStorage.getItem('aaa_active_crop') || profile.primary_crop || 'corn',
+        soil: localStorage.getItem('aaa_active_soil') || profile.soil_type || 'clay',
         language: localStorage.getItem('aaa_preferred_language') || 'hi',
       };
 
@@ -3659,6 +3710,22 @@ document.addEventListener('DOMContentLoaded', () => {
           <strong>📋 स्थानीय विश्लेषण सीमित है।</strong><br/>
           <span style="font-size: 0.85rem;">सटीक निदान और विस्तृत उपचार के लिए विशेषज्ञ से पूछें।</span>
         </div>`;
+      }
+
+      try {
+        const langNameMap = { 'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi', 'te': 'Telugu', 'sw': 'Swahili', 'zu': 'Zulu' };
+        const langName = langNameMap[context.language] || 'Hindi';
+        const sastriPrompt = `Farmer uploaded a crop photo. Local vision result: ${result.disease_name}. Confidence: ${result.confidence}. Severity: ${result.severity}. Explain safe next steps.`;
+        const sastriReply = await localAi.generateText(sastriPrompt, {
+          crop: result.crop || context.crop,
+          soil: context.soil,
+          language: langName,
+          visionResult: result
+        });
+        appendMessage('Krishi Sastri', sastriReply, 'agent-msg');
+        await localDb.addChat({ role: 'advisor', text: sastriReply, source: 'local_vision' });
+      } catch (sastriErr) {
+        console.warn('[Ask Image] Sastri vision explanation failed:', sastriErr);
       }
 
       // Show the result

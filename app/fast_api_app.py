@@ -491,6 +491,77 @@ def health_check():
     }
 
 
+def _model_assets_base_url() -> str:
+    base_url = os.getenv("MODEL_ASSETS_BASE_URL", "").rstrip("/")
+    if base_url:
+        return base_url
+    bucket_name = _model_assets_bucket_name()
+    if bucket_name:
+        return f"https://storage.googleapis.com/{bucket_name}/models"
+    return ""
+
+
+def _model_assets_bucket_name() -> str:
+    bucket_name = os.getenv("MODEL_ASSETS_BUCKET_NAME", "")
+    if not bucket_name:
+        project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT")
+        project_name = os.getenv("PROJECT_NAME", "agentic-agri-advisor")
+        if project_id:
+            bucket_name = f"{project_id}-{project_name}-assets"
+    return bucket_name
+
+
+def _default_model_url(filename: str) -> str:
+    base_url = _model_assets_base_url()
+    if base_url:
+        return f"{base_url}/{filename}"
+    return f"/models/{filename}"
+
+
+@app.get("/api/model-config")
+def model_config() -> dict:
+    """Return browser model asset locations.
+
+    Local development defaults to same-origin files under /models. Cloud Run
+    receives direct Cloud Storage URLs from Terraform so large model downloads
+    bypass the application container and can be cached by the browser.
+    """
+    gemma_url = os.getenv(
+        "KRISHI_LOCAL_MODEL_URL",
+        _default_model_url("gemma-4-2b-it-gpu-int4.bin"),
+    )
+    crop_classifier_url = os.getenv(
+        "KRISHI_CROP_CLASSIFIER_MODEL_URL",
+        _default_model_url("crop_disease_classifier.tflite"),
+    )
+    return {
+        "local_model_name": os.getenv("KRISHI_LOCAL_MODEL_NAME", "Gemma-4-2B"),
+        "local_model_url": gemma_url,
+        "crop_classifier_model_url": crop_classifier_url,
+        "model_assets_base_url": _model_assets_base_url(),
+        "model_assets_bucket": _model_assets_bucket_name(),
+    }
+
+
+@app.get("/agui/model_config.js")
+def model_config_js() -> Response:
+    """Serve runtime model config before static frontend scripts load."""
+    cfg = model_config()
+    script = (
+        "window.KRISHI_MODEL_CONFIG = "
+        + json.dumps(cfg, separators=(",", ":"))
+        + ";\n"
+        + "window.KRISHI_LOCAL_MODEL_NAME = window.KRISHI_MODEL_CONFIG.local_model_name;\n"
+        + "window.KRISHI_LOCAL_MODEL_URL = window.KRISHI_MODEL_CONFIG.local_model_url;\n"
+        + "window.KRISHI_CROP_CLASSIFIER_MODEL_URL = window.KRISHI_MODEL_CONFIG.crop_classifier_model_url;\n"
+    )
+    return Response(
+        content=script,
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 def _save_profile_impl(farmer_id: str, payload: dict) -> dict:
     name = payload.get("farmer_name") or "New Field"
     soil_type = payload.get("soil_type") or "Alluvial"
