@@ -36,7 +36,8 @@
     voicesLoaded = true;
     const langName = localStorage.getItem('aaa_preferred_language') || 'English';
 
-    // Map UI language to BCP-47 code
+    // === LANG_MAP: ui_name_to_code — full language name (from dropdown) → 2-letter code ===
+    // When adding a language: add 'LangName': 'code' here
     const langMap = {
       'English': 'en',
       'Hindi': 'hi',
@@ -213,7 +214,8 @@
     isSpeaking = true;
 
     try {
-      // Convert BCP-47 code to full language name for the backend VOICE_MAP
+      // === LANG_MAP: code_to_name_for_tts — 2-letter code → full name for backend VOICE_MAP ===
+      // When adding a language: add 'code': 'FullName' and 'FullName': 'FullName' here
       const langNameMap = {
         'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi',
         'te': 'Telugu', 'sw': 'Swahili', 'zu': 'Zulu',
@@ -279,11 +281,14 @@
     const userInputField = document.getElementById('user-input-field');
 
     const rawLang = localStorage.getItem('aaa_preferred_language') || 'English';
-    // Handle both full names and BCP-47 codes
+    // === LANG_MAP: stt_name_to_bcp47 — full name → BCP-47 for Web Speech API recognition ===
+    // When adding a language: add 'FullName': 'code-REGION' here
     const nameToBcp47 = {
       'English': 'en-US', 'Hindi': 'hi-IN', 'Marathi': 'mr-IN',
       'Telugu': 'te-IN', 'Swahili': 'sw-KE', 'Zulu': 'zu-ZA'
     };
+    // === LANG_MAP: stt_code_to_bcp47 — 2-letter code → BCP-47 for Web Speech API recognition ===
+    // When adding a language: add 'code': 'code-REGION' here
     const codeToBcp47 = {
       'en': 'en-US', 'hi': 'hi-IN', 'mr': 'mr-IN',
       'te': 'te-IN', 'sw': 'sw-KE', 'zu': 'zu-ZA'
