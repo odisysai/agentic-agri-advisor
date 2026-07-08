@@ -73,16 +73,16 @@ const DB_STORES = [
 [Reconnect] → Read queue → POST to server → Clear queue → Sync fresh data
 ```
 
-## OKF Knowledge Sync
+## Local Crop Facts Sync
 
-The `/api/okf/sync` endpoint returns all OKF entities as JSON for offline caching:
+The `/api/okf/sync` endpoint returns curated crop, disease, pest, soil, and safety entities as JSON for offline caching:
 
 ```bash
 curl localhost:8000/api/okf/sync
 # Returns: { crops: [...], diseases: [...], pests: [...], soil: [...], safety: [...] }
 ```
 
-On first online launch, the PWA fetches and caches all OKF data to IndexedDB for offline queries.
+On first online launch, the PWA fetches and caches these facts to IndexedDB. Krishi Sastri uses them as grounding/fallback context, not as a separate answer engine.
 
 ## Offline Routing Logic
 
@@ -90,13 +90,9 @@ On first online launch, the PWA fetches and caches all OKF data to IndexedDB for
 
 ```javascript
 function handleSend(message) {
-  if (navigator.onLine) {
-    // Online: Route to cloud agent via /run_sse
-    sendToCloudAgent(message);
-  } else {
-    // Offline: Route to local OKF cache or rule-based engine
-    routeToLocalKnowledge(message);
-  }
+  // Sastri mode always stays local.
+  // Local crop facts ground Gemma when available, or the deterministic fallback.
+  routeToLocalSastri(message);
 }
 ```
 
@@ -111,7 +107,7 @@ function handleSend(message) {
 ## Known Limitations
 
 - iOS Safari: Limited PWA support (no background sync, limited IndexedDB)
-- Gemma 2B model not bundled (stub with fake progress bar)
+- Gemma 2B model not bundled (deterministic local facts fallback is used)
 - TFLite model not bundled (color heuristic fallback works)
 - No conflict resolution for sync collisions (last-write-wins)
 

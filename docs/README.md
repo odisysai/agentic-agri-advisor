@@ -37,6 +37,7 @@ This is the single entry point for all Krishi Sampark documentation. Every docum
 | [ADR-AAA-003](02-architecture/adr/ADR-AAA-003-agent-skills-based-ai-sdlc.md) | Agent-Skills-Based AI-SDLC | Accepted |
 | [ADR-AAA-004](02-architecture/adr/ADR-AAA-004-edge-cloud-advisor-routing.md) | Edge-Cloud Advisor Routing | Accepted |
 | [ADR-AAA-005](02-architecture/adr/ADR-AAA-005-agricultural-safety-kernel.md) | Agricultural Safety Kernel | Accepted |
+| [ADR-AAA-006](02-architecture/adr/ADR-AAA-006-okf-as-local-grounding-cache.md) | OKF as Local Grounding Cache | Accepted |
 
 ## 📁 03 — Design
 

@@ -1622,7 +1622,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const langCode = window.currentLanguageState?.code || 'en';
     const preferredLang = window.currentLanguageState?.displayName || 'English';
 
-    // Krishi Sastri always uses local knowledge (OKF + rule-based + Gemma if available).
+    // Krishi Sastri always uses the local advisor path. Cached crop facts can
+    // ground the answer, but they should not replace the Sastri response layer.
     // Only Krishi Bisesagya (Expert) uses cloud Gemini.
     console.log('[Triage] Routing to local Krishi Sastri.', localAi.getStatus?.());
     const thinkingBubble = appendMessage('Krishi Sastri', 'Thinking...', 'thinking-msg');
@@ -1773,7 +1774,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return match ? match.crop : (fallbackCrop || 'corn').toLowerCase();
   }
 
-  // Advisor mode local answer — searches OKF cache in IndexedDB first
+  // Advisor mode local answer — uses cached crop facts as grounding, then lets
+  // LocalAiEngine produce the Sastri response.
   async function handleAdvisorLocalAnswer(text, preferredLang, thinkingBubble) {
     if (thinkingBubble) thinkingBubble.remove();
 
@@ -1783,8 +1785,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const profile = savedProfile ? JSON.parse(savedProfile) : {};
     const inferredCrop = inferAdvisorCropFromText(text, profile.primary_crop || 'corn');
 
-    // Try to search OKF knowledge from IndexedDB
-    let okfResult = null;
+    // Try to search local crop facts from IndexedDB. These facts are grounding
+    // context/fallback data, not a separate chatbot response path.
+    let localCropFacts = null;
     try {
       const db = new window.LocalDb();
       await db.init();
@@ -1795,71 +1798,50 @@ document.addEventListener('DOMContentLoaded', () => {
       const diseaseKeywords = ['rust', 'रतुआ', 'blight', 'झुलसन', 'bollworm', 'बोलवर्म', 'pest', 'कीट', 'disease', 'रोग', 'mildew', 'फफूंद'];
       const soilKeywords = ['soil', 'मिट्टी', 'clay', 'चिकनी', 'sandy', 'बलुई'];
 
-      okfResult = await db.getOkfGuide(inferredCrop);
+      localCropFacts = await db.getOkfGuide(inferredCrop);
 
-      // Search for each keyword in OKF
+      // Search for each crop keyword in the local fact cache
       for (const kw of [...cropKeywords, ...diseaseKeywords, ...soilKeywords]) {
-        if (okfResult) break;
+        if (localCropFacts) break;
         if (lowerText.includes(kw)) {
-          // Try to get the OKF guide for this keyword
           const guideCrop = inferAdvisorCropFromText(kw, kw);
           const guide = await db.getOkfGuide(guideCrop);
           if (guide) {
-            okfResult = guide;
+            localCropFacts = guide;
             break;
           }
         }
       }
 
-      // Also try broader search — check all cached OKF entities
-      if (!okfResult) {
+      // Also try broader crop-name search.
+      if (!localCropFacts) {
         // Try matching crop names
         for (const crop of ['tomato', 'chilli', 'wheat', 'corn', 'cotton', 'rice', 'soybean', 'sugarcane']) {
           if (lowerText.includes(crop)) {
             const guide = await db.getOkfGuide(crop);
             if (guide) {
-              okfResult = guide;
+              localCropFacts = guide;
               break;
             }
           }
         }
       }
     } catch (e) {
-      console.warn('[Advisor] OKF cache search failed:', e);
+      console.warn('[Advisor] Local crop fact cache search failed:', e);
     }
 
     let reply;
-    if (okfResult && okfResult.body) {
-      // Build a response from OKF knowledge
-      const meta = okfResult.metadata || {};
-      const name = meta.name || okfResult.crop_type || 'Crop';
-      const bodyText = okfResult.body.substring(0, 800);
-
-      // Extract key sections
-      const replies = {
-        'English': `Based on agricultural knowledge:\n\n${name}:\n${bodyText}\n\nFor detailed analysis, consult कृषि विशेषज्ञ (Agriculture Expert).`,
-        'Hindi': `कृषि ज्ञान के अनुसार:\n\n${name}:\n${bodyText}\n\nविस्तृत विश्लेषण के लिए कृषि विशेषज्ञ से परामर्श लें।`,
-        'Marathi': `कृषी ज्ञानानुसार:\n\n${name}:\n${bodyText}\n\nसविस्तर विश्लेषणासाठी कृषी तज्ज्ञांचा सल्ला घ्या.`,
-        'Telugu': `వ్యవసాయ జ్ఞానం ప్రకారం:\n\n${name}:\n${bodyText}\n\nవివరణాత్మక విశ్లేషణ కోసం నిపుణుడిని సంప్రదించండి.`,
-        'Swahili': `Kulingana na maarifa ya kilimo:\n\n${name}:\n${bodyText}\n\nKwa uchambuzi wa kina, shauriana na mtaalamu wa kilimo.`,
-        'Zulu': `Ngokwesiko lolimo:\n\n${name}:\n${bodyText}\n\nUkuze uthole ukuhlaziwa okujulile, xhumana nomchwepheshe bolimo.`,
-      };
-      reply = replies[langName] || replies['English'];
-    } else {
-      // Try the LocalAiEngine (offline multi-agent skill router) for a contextual
-      // response based on the farmer's profile crop/soil. This gives a much richer
-      // reply than the static canned fallback, especially for non-English queries.
-      try {
-        reply = await localAi.generateText(text, {
-          crop: inferredCrop,
-          soil: profile.soil_type || 'clay',
-          language: langName,
-          okfGuide: okfResult && !okfResult.body ? okfResult : null
-        });
-      } catch (e) {
-        console.warn('[Advisor] LocalAiEngine failed, using rule-based fallback:', e);
-        reply = buildFarmerSafeOfflineReply(text, preferredLang);
-      }
+    try {
+      reply = await localAi.generateText(text, {
+        crop: inferredCrop,
+        soil: profile.soil_type || 'clay',
+        language: langName,
+        localFacts: localCropFacts,
+        okfGuide: localCropFacts
+      });
+    } catch (e) {
+      console.warn('[Advisor] LocalAiEngine failed, using rule-based fallback:', e);
+      reply = buildFarmerSafeOfflineReply(text, preferredLang);
     }
 
     appendMessage('Krishi Sastri', reply, 'agent-msg');

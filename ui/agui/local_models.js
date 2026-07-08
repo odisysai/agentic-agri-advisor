@@ -1,7 +1,7 @@
 /**
  * local_models.js
  * In-browser Local LLM (Gemma-4-2B) and TFLite Crop Disease Classification management.
- * Integrates with MediaPipe WebGenAI and Tasks-Vision APIs with fallback support.
+ * Local crop facts are used only as grounding/fallback context for Krishi Sastri.
  */
 
 class LocalAiEngine {
@@ -156,6 +156,24 @@ class LocalAiEngine {
     return fallbackGuides[crop] || fallbackGuides.corn;
   }
 
+  buildGroundingFacts(guide, cropName, lang) {
+    if (!guide) return "";
+    const specs = guide.specifications || {};
+    const moisture = specs.soil_moisture || {};
+    const npk = specs.npk_ratio || {};
+    const diagnostics = guide.diagnostics || {};
+    const diagnosticNames = Object.keys(diagnostics).slice(0, 3).join(", ");
+    const parts = [
+      `crop=${cropName}`,
+      specs.optimal_soil_ph ? `ph=${specs.optimal_soil_ph}` : "",
+      moisture.optimal_pct ? `moisture=${moisture.optimal_pct}%` : "",
+      npk.nitrogen_ppm ? `npk=${npk.nitrogen_ppm}/${npk.phosphorus_ppm}/${npk.potassium_ppm}` : "",
+      diagnosticNames ? `known_diagnostics=${diagnosticNames}` : "",
+      `language=${lang}`
+    ];
+    return parts.filter(Boolean).join("; ");
+  }
+
   /**
    * Downloads and caches the client-side Gemma-4-2B model using the Cache API.
    * Falls back to high-fidelity client-side dialog simulator if offline or hardware fails.
@@ -280,8 +298,12 @@ class LocalAiEngine {
   }
 
   /**
-   * Generates traditional agricultural advice offline using client-side Multi-Agent Skills
-   * and structured Open Knowledge Format (OKF) data retrieved from IndexedDB.
+   * Generates farmer-facing agricultural advice locally.
+   *
+   * Desired path: Gemma-4-2B receives farmer context + compact local crop facts.
+   * Current path: until a real browser/mobile Gemma runtime is wired, the same
+   * compact facts drive a deterministic fallback response. OKF/local facts are
+   * supporting context, not the primary product behavior.
    * @param {string} prompt
    * @param {object} context - Farmer Digital Twin context
    * @returns {Promise<string>} Translated Krishi Sastri response
@@ -295,13 +317,13 @@ class LocalAiEngine {
     const soil = (context.soil || 'clay').toLowerCase();
     const lang = context.language || 'English';
 
-    // 1. Initialize DB and query local OKF guide
+    // 1. Initialize DB and query local crop facts for grounding/fallback only.
     const localDb = new window.LocalDb();
-    let okfGuide = context.okfGuide || null;
+    let okfGuide = context.localFacts || context.okfGuide || null;
     try {
       okfGuide = okfGuide || await localDb.getOkfGuide(crop);
     } catch (e) {
-      console.warn("Could not load OKF guide from IndexedDB, using static backup", e);
+      console.warn("Could not load local crop facts from IndexedDB, using static backup", e);
     }
 
     // Fallback static guide if DB fetch fails
@@ -551,6 +573,7 @@ class LocalAiEngine {
     let activeAgent = "Coordinator";
     let activeSkill = "General Advisory";
     const cropName = dict.cropNames?.[crop] || okfGuide.metadata.name || crop;
+    const groundingFacts = this.buildGroundingFacts(okfGuide, cropName, lang);
 
     // 2. Multi-Agent Skill Routing (multilingual keyword matching)
     const pestKeywords = ['pest', 'insect', 'disease', 'borer', 'rust', 'aphid', 'blight', 'outbreak', 'pathology',
@@ -633,6 +656,9 @@ class LocalAiEngine {
     }
 
     return new Promise(resolve => {
+      if (groundingFacts) {
+        console.debug("[Local AI] Sastri grounded with local crop facts:", groundingFacts);
+      }
       setTimeout(() => resolve(response), 1000);
     });
   }

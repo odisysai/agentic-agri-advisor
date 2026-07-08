@@ -49,13 +49,14 @@ const ram = navigator.deviceMemory || 2; // GB, not precise
 - **Acceleration:** WebGPU (preferred) or WebGL (fallback)
 - **Size:** ~1.4GB (one-time download)
 - **Cache:** Browser Cache API (`gemma-model-cache`)
+- **Grounding:** Compact local crop facts from IndexedDB are passed to Sastri as context. They are not a separate chatbot or replacement for Gemma.
 
 ### Current Status
 
 | Component | Status |
 |-----------|--------|
 | `loadLlm()` | ⚠️ Stub — tries to fetch from `/models/gemma-4-2b-it-gpu-int4.bin` (not bundled) |
-| `generateText()` | ⚠️ Stub — uses hardcoded `offlineDatabase` responses instead of real model |
+| `generateText()` | ⚠️ Stub — uses compact local crop facts and deterministic Sastri fallback instead of real model inference |
 | Model binary | ❌ Not bundled |
 | WebGPU detection | ✅ Working |
 | Model download UI | ⚠️ Fake progress bar |
@@ -64,9 +65,10 @@ const ram = navigator.deviceMemory || 2; // GB, not precise
 
 1. Host Gemma-4-2B INT4 model on CDN or Google Cloud Storage
 2. Implement real `@mediapipe/tasks-genai` Web LLM API integration
-3. Add one-time download prompt with storage warning (~1.4GB)
-4. Graceful fallback for devices without WebGPU
-5. Keep rule-based engine as tier-3 fallback
+3. Pass farmer context + compact crop facts into Gemma for grounding
+4. Add one-time download prompt with storage warning (~1.4GB)
+5. Graceful fallback for devices without WebGPU
+6. Keep deterministic local facts fallback as tier-3 behavior
 
 ## TFLite Crop Disease Classifier
 

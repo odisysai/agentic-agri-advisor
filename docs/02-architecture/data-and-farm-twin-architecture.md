@@ -127,6 +127,7 @@ farmer workflow.
 ## OKF Knowledge Graph
 
 The Open Knowledge Graph (OKF) is a curated static knowledge base stored as markdown files.
+For farmer chat, OKF is treated as compact local grounding/fallback data for Krishi Sastri, not as a primary response engine. See [ADR-AAA-006](adr/ADR-AAA-006-okf-as-local-grounding-cache.md).
 
 ### Entity Types
 
