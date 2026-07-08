@@ -16,6 +16,7 @@ This is the **first file an agent or developer should read**. It routes you to t
 | SDLC governance / evidence / release | `.context/08-ai-sdlc.md` + `.ai-sdlc/README.md` |
 | Backend API / FastAPI routes | `app/AGENTS.md` |
 | Fix a translation key bug | `.agents/skills/fix-translation-bug/SKILL.md` |
+| Debug any bug / investigate an issue | `.context/09-bug-triage.md` + `.agents/skills/debug-and-fix/SKILL.md` |
 | Run browser / E2E tests | `.agents/skills/browser-testing/SKILL.md` |
 | General setup (first time) | `.context/01-local-dev.md` |
 

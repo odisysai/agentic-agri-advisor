@@ -1,4 +1,4 @@
-const CACHE_NAME = 'krishi-sampark-cache-v29';
+const CACHE_NAME = 'krishi-sampark-cache-v31';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -13,8 +13,8 @@ const ASSETS_TO_CACHE = [
   '/public/favicon-512.png',
   '/public/site.webmanifest',
   '/agui/styles.css',
-  '/agui/styles.css?v=16',
-  '/agui/dashboard.js?v=32',
+  '/agui/styles.css?v=18',
+  '/agui/dashboard.js?v=34',
   '/agui/panel_router.js',
   '/agui/camera.js',
   '/agui/crop_classifier.js?v=5',
