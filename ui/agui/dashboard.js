@@ -593,12 +593,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tabId === 'ask') {
       const chatPane = document.getElementById('chat-pane');
       if (chatPane) chatPane.classList.add('open');
+      const tabs = document.querySelectorAll('.bottom-nav-bar .nav-tab');
+      tabs.forEach(t => t.classList.remove('active'));
+      const askTab = document.querySelector('.bottom-nav-bar .nav-tab[data-tab="ask"]');
+      if (askTab) askTab.classList.add('active');
       const chatMessages = document.getElementById('chat-messages');
       if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
       const input = document.getElementById('user-input-field');
       if (input) input.focus();
       return;
     }
+
+    const chatPane = document.getElementById('chat-pane');
+    if (chatPane) chatPane.classList.remove('open');
 
     // Remove active styles from bottom nav links
     const tabs = document.querySelectorAll('.bottom-nav-bar .nav-tab');
@@ -668,6 +675,28 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  function closeAskPane() {
+    const chatPane = document.getElementById('chat-pane');
+    if (chatPane) chatPane.classList.remove('open');
+    const askTab = document.querySelector('.bottom-nav-bar .nav-tab[data-tab="ask"]');
+    if (askTab) askTab.classList.remove('active');
+  }
+
+  document.getElementById('ask-tray-home-btn')?.addEventListener('click', () => {
+    closeAskPane();
+    window.switchTab('home');
+  });
+
+  document.getElementById('ask-tray-more-btn')?.addEventListener('click', () => {
+    closeAskPane();
+    window.switchTab('more');
+  });
+
+  document.getElementById('ask-tray-close-btn')?.addEventListener('click', () => {
+    closeAskPane();
+    window.switchTab('home');
+  });
 
   // Bind Ask microphone panel buttons
   // Microphone event listener and recognition logic are loaded from voice.js

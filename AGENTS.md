@@ -33,6 +33,7 @@ This project has **two completely different sets of agents** with no overlap:
 | Add a new specialist agent | `.context/06-add-agent.md` + `agents/AGENTS.md` |
 | Touch the safety kernel | `.context/07-safety-kernel.md` + `safety_kernel/AGENTS.md` |
 | SDLC governance / evidence / release | `.context/08-ai-sdlc.md` |
+| Debug a bug / investigate a failure | `.context/09-bug-triage.md` |
 | Backend API / FastAPI | `app/AGENTS.md` |
 
 ---

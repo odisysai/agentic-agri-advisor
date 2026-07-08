@@ -1036,6 +1036,10 @@ body {
   box-shadow: -2px 0 12px rgba(0, 0, 0, 0.04);
 }
 
+.ask-mobile-tray {
+  display: none;
+}
+
 /* Chat toggle button — visible on mobile to show/hide chat pane */
 .chat-toggle-btn {
   display: none;
@@ -1073,7 +1077,7 @@ body {
     position: fixed;
     top: 0;
     right: 0;
-    bottom: 0;
+    bottom: var(--mobile-nav-clearance);
     width: 100%;
     max-width: 100%;
     z-index: 300;
@@ -1081,7 +1085,7 @@ body {
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-left: none;
     box-shadow: -4px 0 24px rgba(0,0,0,0.3);
-    padding-bottom: var(--mobile-nav-clearance);
+    padding-bottom: 0;
   }
 
   .bottom-nav-bar {
@@ -1095,17 +1099,50 @@ body {
     transform: translateX(0);
   }
 
+  .ask-mobile-tray {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 10px 8px;
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    flex-shrink: 0;
+    z-index: 4;
+  }
+
+  .ask-tray-btn {
+    min-width: 0;
+    min-height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-dark);
+    color: var(--text-main);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+  }
+
+  .ask-tray-btn:active {
+    transform: translateY(1px);
+  }
+
   .chat-toggle-btn {
     display: flex;
     bottom: calc(var(--mobile-nav-clearance) + 12px);
   }
 
   .chat-pane .chat-messages-container {
-    padding-bottom: calc(var(--mobile-nav-clearance) + 16px);
+    padding-bottom: 16px;
   }
 
   .chat-pane .text-input-bar {
-    margin-bottom: calc(var(--mobile-nav-clearance) + 8px) !important;
+    margin-bottom: 8px !important;
     flex-shrink: 0;
   }
 

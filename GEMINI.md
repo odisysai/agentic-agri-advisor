@@ -28,7 +28,8 @@ Load only the context you need for the current task. The routing table below is 
 | Safety kernel | `.context/07-safety-kernel.md` + `safety_kernel/AGENTS.md` |
 | SDLC / evidence / release | `.context/08-ai-sdlc.md` |
 | Backend API | `app/AGENTS.md` |
-| Fix translation bug | `.agents/skills/fix-translation-bug/SKILL.md` |
+| Fix a translation bug | `.agents/skills/fix-translation-bug/SKILL.md` |
+| Debug a bug / investigate an issue | `.context/09-bug-triage.md` |
 | Run browser tests | `.agents/skills/browser-testing/SKILL.md` |
 
 **Context tiers — load in order, stop when you have enough:**
