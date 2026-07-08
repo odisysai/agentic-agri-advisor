@@ -703,6 +703,55 @@ document.addEventListener('DOMContentLoaded', () => {
     cropDiagnosisState.step = 6;
 
     const area = cropDiagnosisState.affectedArea || 'leaf';
+    const latestPhoto = Array.isArray(cropDiagnosisState.photos) ? cropDiagnosisState.photos[cropDiagnosisState.photos.length - 1] : null;
+    const savedProfile = localStorage.getItem('aaa_farmer_profile');
+    const profile = savedProfile ? JSON.parse(savedProfile) : {};
+
+    if (latestPhoto && window.CropClassifier) {
+      try {
+        const classifier = new window.CropClassifier();
+        const context = {
+          crop: profile.primary_crop || localStorage.getItem('aaa_active_crop') || 'corn',
+          soil: profile.soil_type || localStorage.getItem('aaa_active_soil') || 'clay',
+          language: localStorage.getItem('aaa_preferred_language') || 'hi'
+        };
+        const result = await classifier.classifyImage(latestPhoto, context);
+        result.photo_storage = cropDiagnosisState.photoStorage || [];
+
+        cropDiagnosisState.diagnosis = {
+          disease_name: result.disease_name,
+          confidence: result.confidence,
+          severity: result.severity,
+          organic_remedy: result.organic_remedy,
+          chemical_remedy: result.chemical_remedy,
+          alternatives: result.alternatives || [],
+          mode: result.mode,
+          model_status: result.model_status,
+          photo_storage: cropDiagnosisState.photoStorage || []
+        };
+
+        await localDb.saveDiagnosisState(cropDiagnosisState);
+        loadStepSchema();
+
+        const langNameMap = { 'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi', 'te': 'Telugu', 'sw': 'Swahili', 'zu': 'Zulu' };
+        const langName = langNameMap[context.language] || 'Hindi';
+        const sastriReply = await localAi.generateText(
+          `Farmer uploaded crop photos. Local vision result: ${result.disease_name}. Confidence: ${result.confidence}. Severity: ${result.severity}.`,
+          {
+            crop: result.crop || context.crop,
+            soil: context.soil,
+            language: langName,
+            visionResult: result
+          }
+        );
+        appendMessage('Krishi Sastri', sastriReply, 'agent-msg');
+        await localDb.addChat({ role: 'advisor', text: sastriReply, source: 'crop_photo_wizard' });
+        return;
+      } catch (err) {
+        console.warn('[Crop Diagnosis] Local classifier failed, using legacy fallback diagnosis:', err);
+      }
+    }
+
     let disease = "Late Blight (झुलसा रोग)";
     let confidence = "94%";
     let organic = "Dissolve 5kg wood ash and 5L cow urine in 100L water, then spray.";
@@ -1622,7 +1671,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const langCode = window.currentLanguageState?.code || 'en';
     const preferredLang = window.currentLanguageState?.displayName || 'English';
 
-    // Krishi Sastri always uses local knowledge (OKF + rule-based + Gemma if available).
+    // Krishi Sastri always uses the local advisor path. Cached crop facts can
+    // ground the answer, but they should not replace the Sastri response layer.
     // Only Krishi Bisesagya (Expert) uses cloud Gemini.
     console.log('[Triage] Routing to local Krishi Sastri.', localAi.getStatus?.());
     const thinkingBubble = appendMessage('Krishi Sastri', 'Thinking...', 'thinking-msg');
@@ -1757,87 +1807,90 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast("Sent to Expert", "Your question has been sent to Krishi Bisesagya for deeper analysis.", "info");
   }
 
-  // Advisor mode local answer — searches OKF cache in IndexedDB first
+  function inferAdvisorCropFromText(text, fallbackCrop = 'corn') {
+    const lowerText = (text || '').toLowerCase();
+    const crops = [
+      { crop: 'tomato', terms: ['tomato', 'tomatoes', 'टमाटर', 'टोमॅटो', 'టమాట', 'టమోటా', 'nyanya', 'utamatisi'] },
+      { crop: 'chilli', terms: ['chilli', 'chili', 'pepper', 'मिर्च', 'मिरची', 'మిరప', 'pilipili'] },
+      { crop: 'wheat', terms: ['wheat', 'गेहूँ', 'गेहूं', 'गहू', 'గోధుమ', 'ngano', 'ukolweni'] },
+      { crop: 'corn', terms: ['corn', 'maize', 'मक्का', 'मका', 'మొక్కజొన్న', 'mahindi', 'ummbila'] },
+      { crop: 'cotton', terms: ['cotton', 'कपास'] },
+      { crop: 'rice', terms: ['rice', 'paddy', 'चावल', 'धान'] },
+      { crop: 'soybean', terms: ['soybean', 'soybeans', 'सोयाबीन'] },
+      { crop: 'sugarcane', terms: ['sugarcane', 'गन्ना'] }
+    ];
+    const match = crops.find(item => item.terms.some(term => lowerText.includes(term)));
+    return match ? match.crop : (fallbackCrop || 'corn').toLowerCase();
+  }
+
+  // Advisor mode local answer — uses cached crop facts as grounding, then lets
+  // LocalAiEngine produce the Sastri response.
   async function handleAdvisorLocalAnswer(text, preferredLang, thinkingBubble) {
     if (thinkingBubble) thinkingBubble.remove();
 
     const langNameMap = { 'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi', 'te': 'Telugu', 'sw': 'Swahili', 'zu': 'Zulu' };
     const langName = langNameMap[preferredLang] || 'English';
+    const savedProfile = localStorage.getItem('aaa_farmer_profile');
+    const profile = savedProfile ? JSON.parse(savedProfile) : {};
+    const inferredCrop = inferAdvisorCropFromText(text, profile.primary_crop || 'corn');
 
-    // Try to search OKF knowledge from IndexedDB
-    let okfResult = null;
+    // Try to search local crop facts from IndexedDB. These facts are grounding
+    // context/fallback data, not a separate chatbot response path.
+    let localCropFacts = null;
     try {
       const db = new window.LocalDb();
       await db.init();
 
       // Extract keywords from the question
       const lowerText = text.toLowerCase();
-      const cropKeywords = ['wheat', 'गेहूँ', 'corn', 'मक्का', 'cotton', 'कपास', 'rice', 'चावल', 'सोयाबीन', 'soybean', 'sugarcane', 'गन्ना'];
+      const cropKeywords = ['tomato', 'टमाटर', 'टोमॅटो', 'chilli', 'chili', 'pepper', 'मिर्च', 'wheat', 'गेहूँ', 'गेहूं', 'corn', 'maize', 'मक्का', 'cotton', 'कपास', 'rice', 'चावल', 'सोयाबीन', 'soybean', 'sugarcane', 'गन्ना'];
       const diseaseKeywords = ['rust', 'रतुआ', 'blight', 'झुलसन', 'bollworm', 'बोलवर्म', 'pest', 'कीट', 'disease', 'रोग', 'mildew', 'फफूंद'];
       const soilKeywords = ['soil', 'मिट्टी', 'clay', 'चिकनी', 'sandy', 'बलुई'];
 
-      // Search for each keyword in OKF
+      localCropFacts = await db.getOkfGuide(inferredCrop);
+
+      // Search for each crop keyword in the local fact cache
       for (const kw of [...cropKeywords, ...diseaseKeywords, ...soilKeywords]) {
+        if (localCropFacts) break;
         if (lowerText.includes(kw)) {
-          // Try to get the OKF guide for this keyword
-          const guide = await db.getOkfGuide(kw);
-          if (guide && guide.body) {
-            okfResult = guide;
+          const guideCrop = inferAdvisorCropFromText(kw, kw);
+          const guide = await db.getOkfGuide(guideCrop);
+          if (guide) {
+            localCropFacts = guide;
             break;
           }
         }
       }
 
-      // Also try broader search — check all cached OKF entities
-      if (!okfResult) {
+      // Also try broader crop-name search.
+      if (!localCropFacts) {
         // Try matching crop names
-        for (const crop of ['wheat', 'corn', 'cotton', 'rice', 'soybeans', 'sugarcane']) {
+        for (const crop of ['tomato', 'chilli', 'wheat', 'corn', 'cotton', 'rice', 'soybean', 'sugarcane']) {
           if (lowerText.includes(crop)) {
             const guide = await db.getOkfGuide(crop);
-            if (guide && guide.body) {
-              okfResult = guide;
+            if (guide) {
+              localCropFacts = guide;
               break;
             }
           }
         }
       }
     } catch (e) {
-      console.warn('[Advisor] OKF cache search failed:', e);
+      console.warn('[Advisor] Local crop fact cache search failed:', e);
     }
 
     let reply;
-    if (okfResult && okfResult.body) {
-      // Build a response from OKF knowledge
-      const meta = okfResult.metadata || {};
-      const name = meta.name || okfResult.crop_type || 'Crop';
-      const bodyText = okfResult.body.substring(0, 800);
-
-      // Extract key sections
-      const replies = {
-        'English': `Based on agricultural knowledge:\n\n${name}:\n${bodyText}\n\nFor detailed analysis, consult कृषि विशेषज्ञ (Agriculture Expert).`,
-        'Hindi': `कृषि ज्ञान के अनुसार:\n\n${name}:\n${bodyText}\n\nविस्तृत विश्लेषण के लिए कृषि विशेषज्ञ से परामर्श लें।`,
-        'Marathi': `कृषी ज्ञानानुसार:\n\n${name}:\n${bodyText}\n\nसविस्तर विश्लेषणासाठी कृषी तज्ज्ञांचा सल्ला घ्या.`,
-        'Telugu': `వ్యవసాయ జ్ఞానం ప్రకారం:\n\n${name}:\n${bodyText}\n\nవివరణాత్మక విశ్లేషణ కోసం నిపుణుడిని సంప్రదించండి.`,
-        'Swahili': `Kulingana na maarifa ya kilimo:\n\n${name}:\n${bodyText}\n\nKwa uchambuzi wa kina, shauriana na mtaalamu wa kilimo.`,
-        'Zulu': `Ngokwesiko lolimo:\n\n${name}:\n${bodyText}\n\nUkuze uthole ukuhlaziwa okujulile, xhumana nomchwepheshe bolimo.`,
-      };
-      reply = replies[langName] || replies['English'];
-    } else {
-      // Try the LocalAiEngine (offline multi-agent skill router) for a contextual
-      // response based on the farmer's profile crop/soil. This gives a much richer
-      // reply than the static canned fallback, especially for non-English queries.
-      try {
-        const savedProfile = localStorage.getItem('aaa_farmer_profile');
-        const profile = savedProfile ? JSON.parse(savedProfile) : {};
-        reply = await localAi.generateText(text, {
-          crop: profile.primary_crop || 'corn',
-          soil: profile.soil_type || 'clay',
-          language: langName
-        });
-      } catch (e) {
-        console.warn('[Advisor] LocalAiEngine failed, using rule-based fallback:', e);
-        reply = buildFarmerSafeOfflineReply(text, preferredLang);
-      }
+    try {
+      reply = await localAi.generateText(text, {
+        crop: inferredCrop,
+        soil: profile.soil_type || 'clay',
+        language: langName,
+        localFacts: localCropFacts,
+        okfGuide: localCropFacts
+      });
+    } catch (e) {
+      console.warn('[Advisor] LocalAiEngine failed, using rule-based fallback:', e);
+      reply = buildFarmerSafeOfflineReply(text, preferredLang);
     }
 
     appendMessage('Krishi Sastri', reply, 'agent-msg');
@@ -3600,9 +3653,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const photoStorage = await uploadCropPhoto(base64Image, 'ask_image_analysis');
       // Use the CropClassifier for local diagnosis
       const classifier = new window.CropClassifier();
+      const savedProfile = localStorage.getItem('aaa_farmer_profile');
+      const profile = savedProfile ? JSON.parse(savedProfile) : {};
       const context = {
-        crop: localStorage.getItem('aaa_active_crop') || 'corn',
-        soil: localStorage.getItem('aaa_active_soil') || 'clay',
+        crop: localStorage.getItem('aaa_active_crop') || profile.primary_crop || 'corn',
+        soil: localStorage.getItem('aaa_active_soil') || profile.soil_type || 'clay',
         language: localStorage.getItem('aaa_preferred_language') || 'hi',
       };
 
@@ -3655,6 +3710,22 @@ document.addEventListener('DOMContentLoaded', () => {
           <strong>📋 स्थानीय विश्लेषण सीमित है।</strong><br/>
           <span style="font-size: 0.85rem;">सटीक निदान और विस्तृत उपचार के लिए विशेषज्ञ से पूछें।</span>
         </div>`;
+      }
+
+      try {
+        const langNameMap = { 'en': 'English', 'hi': 'Hindi', 'mr': 'Marathi', 'te': 'Telugu', 'sw': 'Swahili', 'zu': 'Zulu' };
+        const langName = langNameMap[context.language] || 'Hindi';
+        const sastriPrompt = `Farmer uploaded a crop photo. Local vision result: ${result.disease_name}. Confidence: ${result.confidence}. Severity: ${result.severity}. Explain safe next steps.`;
+        const sastriReply = await localAi.generateText(sastriPrompt, {
+          crop: result.crop || context.crop,
+          soil: context.soil,
+          language: langName,
+          visionResult: result
+        });
+        appendMessage('Krishi Sastri', sastriReply, 'agent-msg');
+        await localDb.addChat({ role: 'advisor', text: sastriReply, source: 'local_vision' });
+      } catch (sastriErr) {
+        console.warn('[Ask Image] Sastri vision explanation failed:', sastriErr);
       }
 
       // Show the result

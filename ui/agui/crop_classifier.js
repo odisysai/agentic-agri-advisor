@@ -15,6 +15,9 @@ class CropClassifier {
   constructor() {
     this.classifier = null;
     this.modelLoaded = false;
+    this.modelAssetCached = false;
+    this.runtimeMode = "not_loaded";
+    this.modelUrl = window.KRISHI_CROP_CLASSIFIER_MODEL_URL || "/models/crop_disease_classifier.tflite";
     this.labels = [];
     this.onProgressCallback = null;
 
@@ -114,10 +117,11 @@ class CropClassifier {
     if (!hasGPU) {
       console.warn('[CropClassifier] No GPU acceleration available. Using fallback heuristic mode.');
       this.modelLoaded = false; // Will use fallback classifyFallback()
+      this.runtimeMode = "fallback_no_gpu";
       return false;
     }
 
-    const MODEL_URL = '/models/crop_disease_classifier.tflite';
+    const MODEL_URL = this.modelUrl;
     const CACHE_KEY = 'crop-disease-model-v1';
 
     try {
@@ -134,8 +138,11 @@ class CropClassifier {
         // this.classifier = await ImageClassifier.createFromModelBuffer(
         //   vision.ASSORTED_TFJS_MODELS, arrayBuffer
         // );
-        this.modelLoaded = true;
-        return true;
+        this.modelAssetCached = true;
+        this.modelLoaded = false;
+        this.runtimeMode = "fallback_model_cached_no_mediapipe_runtime";
+        console.warn('[CropClassifier] TFLite asset is cached, but MediaPipe ImageClassifier runtime is not wired yet. Using fallback heuristic.');
+        return false;
       }
 
       // Download model if online
@@ -170,11 +177,15 @@ class CropClassifier {
       // this.classifier = await ImageClassifier.createFromModelBuffer(
       //   vision.ASSORTED_TFJS_MODELS, await modelBlob.arrayBuffer()
       // );
-      this.modelLoaded = true;
-      return true;
+      this.modelAssetCached = true;
+      this.modelLoaded = false;
+      this.runtimeMode = "fallback_model_cached_no_mediapipe_runtime";
+      console.warn('[CropClassifier] TFLite asset cached, but real MediaPipe inference is not initialized. Using fallback heuristic.');
+      return false;
 
     } catch (err) {
       console.warn('[CropClassifier] Model load failed. Using fallback heuristic.', err);
+      this.runtimeMode = "fallback_model_load_failed";
       return false;
     }
   }
@@ -190,6 +201,10 @@ class CropClassifier {
    * @returns {Promise<object>} Classification result
    */
   async classifyImage(base64Image, context = {}) {
+    if (!this.modelLoaded && this.runtimeMode === "not_loaded") {
+      await this.loadModel();
+    }
+
     if (!this.modelLoaded) {
       return this.classifyFallback(base64Image, context);
     }
@@ -205,6 +220,7 @@ class CropClassifier {
       return this.classifyFallback(base64Image, context);
     } catch (err) {
       console.error('[CropClassifier] Inference failed:', err);
+      this.runtimeMode = "fallback_inference_failed";
       return this.classifyFallback(base64Image, context);
     }
   }
@@ -228,6 +244,7 @@ class CropClassifier {
 
     // Simple rule-based diagnosis based on color distribution
     let diagnosis = {
+      crop: crop,
       disease_name: "Unable to determine (offline heuristic mode)",
       confidence: "Low (heuristic)",
       severity: "Unknown",
@@ -235,12 +252,15 @@ class CropClassifier {
       organic_remedy: "Please consult a local agronomist or take the photo to your nearest Krishi Vigyan Kendra.",
       chemical_remedy: "Consult a certified agricultural expert for proper diagnosis.",
       color_analysis: colorAnalysis,
-      mode: "fallback_heuristic"
+      mode: "fallback_heuristic",
+      model_status: this.runtimeMode,
+      ml_runtime_used: false
     };
 
     // Yellowing → nutrient deficiency or viral
     if (colorAnalysis.yellow_ratio > 0.25) {
       diagnosis = {
+        crop: crop,
         disease_name: `${crop.charAt(0).toUpperCase() + crop.slice(1)} — Possible Nutrient Deficiency (Yellowing)`,
         confidence: "Low (heuristic — " + Math.round(colorAnalysis.yellow_ratio * 100) + "% yellowing detected)",
         severity: "Moderate",
@@ -248,12 +268,15 @@ class CropClassifier {
         organic_remedy: "Apply well-decomposed FYM (farm yard manure) at 10-15 tonnes/hectare. Spray 2% urea solution if nitrogen deficiency suspected.",
         chemical_remedy: "Apply NPK fertilizer as per soil test. For nitrogen deficiency: top-dress urea at 25-30 kg/hectare.",
         color_analysis: colorAnalysis,
-        mode: "fallback_heuristic"
+        mode: "fallback_heuristic",
+        model_status: this.runtimeMode,
+        ml_runtime_used: false
       };
     }
     // Brown/dark spots → fungal infection
     else if (colorAnalysis.brown_ratio > 0.15) {
       diagnosis = {
+        crop: crop,
         disease_name: `${crop.charAt(0).toUpperCase() + crop.slice(1)} — Possible Fungal Infection (Brown Spots)`,
         confidence: "Low (heuristic — " + Math.round(colorAnalysis.brown_ratio * 100) + "% brown spots detected)",
         severity: "High",
@@ -261,12 +284,15 @@ class CropClassifier {
         organic_remedy: "Spray neem oil at 5ml/liter. Apply Trichoderma viride as biocontrol. Remove and burn infected leaves.",
         chemical_remedy: "Apply carbendazim at 1g/liter or mancozeb at 2.5g/liter. Observe 14-day pre-harvest interval.",
         color_analysis: colorAnalysis,
-        mode: "fallback_heuristic"
+        mode: "fallback_heuristic",
+        model_status: this.runtimeMode,
+        ml_runtime_used: false
       };
     }
     // Mostly green → healthy
     else if (colorAnalysis.green_ratio > 0.50) {
       diagnosis = {
+        crop: crop,
         disease_name: `${crop.charAt(0).toUpperCase() + crop.slice(1)} — Appears Healthy`,
         confidence: "Medium (heuristic — " + Math.round(colorAnalysis.green_ratio * 100) + "% healthy green detected)",
         severity: "None",
@@ -274,7 +300,9 @@ class CropClassifier {
         organic_remedy: "Continue regular monitoring. Maintain balanced irrigation and nutrition.",
         chemical_remedy: "No treatment needed. Continue regular farm practices.",
         color_analysis: colorAnalysis,
-        mode: "fallback_heuristic"
+        mode: "fallback_heuristic",
+        model_status: this.runtimeMode,
+        ml_runtime_used: false
       };
     }
 
@@ -361,7 +389,7 @@ class CropClassifier {
    * @returns {boolean} True if real ML model is loaded
    */
   isMlMode() {
-    return this.modelLoaded;
+    return this.modelLoaded && !!this.classifier && this.runtimeMode === "tflite_mediapipe";
   }
 }
 

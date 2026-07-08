@@ -49,24 +49,27 @@ const ram = navigator.deviceMemory || 2; // GB, not precise
 - **Acceleration:** WebGPU (preferred) or WebGL (fallback)
 - **Size:** ~1.4GB (one-time download)
 - **Cache:** Browser Cache API (`gemma-model-cache`)
+- **Grounding:** Compact local crop facts from IndexedDB are passed to Sastri as context. They are not a separate chatbot or replacement for Gemma.
+- **Hosting:** Production model URL is provided by `/agui/model_config.js`, normally pointing at `gs://<assets-bucket>/models/gemma-4-2b-it-gpu-int4.bin` through `https://storage.googleapis.com/...`.
 
 ### Current Status
 
 | Component | Status |
 |-----------|--------|
 | `loadLlm()` | ⚠️ Stub — tries to fetch from `/models/gemma-4-2b-it-gpu-int4.bin` (not bundled) |
-| `generateText()` | ⚠️ Stub — uses hardcoded `offlineDatabase` responses instead of real model |
+| `generateText()` | ⚠️ Stub — uses compact local crop facts and deterministic Sastri fallback instead of real model inference |
 | Model binary | ❌ Not bundled |
 | WebGPU detection | ✅ Working |
 | Model download UI | ⚠️ Fake progress bar |
 
 ### Production Requirements
 
-1. Host Gemma-4-2B INT4 model on CDN or Google Cloud Storage
+1. Upload Gemma-4-2B INT4 to the Terraform-created assets bucket under `models/gemma-4-2b-it-gpu-int4.bin`
 2. Implement real `@mediapipe/tasks-genai` Web LLM API integration
-3. Add one-time download prompt with storage warning (~1.4GB)
-4. Graceful fallback for devices without WebGPU
-5. Keep rule-based engine as tier-3 fallback
+3. Pass farmer context + compact crop facts into Gemma for grounding
+4. Add one-time download prompt with storage warning (~1.4GB)
+5. Graceful fallback for devices without WebGPU
+6. Keep deterministic local facts fallback as tier-3 behavior
 
 ## TFLite Crop Disease Classifier
 
@@ -78,14 +81,16 @@ const ram = navigator.deviceMemory || 2; // GB, not precise
 - **Model:** PlantVillage-trained TFLite model (38 disease labels)
 - **Size:** ~15MB
 - **Fallback:** Color heuristic (for devices without WebGPU/WebGL)
+- **Hosting:** Production model URL is provided by `/agui/model_config.js`, normally pointing at `gs://<assets-bucket>/models/crop_disease_classifier.tflite` through `https://storage.googleapis.com/...`.
 
 ### Current Status
 
 | Component | Status |
 |-----------|--------|
-| `loadClassifier()` | ✅ Working — loads TFLite model if available, falls back gracefully |
-| `classifyImage()` | ✅ Working — runs TFLite inference, falls back to color heuristic |
-| Model file | ❌ Not bundled (falls back to color heuristic automatically) |
+| `loadModel()` | ⚠️ Partial — can cache `/models/crop_disease_classifier.tflite` if present, but MediaPipe ImageClassifier initialization is not wired |
+| `classifyImage()` | ⚠️ Fallback only — routes to color heuristic until real MediaPipe inference is implemented |
+| Model file | ❌ Not bundled in `ui/models` |
+| Vision-to-Sastri handoff | ✅ Local classifier/heuristic result is passed to Krishi Sastri as text context |
 | 38 disease labels | ✅ Defined in `crop_classifier.js` |
 | Color heuristic | ✅ Working fallback (green=healthy, yellow=N deficiency, brown=fungal) |
 
