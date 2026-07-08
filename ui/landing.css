@@ -218,6 +218,13 @@ main {
   border-color: #cfded0;
 }
 
+.btn.google-fallback.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  color: #66736b;
+  border-color: #d7ded8;
+}
+
 .hero {
   border: 1px solid var(--line);
   border-radius: 18px;
@@ -795,6 +802,15 @@ img {
 #header-google-btn.ready,
 #hero-google-btn.ready {
   display: inline-flex;
+}
+
+#header-google-btn:not(:empty),
+#hero-google-btn:not(:empty) {
+  display: block;
+  max-width: 320px;
+  color: #66736b;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 #header-google-btn,

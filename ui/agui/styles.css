@@ -287,6 +287,38 @@ body {
   border-radius: var(--radius-m) var(--radius-m) var(--radius-m) 4px;
 }
 
+.model-progress-label {
+  font-weight: 700;
+  font-style: normal;
+  color: var(--text-main);
+}
+
+.model-progress-track {
+  width: 100%;
+  height: 8px;
+  margin-top: 0.55rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid var(--border);
+}
+
+.model-progress-fill {
+  height: 100%;
+  min-width: 8%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+
+.model-progress-hint {
+  margin-top: 0.45rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  font-style: normal;
+  color: var(--text-sub);
+}
+
 .speak-msg-btn {
   opacity: 0.5;
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -742,6 +774,17 @@ body {
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--border);
   background-color: var(--sidebar-bg);
+}
+
+.onboarding-consent-modal {
+  max-width: 440px;
+}
+
+.onboarding-consent-text {
+  margin: 0;
+  padding: 0 1.5rem 1rem;
+  color: var(--text-sub);
+  line-height: 1.5;
 }
 
 .fab-btn.success {

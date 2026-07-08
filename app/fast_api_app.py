@@ -17,6 +17,7 @@ import hmac
 import json
 import os
 import re
+import socket
 import tempfile
 import time
 from datetime import datetime
@@ -45,7 +46,7 @@ from pydantic import BaseModel, Field
 from app.app_utils.telemetry import setup_telemetry
 from app.app_utils.typing import Feedback
 from app.app_utils.user_content_storage import upload_user_content
-from data import db_manager
+from data import db_manager, firestore_manager
 from data.db_manager import get_latest_soil_report, get_soil_reports, save_soil_report
 
 setup_telemetry()
@@ -194,14 +195,6 @@ def _is_local_browser_origin(origin: str) -> bool:
 def _google_auth_disabled_reason(request: Request, client_id: str) -> str:
     if not client_id:
         return "Google OIDC client ID is not configured."
-    if _is_local_browser_origin(_request_origin(request)) and not _is_truthy_env(
-        "GOOGLE_OIDC_ALLOW_LOCALHOST"
-    ):
-        return (
-            "Google OIDC is disabled for localhost. Add http://localhost:8000 "
-            "to the OAuth client's Authorized JavaScript origins and set "
-            "GOOGLE_OIDC_ALLOW_LOCALHOST=1 to test Google sign-in locally."
-        )
     return ""
 
 
@@ -584,6 +577,10 @@ def model_config() -> dict:
         "model_load_timeout_ms": int(
             os.getenv("KRISHI_MODEL_LOAD_TIMEOUT_MS", "30000")
         ),
+        "model_download_retries": int(os.getenv("KRISHI_MODEL_DOWNLOAD_RETRIES", "5")),
+        "model_download_retry_delay_ms": int(
+            os.getenv("KRISHI_MODEL_DOWNLOAD_RETRY_DELAY_MS", "3000")
+        ),
         "model_init_timeout_ms": int(
             os.getenv("KRISHI_MODEL_INIT_TIMEOUT_MS", "45000")
         ),
@@ -612,6 +609,8 @@ def model_config_js() -> Response:
         + "window.KRISHI_CROP_CLASSIFIER_MODEL_URL = window.KRISHI_MODEL_CONFIG.crop_classifier_model_url;\n"
         + "window.KRISHI_LITERT_LM_CORE_URL = window.KRISHI_MODEL_CONFIG.litert_lm_core_url;\n"
         + "window.KRISHI_MODEL_LOAD_TIMEOUT_MS = window.KRISHI_MODEL_CONFIG.model_load_timeout_ms;\n"
+        + "window.KRISHI_MODEL_DOWNLOAD_RETRIES = window.KRISHI_MODEL_CONFIG.model_download_retries;\n"
+        + "window.KRISHI_MODEL_DOWNLOAD_RETRY_DELAY_MS = window.KRISHI_MODEL_CONFIG.model_download_retry_delay_ms;\n"
         + "window.KRISHI_MODEL_INIT_TIMEOUT_MS = window.KRISHI_MODEL_CONFIG.model_init_timeout_ms;\n"
         + "window.KRISHI_MODEL_GENERATION_TIMEOUT_MS = window.KRISHI_MODEL_CONFIG.model_generation_timeout_ms;\n"
         + "window.KRISHI_MODEL_ANSWER_TIMEOUT_MS = window.KRISHI_MODEL_CONFIG.model_answer_timeout_ms;\n"
@@ -643,29 +642,91 @@ def _save_profile_impl(farmer_id: str, payload: dict) -> dict:
     return {"status": "success", "field": res}
 
 
+def _firestore_emulator_is_unavailable() -> bool:
+    emulator_host = os.getenv("FIRESTORE_EMULATOR_HOST")
+    if not emulator_host:
+        return False
+    host, _, port_value = emulator_host.partition(":")
+    try:
+        port = int(port_value or "8080")
+        with socket.create_connection((host or "127.0.0.1", port), timeout=0.25):
+            return False
+    except OSError:
+        return True
+
+
+def _local_profile_response(farmer_id: str) -> dict:
+    return {
+        "farmer_id": farmer_id,
+        "name": "Local Farmer",
+        "language": "Hindi",
+        "fields": [
+            {
+                "field_id": "local_field",
+                "name": "Local Field",
+                "soil_type": "Alluvial",
+                "acres": 5.0,
+                "irrigation_type": "Drip",
+                "plantings": [
+                    {
+                        "planting_id": "local_planting",
+                        "crop_type": "Corn",
+                        "stage": "germination",
+                        "nitrogen_ppm": 40.0,
+                        "moisture_pct": 45.0,
+                        "health_pct": 100.0,
+                    }
+                ],
+            }
+        ],
+        "storage_mode": "local_emulator_unavailable",
+        "warning": "Firestore emulator is not reachable; using browser/local profile data.",
+    }
+
+
+def _local_profile_save_response(payload: dict) -> dict:
+    return {
+        "status": "local_only",
+        "field": {
+            "field_id": "local_field",
+            "planting_id": "local_planting",
+            "name": payload.get("field1_name")
+            or payload.get("farmer_name")
+            or "Local Field",
+            "crop_type": payload.get("primary_crop") or "Corn",
+        },
+        "warning": "Firestore emulator is not reachable; profile was kept in the browser for this local session.",
+    }
+
+
 def _save_language_impl(farmer_id: str, payload: dict) -> dict:
     language = payload.get("language") or "English"
-    conn = db_manager.get_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute(
-            "UPDATE farmers SET language = ? WHERE farmer_id = ?", (language, farmer_id)
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    if _firestore_emulator_is_unavailable():
+        return {
+            "status": "local_only",
+            "language": language,
+            "warning": "Firestore emulator is not reachable; language was kept in the browser for this local session.",
+        }
+    db = firestore_manager._get_firestore()
+    db.collection("farmers").document(farmer_id).set(
+        {"farmer_id": farmer_id, "language": language}, merge=True
+    )
     return {"status": "success"}
 
 
 @app.get("/api/profile/user")
 def get_current_profile(request: Request):
     farmer_id = _resolve_farmer_id(request, GUEST_FARMER_ID)
+    if _firestore_emulator_is_unavailable():
+        return _local_profile_response(farmer_id)
     return db_manager.get_profile_data(farmer_id)
 
 
 @app.post("/api/profile/user")
 def save_current_profile(request: Request, payload: dict = Body(...)):
     farmer_id = _resolve_farmer_id(request, GUEST_FARMER_ID)
+    if _firestore_emulator_is_unavailable():
+        return _local_profile_save_response(payload)
     return _save_profile_impl(farmer_id, payload)
 
 
@@ -678,12 +739,16 @@ def save_current_language(request: Request, payload: dict = Body(...)):
 @app.get("/api/profile/{farmer_id}")
 def get_profile(farmer_id: str, request: Request):
     resolved_farmer_id = _resolve_farmer_id(request, farmer_id)
+    if _firestore_emulator_is_unavailable():
+        return _local_profile_response(resolved_farmer_id)
     return db_manager.get_profile_data(resolved_farmer_id)
 
 
 @app.post("/api/profile/{farmer_id}")
 def save_profile(farmer_id: str, request: Request, payload: dict = Body(...)):
     resolved_farmer_id = _resolve_farmer_id(request, farmer_id)
+    if _firestore_emulator_is_unavailable():
+        return _local_profile_save_response(payload)
     return _save_profile_impl(resolved_farmer_id, payload)
 
 

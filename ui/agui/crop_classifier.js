@@ -20,6 +20,8 @@ class CropClassifier {
     this.modelUrl = window.KRISHI_CROP_CLASSIFIER_MODEL_URL || "/models/crop_disease_classifier.tflite";
     this.labels = [];
     this.onProgressCallback = null;
+    this.modelDownloadRetries = Number(window.KRISHI_MODEL_DOWNLOAD_RETRIES || 5);
+    this.modelDownloadRetryDelayMs = Number(window.KRISHI_MODEL_DOWNLOAD_RETRY_DELAY_MS || 3000);
 
     // Disease label mapping (PlantVillage 38-class model)
     // Maps model output indices to human-readable disease names + treatment hints
@@ -98,6 +100,78 @@ class CropClassifier {
     return hasWebGPU || hasWebGL;
   }
 
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  parseContentRangeTotal(value) {
+    const match = String(value || "").match(/\/(\d+)$/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  async downloadModelBlob(url, contentLengthHint = 15000000) {
+    let receivedLength = 0;
+    let contentLength = 0;
+    let chunks = [];
+    let attempt = 0;
+
+    while (attempt <= this.modelDownloadRetries) {
+      const headers = {};
+      if (receivedLength > 0) {
+        headers.Range = `bytes=${receivedLength}-`;
+      }
+
+      try {
+        const response = await fetch(url, { headers });
+        const isResume = receivedLength > 0;
+        const supportsResume = response.status === 206;
+
+        if (!response.ok && !supportsResume) {
+          throw new Error(`Model download failed: ${response.status}`);
+        }
+
+        if (isResume && !supportsResume) {
+          console.warn('[CropClassifier] Model host ignored Range resume. Restarting model download from byte 0.');
+          receivedLength = 0;
+          chunks = [];
+        }
+
+        const contentRangeTotal = this.parseContentRangeTotal(response.headers.get('Content-Range'));
+        const headerLength = Number(response.headers.get('Content-Length')) || 0;
+        contentLength = contentRangeTotal || (receivedLength + headerLength) || contentLength || contentLengthHint;
+
+        const reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          receivedLength += value.length;
+          const percent = contentLength ? Math.round((receivedLength / contentLength) * 100) : 0;
+          if (this.onProgressCallback) this.onProgressCallback(Math.max(0, Math.min(100, percent)));
+        }
+
+        if (!contentLength || receivedLength >= contentLength) {
+          if (this.onProgressCallback) this.onProgressCallback(100);
+          return new Blob(chunks);
+        }
+
+        throw new Error(`Model stream ended early at ${receivedLength}/${contentLength} bytes`);
+      } catch (err) {
+        attempt += 1;
+        if (attempt > this.modelDownloadRetries) {
+          throw err;
+        }
+        console.warn(
+          `[CropClassifier] Model download interrupted at ${receivedLength} bytes. Retrying ${attempt}/${this.modelDownloadRetries}...`,
+          err
+        );
+        await this.sleep(this.modelDownloadRetryDelayMs * attempt);
+      }
+    }
+
+    throw new Error('Crop classifier download retry loop ended unexpectedly');
+  }
+
   /**
    * Loads the TFLite crop disease classification model.
    *
@@ -152,24 +226,7 @@ class CropClassifier {
       }
 
       console.log('[CropClassifier] Downloading crop disease model (~15MB)...');
-      const response = await fetch(MODEL_URL);
-      if (!response.ok) throw new Error(`Model download failed: ${response.status}`);
-
-      const reader = response.body.getReader();
-      const contentLength = +response.headers.get('Content-Length') || 15000000;
-      let receivedLength = 0;
-      const chunks = [];
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        receivedLength += value.length;
-        const percent = Math.round((receivedLength / contentLength) * 100);
-        if (this.onProgressCallback) this.onProgressCallback(percent);
-      }
-
-      const modelBlob = new Blob(chunks);
+      const modelBlob = await this.downloadModelBlob(MODEL_URL);
       await cache.put(CACHE_KEY, new Response(modelBlob));
       console.log('[CropClassifier] Model cached successfully.');
 

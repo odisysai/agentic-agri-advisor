@@ -15,6 +15,8 @@ class LocalAiEngine {
     this.llmMode = "not_loaded";
     this.modelInitTimeoutMs = Number(window.KRISHI_MODEL_INIT_TIMEOUT_MS || 45000);
     this.generationTimeoutMs = Number(window.KRISHI_MODEL_GENERATION_TIMEOUT_MS || 20000);
+    this.modelDownloadRetries = Number(window.KRISHI_MODEL_DOWNLOAD_RETRIES || 5);
+    this.modelDownloadRetryDelayMs = Number(window.KRISHI_MODEL_DOWNLOAD_RETRY_DELAY_MS || 3000);
     this.classifierLoaded = false;
     this.webGpuSupported = false;
     this.onProgressCallback = null;
@@ -67,6 +69,83 @@ class LocalAiEngine {
     if (this.onProgressCallback) {
       this.onProgressCallback(Math.max(0, Math.min(100, Math.round(progress))), stage);
     }
+  }
+
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  parseContentRangeTotal(value) {
+    const match = String(value || "").match(/\/(\d+)$/);
+    return match ? Number(match[1]) : 0;
+  }
+
+  async downloadModelBlob(url, contentLengthHint = 1430000000) {
+    let receivedLength = 0;
+    let contentLength = 0;
+    let chunks = [];
+    let attempt = 0;
+
+    while (attempt <= this.modelDownloadRetries) {
+      const headers = {};
+      if (receivedLength > 0) {
+        headers.Range = `bytes=${receivedLength}-`;
+      }
+
+      try {
+        const response = await fetch(url, { headers });
+        const isResume = receivedLength > 0;
+        const supportsResume = response.status === 206;
+
+        if (!response.ok && !supportsResume) {
+          throw new Error(`Failed to fetch model: ${response.statusText || response.status}`);
+        }
+
+        if (isResume && !supportsResume) {
+          console.warn('[Local AI] Model host ignored Range resume. Restarting model download from byte 0.');
+          receivedLength = 0;
+          chunks = [];
+        }
+
+        const contentRangeTotal = this.parseContentRangeTotal(response.headers.get('Content-Range'));
+        const headerLength = Number(response.headers.get('Content-Length')) || 0;
+        contentLength = contentRangeTotal || (receivedLength + headerLength) || contentLength || contentLengthHint;
+
+        const reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          chunks.push(value);
+          receivedLength += value.length;
+
+          const percent = contentLength
+            ? Math.round((receivedLength / contentLength) * 100)
+            : 0;
+          this.reportProgress(percent, "downloading");
+        }
+
+        if (!contentLength || receivedLength >= contentLength) {
+          this.reportProgress(100, "downloaded");
+          return new Blob(chunks);
+        }
+
+        throw new Error(`Model stream ended early at ${receivedLength}/${contentLength} bytes`);
+      } catch (err) {
+        attempt += 1;
+        if (attempt > this.modelDownloadRetries) {
+          throw err;
+        }
+        console.warn(
+          `[Local AI] Model download interrupted at ${receivedLength} bytes. Retrying ${attempt}/${this.modelDownloadRetries}...`,
+          err
+        );
+        this.reportProgress(contentLength ? Math.round((receivedLength / contentLength) * 100) : 0, "retrying");
+        await this.sleep(this.modelDownloadRetryDelayMs * attempt);
+      }
+    }
+
+    throw new Error('Model download retry loop ended unexpectedly');
   }
 
   /**
@@ -334,28 +413,8 @@ class LocalAiEngine {
 
       console.log(`[Local AI] Model cache miss. Downloading ${this.modelName} from ${MODEL_URL}...`);
 
-      const response = await fetch(MODEL_URL);
-      if (!response.ok) throw new Error(`Failed to fetch model: ${response.statusText}`);
-
-      const reader = response.body.getReader();
-      const contentLength = +response.headers.get('Content-Length') || 1430000000; // fallback approx size for the local Gemma model
-      let receivedLength = 0;
-      let chunks = [];
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        chunks.push(value);
-        receivedLength += value.length;
-
-        const percent = Math.round((receivedLength / contentLength) * 100);
-        this.reportProgress(percent, "downloading");
-      }
-
-      // Concatenate chunks and store in cache
+      const modelBlob = await this.downloadModelBlob(MODEL_URL);
       console.log('[Local AI] Compiling download stream chunks...');
-      const modelBlob = new Blob(chunks);
       await cache.put(CACHE_KEY, new Response(modelBlob));
 
       console.log(`[Local AI] Local ${this.modelName} model cached. Initializing LiteRT-LM...`);

@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const aguiCanvas = document.getElementById('agui-canvas');
   let sastriModelLoadPromise = null;
   let sastriModelReadyNoticeShown = false;
+  let sastriModelDownloadIssueNoticeShown = false;
+  let currentAuthDisplayName = '';
 
   function normalizeLanguageCode(language) {
     const value = (language || 'en').toString().trim();
@@ -21,7 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function farmerDisplayNameForLanguage(language) {
-    // Try to get the actual farmer name from profile or auth
+    const authName = currentAuthDisplayName || localStorage.getItem('aaa_auth_display_name') || '';
+    if (authName.trim()) return authName.trim();
+
+    // Try to get the actual farmer name from profile.
     try {
       const savedProfile = localStorage.getItem('aaa_farmer_profile');
       if (savedProfile) {
@@ -39,6 +44,37 @@ document.addEventListener('DOMContentLoaded', () => {
     if (code === 'hi' || code === 'mr') return 'माधव जी';
     if (code === 'te') return 'మాధవ్ జీ';
     return 'Madhav Ji';
+  }
+
+  function clearCachedFarmProfile() {
+    [
+      'aaa_farmer_profile',
+      'aaa_fields_cached',
+      'active_field_id',
+      'active_planting_id'
+    ].forEach(key => localStorage.removeItem(key));
+    activeFields = [];
+    activeFieldId = null;
+    activePlantingId = null;
+  }
+
+  function reconcileAuthProfileCache(me) {
+    if (!me?.authenticated || !me.user) return;
+    const userKey = `${me.profile_mode || 'user'}:${me.user.email || me.user.farmer_id || ''}`;
+    const previousOwner = localStorage.getItem('aaa_profile_owner');
+    if (previousOwner && previousOwner !== userKey) {
+      clearCachedFarmProfile();
+    }
+    localStorage.setItem('aaa_profile_owner', userKey);
+
+    if (me.profile_mode === 'logged_in') {
+      currentAuthDisplayName = (me.user.name || me.user.email || '').trim();
+      if (currentAuthDisplayName) {
+        localStorage.setItem('aaa_auth_display_name', currentAuthDisplayName);
+      }
+    } else if (!localStorage.getItem('aaa_auth_display_name')) {
+      currentAuthDisplayName = '';
+    }
   }
 
   function dataUrlToBase64(dataUrl) {
@@ -115,6 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const me = meResponse.ok ? await meResponse.json() : null;
 
       if (me?.authenticated) {
+        reconcileAuthProfileCache(me);
         const displayName = me.user?.name || me.user?.email || 'Logged In';
         const modeLabel = me.profile_mode === 'guest_user' ? 'Guest' : 'Signed In';
         authSlot.innerHTML = `
@@ -128,6 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
           logoutBtn.addEventListener('click', async () => {
             try {
               await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+              localStorage.removeItem('aaa_auth_display_name');
+              localStorage.removeItem('aaa_profile_owner');
               window.location.href = '/';
             } catch (err) {
               console.warn('Logout failed:', err);
@@ -1645,14 +1684,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Bind DB values to farmer_profile schema form fields
   function bindProfileState(schema) {
     const savedProfile = localStorage.getItem('aaa_farmer_profile');
-    if (!savedProfile) return;
+    const authName = currentAuthDisplayName || localStorage.getItem('aaa_auth_display_name') || '';
     try {
-      const profile = JSON.parse(savedProfile);
+      const profile = savedProfile ? JSON.parse(savedProfile) : {};
       schema.components.forEach(comp => {
         if (comp.type === 'form') {
           comp.fields.forEach(field => {
             if (profile[field.name]) {
               field.value = profile[field.name];
+            } else if (field.name === 'farmer_name' && authName.trim()) {
+              field.value = authName.trim();
             }
           });
         }
@@ -1828,6 +1869,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function sastriModelLoadingText(langCode, progress = null, stage = 'downloading') {
     const pct = Number.isFinite(progress) ? ` ${Math.max(0, Math.min(100, progress))}%` : '';
+    if (stage === 'retrying') {
+      const retryingCopy = {
+        hi: `नेटवर्क धीमा है। मॉडल डाउनलोड फिर से जारी है${pct}...`,
+        mr: `नेटवर्क धीमे आहे. मॉडेल डाउनलोड पुन्हा सुरू आहे${pct}...`,
+        te: `నెట్‌వర్క్ నెమ్మదిగా ఉంది. మోడల్ డౌన్‌లోడ్ మళ్లీ కొనసాగుతోంది${pct}...`,
+        sw: `Mtandao ni polepole. Upakuaji wa mfano unaendelea tena${pct}...`,
+        zu: `Inethiwekhi ihamba kancane. Ukulanda imodeli kuyaqhubeka futhi${pct}...`,
+        en: `Network is slow. Resuming model download${pct}...`
+      };
+      return retryingCopy[langCode] || retryingCopy.en;
+    }
+    if (stage === 'downloaded') {
+      const downloadedCopy = {
+        hi: 'मॉडल डाउनलोड पूरा हो गया है...',
+        mr: 'मॉडेल डाउनलोड पूर्ण झाले आहे...',
+        te: 'మోడల్ డౌన్‌లోడ్ పూర్తైంది...',
+        sw: 'Upakuaji wa mfano umekamilika...',
+        zu: 'Ukulanda imodeli kuqediwe...',
+        en: 'Model download complete...'
+      };
+      return downloadedCopy[langCode] || downloadedCopy.en;
+    }
     if (stage === 'initializing') {
       const initializingCopy = {
         hi: 'मॉडल डाउनलोड हो गया है, अब शुरू कर रहा हूँ...',
@@ -1897,14 +1960,44 @@ document.addEventListener('DOMContentLoaded', () => {
     return copy[langCode] || copy.en;
   }
 
+  function sastriModelDownloadIssueText(langCode) {
+    const copy = {
+      hi: {
+        title: 'स्थानीय मॉडल अभी तैयार नहीं',
+        toast: 'नेटवर्क के कारण डाउनलोड पूरा नहीं हो पाया। अगली बार फिर कोशिश होगी; तब तक विशेषज्ञ सलाह उपलब्ध है।'
+      },
+      mr: {
+        title: 'स्थानिक मॉडेल अजून तयार नाही',
+        toast: 'नेटवर्कमुळे डाउनलोड पूर्ण झाले नाही. पुढच्या वेळी पुन्हा प्रयत्न होईल; तोपर्यंत तज्ज्ञ सल्ला उपलब्ध आहे.'
+      },
+      te: {
+        title: 'స్థానిక మోడల్ ఇంకా సిద్ధం కాలేదు',
+        toast: 'నెట్‌వర్క్ కారణంగా డౌన్‌లోడ్ పూర్తి కాలేదు. తర్వాత మళ్లీ ప్రయత్నిస్తుంది; అప్పటివరకు నిపుణుల సలహా అందుబాటులో ఉంటుంది.'
+      },
+      sw: {
+        title: 'Mfano wa karibu haujawa tayari',
+        toast: 'Mtandao ulizuia upakuaji kukamilika. Tutajaribu tena baadaye; ushauri wa mtaalamu bado upo.'
+      },
+      zu: {
+        title: 'Imodeli yasendaweni ayikalungi',
+        toast: 'Inethiwekhi ivimbe ukulanda ukuthi kuqede. Sizozama futhi ngokuzayo; iseluleko sochwepheshe sisekhona.'
+      },
+      en: {
+        title: 'Local Model Not Ready',
+        toast: 'Network interrupted the download. The app will retry on the next ask; expert advice is still available.'
+      }
+    };
+    return copy[langCode] || copy.en;
+  }
+
   function sastriExpertRoutingText(langCode) {
     const copy = {
-      hi: 'स्थानीय मॉडल अभी डाउनलोड हो रहा है। इस सवाल को अभी कृषि विशेषज्ञ के पास भेज रहा हूँ।',
-      mr: 'स्थानिक मॉडेल अजून डाउनलोड होत आहे. हा प्रश्न आत्ता कृषी तज्ज्ञांकडे पाठवत आहे.',
-      te: 'స్థానిక మోడల్ ఇంకా డౌన్‌లోడ్ అవుతోంది. ఈ ప్రశ్నను ఇప్పుడు వ్యవసాయ నిపుణుడికి పంపుతున్నాను.',
-      sw: 'Mfano wa karibu bado unapakuliwa. Ninatuma swali hili kwa mtaalamu wa kilimo sasa.',
-      zu: 'Imodeli yasendaweni isalandiwa. Ngithumela lo mbuzo kuchwepheshe wezolimo manje.',
-      en: 'The local model is still downloading. I am sending this question to Krishi Bisesagya now.'
+      hi: 'स्थानीय मॉडल अभी डाउनलोड हो रहा है। तब तक इस सवाल को कृषि विशेषज्ञ के पास भेज रहा हूँ। डाउनलोड पीछे चलता रहेगा।',
+      mr: 'स्थानिक मॉडेल अजून डाउनलोड होत आहे. तोपर्यंत हा प्रश्न कृषी तज्ज्ञांकडे पाठवत आहे. डाउनलोड पार्श्वभूमीत सुरू राहील.',
+      te: 'స్థానిక మోడల్ ఇంకా డౌన్‌లోడ్ అవుతోంది. అప్పటివరకు ఈ ప్రశ్నను వ్యవసాయ నిపుణుడికి పంపుతున్నాను. డౌన్‌లోడ్ నేపథ్యంలో కొనసాగుతుంది.',
+      sw: 'Mfano wa karibu bado unapakuliwa. Kwa sasa ninatuma swali hili kwa mtaalamu wa kilimo. Upakuaji utaendelea nyuma.',
+      zu: 'Imodeli yasendaweni isalandiwa. Okwamanje ngithumela lo mbuzo kuchwepheshe wezolimo. Ukulanda kuzoqhubeka ngemuva.',
+      en: 'The local model is still downloading. Until it is ready, I am sending this question to Krishi Bisesagya. The download will continue in the background.'
     };
     return copy[langCode] || copy.en;
   }
@@ -1915,6 +2008,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const copy = sastriModelReadyNoticeText(langCode);
     showToast(copy.title, copy.toast, 'success');
     appendMessage('System', copy.chat, 'system-msg');
+  }
+
+  function showSastriModelDownloadIssueNotice(langCode) {
+    if (sastriModelDownloadIssueNoticeShown) return;
+    sastriModelDownloadIssueNoticeShown = true;
+    const copy = sastriModelDownloadIssueText(langCode);
+    showToast(copy.title, copy.toast, 'warning');
   }
 
   function sastriInitialThinkingText(langCode) {
@@ -1951,6 +2051,36 @@ document.addEventListener('DOMContentLoaded', () => {
     messageText.textContent = text;
   }
 
+  function updateModelProgressBubble(thinkingBubble, langCode, progress = null, stage = 'downloading') {
+    if (!thinkingBubble) return;
+    const messageText = thinkingBubble.querySelector('.message-text') || thinkingBubble;
+    const pct = Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : null;
+    const label = document.createElement('div');
+    label.className = 'model-progress-label';
+    label.textContent = sastriModelLoadingText(langCode, pct, stage);
+
+    const track = document.createElement('div');
+    track.className = 'model-progress-track';
+    const fill = document.createElement('div');
+    fill.className = 'model-progress-fill';
+    fill.style.width = `${pct ?? 8}%`;
+    track.appendChild(fill);
+
+    const hint = document.createElement('div');
+    hint.className = 'model-progress-hint';
+    const hintCopy = {
+      hi: 'धीमे नेटवर्क पर इसमें समय लग सकता है। आप तब तक विशेषज्ञ सलाह का उपयोग कर सकते हैं।',
+      mr: 'धीमे नेटवर्कवर याला वेळ लागू शकतो. तोपर्यंत तुम्ही तज्ज्ञ सल्ला वापरू शकता.',
+      te: 'నెమ్మదిగా ఉన్న నెట్‌వర్క్‌లో దీనికి సమయం పట్టవచ్చు. అప్పటివరకు నిపుణుల సలహా ఉపయోగించవచ్చు.',
+      sw: 'Kwenye mtandao polepole inaweza kuchukua muda. Unaweza kutumia ushauri wa mtaalamu kwa sasa.',
+      zu: 'Kunethiwekhi ehamba kancane kungathatha isikhathi. Ungasebenzisa iseluleko sochwepheshe okwamanje.',
+      en: 'On a slow network this can take time. You can use expert advice until local advisor is ready.'
+    };
+    hint.textContent = hintCopy[langCode] || hintCopy.en;
+
+    messageText.replaceChildren(label, track, hint);
+  }
+
   function removeStaleSastriThinkingBubbles(activeBubble = null) {
     if (!chatMessages) return;
     chatMessages.querySelectorAll('.message.thinking-msg').forEach(node => {
@@ -1966,7 +2096,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!localAi || localAi.llmLoaded) return true;
 
     const timeoutMs = Number(window.KRISHI_MODEL_FOREGROUND_WAIT_MS || 8000);
-    updateThinkingBubble(thinkingBubble, sastriModelLoadingText(preferredLang));
+    updateModelProgressBubble(thinkingBubble, preferredLang);
     let activeProgress = true;
 
     let timeoutId = null;
@@ -1976,7 +2106,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const progressHandler = (progress, stage) => {
       if (!activeProgress) return;
-      updateThinkingBubble(thinkingBubble, sastriModelLoadingText(preferredLang, progress, stage));
+      updateModelProgressBubble(thinkingBubble, preferredLang, progress, stage);
     };
 
     if (sastriModelLoadPromise && typeof progressHandler === 'function') {
@@ -1988,6 +2118,8 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(loaded => {
           if (loaded) {
             showSastriModelReadyNotice(preferredLang);
+          } else if (navigator.onLine) {
+            showSastriModelDownloadIssueNotice(preferredLang);
           }
           return !!loaded;
         })
@@ -2041,6 +2173,91 @@ document.addEventListener('DOMContentLoaded', () => {
     const messageText = thinkingBubble.querySelector('.message-text') || thinkingBubble;
     messageText.innerHTML = applySafetyKernelFilter(reply);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function showOnboardingConsentPrompt() {
+    if (document.getElementById('onboarding-consent-overlay')) return;
+    if (sessionStorage.getItem('onboarding_consent_seen') === '1') return;
+
+    const langCode = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language')) || 'en';
+    const copy = {
+      en: {
+        title: 'Set Up Farm Profile?',
+        text: 'To personalize advice, Krishi Sampark can ask for your crop, soil, field size, and location. You can skip this and still use the app.',
+        yes: 'Set Up Now',
+        no: 'Skip for Now',
+        toast: 'You can add your farm profile later from More > Profile.'
+      },
+      hi: {
+        title: 'खेत प्रोफाइल बनाएं?',
+        text: 'बेहतर सलाह के लिए कृषि संपर्क आपकी फसल, मिट्टी, खेत का आकार और स्थान पूछ सकता है। आप इसे छोड़कर भी ऐप इस्तेमाल कर सकते हैं।',
+        yes: 'अभी सेट करें',
+        no: 'अभी छोड़ें',
+        toast: 'आप बाद में More > Profile से खेत प्रोफाइल जोड़ सकते हैं।'
+      },
+      mr: {
+        title: 'शेत प्रोफाइल तयार करायचे?',
+        text: 'वैयक्तिक सल्ल्यासाठी कृषी संपर्क तुमचे पीक, माती, क्षेत्रफळ आणि ठिकाण विचारू शकते. तुम्ही हे टाळूनही अॅप वापरू शकता.',
+        yes: 'आता सेट करा',
+        no: 'आता टाळा',
+        toast: 'तुम्ही नंतर More > Profile मधून शेत प्रोफाइल जोडू शकता.'
+      },
+      te: {
+        title: 'పొలం ప్రొఫైల్ ఏర్పాటు చేయాలా?',
+        text: 'వ్యక్తిగత సలహా కోసం కృషి సంపర్క్ మీ పంట, మట్టి, పొలం పరిమాణం, ప్రదేశం అడగవచ్చు. మీరు దీన్ని దాటవేసి కూడా యాప్ వాడవచ్చు.',
+        yes: 'ఇప్పుడే ఏర్పాటు చేయండి',
+        no: 'ఇప్పుడే దాటవేయండి',
+        toast: 'తర్వాత More > Profile నుండి పొలం ప్రొఫైల్ జోడించవచ్చు.'
+      },
+      sw: {
+        title: 'Unda Wasifu wa Shamba?',
+        text: 'Ili kubinafsisha ushauri, Krishi Sampark inaweza kuuliza zao, udongo, ukubwa wa shamba, na eneo. Unaweza kuruka hatua hii na bado utumie programu.',
+        yes: 'Unda Sasa',
+        no: 'Ruka kwa Sasa',
+        toast: 'Unaweza kuongeza wasifu baadaye kupitia More > Profile.'
+      },
+      zu: {
+        title: 'Setha Iphrofayela Yesimu?',
+        text: 'Ukuze kwenziwe usizo oluqondene nawe, i-Krishi Sampark ingabuza isilimo, umhlabathi, ubukhulu besimu, nendawo. Ungakweqa lokhu futhi usebenzise uhlelo.',
+        yes: 'Setha Manje',
+        no: 'Yeqa Okwamanje',
+        toast: 'Ungangeza iphrofayela kamuva ku-More > Profile.'
+      }
+    };
+    const msg = copy[langCode] || copy.en;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'onboarding-consent-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.style.display = 'flex';
+    overlay.style.zIndex = '10000';
+    overlay.innerHTML = `
+      <div class="modal-content onboarding-consent-modal" role="dialog" aria-modal="true" aria-labelledby="onboarding-consent-title">
+        <header class="modal-header">
+          <h3 id="onboarding-consent-title">${msg.title}</h3>
+        </header>
+        <p class="onboarding-consent-text">${msg.text}</p>
+        <div class="modal-footer">
+          <button id="onboarding-consent-yes" class="a2ui-btn">${msg.yes}</button>
+          <button id="onboarding-consent-no" class="a2ui-btn ghost">${msg.no}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#onboarding-consent-yes')?.addEventListener('click', () => {
+      sessionStorage.setItem('onboarding_consent_seen', '1');
+      overlay.remove();
+      localStorage.removeItem('nav_route_user');
+      window.switchTab('more', true);
+      loadSchema('farmer_onboarding', 'more-canvas');
+    });
+
+    overlay.querySelector('#onboarding-consent-no')?.addEventListener('click', () => {
+      sessionStorage.setItem('onboarding_consent_seen', '1');
+      overlay.remove();
+      showToast('Profile', msg.toast, 'info');
+    });
   }
 
   // Advisor mode local answer — uses cached crop facts as grounding, then lets
@@ -2419,19 +2636,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 800);
       }).catch(e => console.warn('[Onboarding] fetchFieldsAndProfile failed:', e));
     } else {
-      // Check if the user has no fields (e.g., Google login with empty profile)
-      // Only run this check once at startup — don't override user actions later
+      // Ask consent before showing onboarding for a Google user with no farm fields.
       window._startupOnboardingCheckDone = false;
       fetchFieldsAndProfile().then(() => {
         if (window._startupOnboardingCheckDone) return;
         window._startupOnboardingCheckDone = true;
         if (activeFields.length === 0) {
-          localStorage.removeItem('nav_route_user');
-          setTimeout(() => {
-            window.switchTab('more', true);  // skip default schema load
-            loadSchema('farmer_onboarding', 'more-canvas');
-            showToast("Welcome!", "Please tell us about your farm to get personalized advice.", "info");
-          }, 600);
+          setTimeout(showOnboardingConsentPrompt, 600);
         }
       });
     }

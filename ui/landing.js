@@ -1,4 +1,6 @@
 (() => {
+  console.log('[Landing] landing.js v20 loaded');
+
   const modal = document.getElementById('guest-modal');
   const guestEmail = document.getElementById('guest-email');
   const guestName = document.getElementById('guest-name');
@@ -676,22 +678,38 @@
     modal.classList.add('hidden');
   }
 
-  function hasProfile(profile) {
-    return Boolean(profile && Array.isArray(profile.fields) && profile.fields.length > 0);
+  function showGoogleUnavailableGuestFlow(message) {
+    if (authStatus) {
+      authStatus.textContent = message || 'Google sign-in is not available here. Please continue as guest.';
+    }
+  }
+
+  function showGoogleConfigUnavailable(message) {
+    const text = message || 'Google sign-in is not available in this environment.';
+    if (authStatus) authStatus.textContent = 'Google sign-in is unavailable here. Please continue as guest.';
+    const visibleText = 'Google sign-in is unavailable here.';
+    [headerGoogleFallback, heroGoogleFallback].forEach((button) => {
+      if (!button) return;
+      button.disabled = true;
+      button.classList.add('is-disabled');
+      button.setAttribute('aria-disabled', 'true');
+      button.title = text;
+    });
+    [document.getElementById('hero-google-btn'), document.getElementById('header-google-btn')].forEach((node) => {
+      if (!node) return;
+      node.classList.remove('ready');
+      node.textContent = visibleText;
+      node.title = text;
+    });
   }
 
   async function routeAfterSession() {
-    const profileRes = await fetch('/api/profile/user', { credentials: 'include' });
-    if (!profileRes.ok) {
-      window.location.href = '/onboarding';
-      return;
+    try {
+      await fetch('/api/profile/user', { credentials: 'include' });
+    } catch (err) {
+      console.warn('Profile check after login failed; opening app anyway.', err);
     }
-    const profile = await profileRes.json();
-    if (hasProfile(profile)) {
-      window.location.href = '/app/home';
-      return;
-    }
-    window.location.href = '/onboarding';
+    window.location.href = '/app/home';
   }
 
   async function startGuest(optionalEmail) {
@@ -800,8 +818,7 @@
     });
 
     if (!response.ok) {
-      if (authStatus) authStatus.textContent = '';
-      alert('Google sign-in failed. Please try again.');
+      showGoogleUnavailableGuestFlow('Google sign-in is not available for this origin. Please continue as guest.');
       return;
     }
 
@@ -811,38 +828,15 @@
   let googleClientId = null;
   let googleInitialized = false;
 
-  function promptGoogle() {
-    if (authStatus) authStatus.textContent = getText('landing.auth.signingInSecurely');
-    if (!googleInitialized || !window.google?.accounts?.id) {
-      // Google script not loaded yet or not initialized — try to initialize first
-      if (googleClientId && window.google?.accounts?.id) {
-        google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: async (resp) => {
-            if (!resp || !resp.credential) {
-              if (authStatus) authStatus.textContent = '';
-              return;
-            }
-            await googleLogin(resp.credential);
-          }
-        });
-        googleInitialized = true;
-      } else {
-        // Google script not loaded — show alert
-        if (authStatus) authStatus.textContent = '';
-        alert('Google sign-in is not available. Please continue as guest.');
-        return;
-      }
-    }
-    window.google?.accounts?.id?.prompt();
-  }
-
-  function renderGoogleButtons(clientId) {
-    if (!window.google?.accounts?.id || !clientId) return;
-
+  function initializeGoogleIdentity(clientId) {
+    if (!window.google?.accounts?.id || !clientId) return false;
     googleClientId = clientId;
+    google.accounts.id.disableAutoSelect();
     google.accounts.id.initialize({
       client_id: clientId,
+      auto_select: false,
+      cancel_on_tap_outside: false,
+      use_fedcm_for_prompt: false,
       callback: async (resp) => {
         if (!resp || !resp.credential) {
           if (authStatus) authStatus.textContent = '';
@@ -852,6 +846,22 @@
       }
     });
     googleInitialized = true;
+    return true;
+  }
+
+  function promptGoogle() {
+    if (!googleInitialized && googleClientId && window.google?.accounts?.id) {
+      renderGoogleButtons(googleClientId);
+    }
+    if (googleInitialized && authStatus) {
+      authStatus.textContent = 'Please choose an account from the Google sign-in button.';
+      return;
+    }
+    showGoogleUnavailableGuestFlow('Google sign-in is not available here. Please continue as guest.');
+  }
+
+  function renderGoogleButtons(clientId) {
+    if (!initializeGoogleIdentity(clientId)) return;
 
     const buttonTargets = [
       document.getElementById('hero-google-btn'),
@@ -867,7 +877,9 @@
         size: 'large',
         shape: 'pill',
         text: 'signin_with',
-        width: 220
+        type: 'standard',
+        logo_alignment: 'right',
+        width: 260
       });
     });
 
@@ -879,6 +891,15 @@
     const configRes = await fetch('/api/auth/config', { credentials: 'include' });
     if (!configRes.ok) return;
     const config = await configRes.json();
+    console.log('[Landing] Google auth config:', {
+      enabled: Boolean(config?.enabled),
+      hasClientId: Boolean(config?.client_id),
+      disabledReason: config?.disabled_reason || ''
+    });
+    if (!config?.enabled) {
+      showGoogleConfigUnavailable(config?.disabled_reason || 'Google sign-in is not available in this environment.');
+      return;
+    }
     if (config?.enabled && config?.client_id) {
       googleClientId = config.client_id;
       // Wait for Google script to load, then render buttons
