@@ -986,13 +986,71 @@ document.addEventListener('DOMContentLoaded', () => {
     const hasTrigger = triggers.some(t => textLower.includes(t));
 
     if (hasTrigger && !textLower.includes('safety kernel')) {
+      const langCode = normalizeLanguageCode(localStorage.getItem('aaa_preferred_language')) || window.currentLanguageState?.code || 'en';
+      const safetyCopy = {
+        en: {
+          title: 'Agricultural Safety Warnings',
+          ppeLabel: 'PPE',
+          ppe: 'Wear face mask, goggles, and protective gloves during application.',
+          windLabel: 'Wind Limit',
+          wind: 'Ensure wind speed is under 15 km/h to prevent chemical drift.',
+          runoffLabel: 'Runoff Risk',
+          runoff: 'Confirm zero rain forecast for the next 24 hours to prevent chemical runoff.'
+        },
+        hi: {
+          title: 'कृषि सुरक्षा चेतावनी',
+          ppeLabel: 'सुरक्षा उपकरण',
+          ppe: 'छिड़काव के समय मास्क, चश्मा और दस्ताने पहनें।',
+          windLabel: 'हवा की सीमा',
+          wind: 'रसायन उड़ने से रोकने के लिए हवा 15 किमी/घंटा से कम हो।',
+          runoffLabel: 'बहाव जोखिम',
+          runoff: 'अगले 24 घंटे बारिश न हो, यह पक्का करें।'
+        },
+        mr: {
+          title: 'कृषी सुरक्षा सूचना',
+          ppeLabel: 'सुरक्षा साधने',
+          ppe: 'फवारणी करताना मास्क, चष्मा आणि हातमोजे वापरा.',
+          windLabel: 'वाऱ्याची मर्यादा',
+          wind: 'रसायन उडू नये म्हणून वारा 15 किमी/तासपेक्षा कमी असावा.',
+          runoffLabel: 'वाहून जाण्याचा धोका',
+          runoff: 'पुढील 24 तास पाऊस नाही याची खात्री करा.'
+        },
+        te: {
+          title: 'వ్యవసాయ భద్రతా హెచ్చరికలు',
+          ppeLabel: 'రక్షణ పరికరాలు',
+          ppe: 'పిచికారీ సమయంలో మాస్క్, కళ్లద్దాలు, గ్లోవ్స్ ధరించండి.',
+          windLabel: 'గాలి పరిమితి',
+          wind: 'రసాయనం ఎగరకుండా గాలి వేగం 15 కిమీ/గం కంటే తక్కువగా ఉండాలి.',
+          runoffLabel: 'నీటి ప్రవాహ ప్రమాదం',
+          runoff: 'తదుపరి 24 గంటల్లో వర్షం లేదని నిర్ధారించండి.'
+        },
+        sw: {
+          title: 'Tahadhari za Usalama wa Kilimo',
+          ppeLabel: 'Vifaa vya kinga',
+          ppe: 'Vaa barakoa, miwani, na glavu wakati wa kunyunyizia.',
+          windLabel: 'Kiwango cha upepo',
+          wind: 'Hakikisha upepo uko chini ya km 15 kwa saa.',
+          runoffLabel: 'Hatari ya kusombwa',
+          runoff: 'Hakikisha hakuna mvua kwa saa 24 zijazo.'
+        },
+        zu: {
+          title: 'Izexwayiso Zokuphepha Kwezolimo',
+          ppeLabel: 'Izivikelo',
+          ppe: 'Gqoka imaski, izibuko, namagilavu ngesikhathi sokufafaza.',
+          windLabel: 'Umkhawulo womoya',
+          wind: 'Qinisekisa ukuthi umoya ungaphansi kuka-15 km/h.',
+          runoffLabel: 'Ingozi yokugeleza',
+          runoff: 'Qinisekisa ukuthi akukho mvula emahoreni angu-24 alandelayo.'
+        }
+      };
+      const copy = safetyCopy[langCode] || safetyCopy.en;
       const warningText = `
 <div class="safety-kernel-alert" style="margin-top: 10px; padding: 10px; border-left: 4px solid var(--accent); background-color: rgba(44, 107, 55, 0.1); border-radius: 4px; font-size: 0.85rem;">
-  <strong>🛡️ Agricultural Safety Kernel (ASK) Warnings:</strong>
+  <strong>🛡️ ${copy.title}:</strong>
   <ul style="margin: 5px 0 0 15px; padding: 0; text-align: left;">
-    <li><strong>PPE:</strong> Wear face mask, goggles, and protective gloves during application.</li>
-    <li><strong>Wind Limit:</strong> Ensure wind speed is under 15 km/h to prevent chemical drift.</li>
-    <li><strong>Runoff Risk:</strong> Confirm zero rain forecast for the next 24 hours to prevent chemical runoff.</li>
+    <li><strong>${copy.ppeLabel}:</strong> ${copy.ppe}</li>
+    <li><strong>${copy.windLabel}:</strong> ${copy.wind}</li>
+    <li><strong>${copy.runoffLabel}:</strong> ${copy.runoff}</li>
   </ul>
 </div>`;
       return text + warningText;

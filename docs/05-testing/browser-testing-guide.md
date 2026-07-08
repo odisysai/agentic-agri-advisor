@@ -1,28 +1,101 @@
 # Browser Testing Guide
 
 > **Status:** Active
-> **Last Updated:** 2026-07-04
+> **Last Updated:** 2026-07-07
 > **Owner:** Engineering / QA
 
 ---
 
 ## Setup
 
-1. Start both servers:
+### Install Browser Test Dependencies
+
+Browser automation must run from the project virtual environment so it uses the
+same dependencies as the app and test suite.
+
+```bash
+env UV_CACHE_DIR=.uv-cache uv add --dev playwright pytest-playwright
+.venv/bin/python -m playwright install chromium
+```
+
+Verify the install:
+
+```bash
+.venv/bin/python - <<'PY'
+import playwright
+print(playwright.__file__)
+PY
+```
+
+### Start Local Services
+
+1. Start Firestore Emulator:
+
+```bash
+make firestore-start
+```
+
+2. Start the app:
+
+```bash
+make serve
+```
+
+The app should be available at:
+
+```text
+http://localhost:8000/app/home
+```
+
+Health probes:
+
+```bash
+curl -s -o /dev/null -w 'APP_HTTP=%{http_code}\n' http://127.0.0.1:8000/agui/local_models.js
+curl -s -o /dev/null -w 'FIRESTORE_EMULATOR_HTTP=%{http_code}\n' http://127.0.0.1:8081
+```
+
+### Run Automated Browser Tests
+
+Use `.venv` explicitly:
+
+```bash
+.venv/bin/python -m pytest test_real_browser.py -v
+```
+
+For focused regression tests:
+
+```bash
+.venv/bin/python -m pytest tests/unit/test_local_sastri_language.py -v
+```
+
+Legacy manual setup, only if you are not using `make serve`:
 ```bash
 uv run uvicorn app.fast_api_app:app --port 8000 &
 uv run python -m app.agent &
 ```
 
-2. Open the app in VS Code integrated browser or Chrome:
+Open the app in VS Code integrated browser or Chrome:
 ```
-http://localhost:8000/agui/index.html
+http://localhost:8000/app/home
 ```
 
-3. Use cache-busting URL parameter when testing updates:
+Use cache-busting URL parameter when testing updates:
 ```
-http://localhost:8000/agui/index.html?cb={timestamp}
+http://localhost:8000/app/home?cb={timestamp}
 ```
+
+## Advisor Mapping Acceptance Checks
+
+These checks protect the core edge/cloud objective:
+
+| Check | Expected |
+|------|----------|
+| Krishi Sastri local identity | Browser-served `local_models.js` reports `advisor: "Krishi Sastri"` and `model: "Gemma-4-2B"` |
+| Sastri Hindi response | Hindi language mode must not leak English words such as `Pathologist`, `Coordinator`, `Running`, or markdown markers |
+| Sastri simple query | Simple local query stays in Sastri chat and does not call `/api/expert/chat` |
+| Complex query | Disease, pest, pesticide, chemical, low-confidence, or unknown diagnosis prompts farmer for expert delegation |
+| Krishi Bisesagya cloud identity | Expert UI labels cloud route as Krishi Bisesagya |
+| Gemini model | Backend expert route uses `EXPERT_MODEL_NAME`, default `gemini-2.5-flash` |
 
 ## Test Matrix
 
