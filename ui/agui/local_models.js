@@ -12,11 +12,15 @@ class LocalAiEngine {
     this.llmEngine = null;
     this.llmConversation = null;
     this.llmLoaded = false;
+    this.llmModelBlob = null;
+    this.llmAssetCached = false;
+    this.llmLastInitFailedAt = 0;
     this.llmMode = "not_loaded";
     this.modelInitTimeoutMs = Number(window.KRISHI_MODEL_INIT_TIMEOUT_MS || 45000);
     this.generationTimeoutMs = Number(window.KRISHI_MODEL_GENERATION_TIMEOUT_MS || 20000);
     this.modelDownloadRetries = Number(window.KRISHI_MODEL_DOWNLOAD_RETRIES || 5);
     this.modelDownloadRetryDelayMs = Number(window.KRISHI_MODEL_DOWNLOAD_RETRY_DELAY_MS || 3000);
+    this.modelInitRetryCooldownMs = Number(window.KRISHI_MODEL_INIT_RETRY_COOLDOWN_MS || 300000);
     this.classifierLoaded = false;
     this.webGpuSupported = false;
     this.onProgressCallback = null;
@@ -164,8 +168,68 @@ class LocalAiEngine {
       model: this.modelName,
       mode: this.llmMode,
       loaded: this.llmLoaded,
+      assetCached: this.llmAssetCached,
       webGpuSupported: this.webGpuSupported
     };
+  }
+
+  modelCacheKeys() {
+    const legacyKey = `${this.modelName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-model`;
+    return [this.modelUrl, legacyKey];
+  }
+
+  async getCachedModelBlob(cache) {
+    for (const key of this.modelCacheKeys()) {
+      const cachedResponse = await cache.match(key);
+      if (cachedResponse) {
+        console.log(`[Local AI] ${this.modelName} found in Cache API via key: ${key}`);
+        return cachedResponse.blob();
+      }
+    }
+    return null;
+  }
+
+  async putModelBlobInCache(cache, modelBlob) {
+    for (const key of this.modelCacheKeys()) {
+      try {
+        await cache.put(key, new Response(modelBlob));
+      } catch (err) {
+        console.warn(`[Local AI] Could not cache model with key ${key}. Keeping in memory for this session.`, err);
+      }
+    }
+  }
+
+  canRetryModelInit() {
+    return !this.llmLastInitFailedAt || (Date.now() - this.llmLastInitFailedAt) >= this.modelInitRetryCooldownMs;
+  }
+
+  async initializeCachedModelBlob(modelBlob, mode) {
+    if (!this.canRetryModelInit()) {
+      this.llmMode = "litert_lm_asset_cached_init_on_cooldown";
+      console.warn('[Local AI] Model asset is cached, but LiteRT-LM initialization is on cooldown after a recent failure.');
+      return false;
+    }
+    this.reportProgress(100, "initializing");
+    try {
+      await this.withTimeout(
+        () => this.initializeLiteRtLm(modelBlob),
+        this.modelInitTimeoutMs,
+        "LiteRT-LM initialization"
+      );
+      this.reportProgress(100, "ready");
+      this.llmLoaded = true;
+      this.llmMode = mode;
+      this.llmLastInitFailedAt = 0;
+      return true;
+    } catch (err) {
+      this.llmEngine = null;
+      this.llmConversation = null;
+      this.llmLoaded = false;
+      this.llmLastInitFailedAt = Date.now();
+      this.llmMode = "litert_lm_asset_cached_init_failed";
+      console.warn('[Local AI] Model asset is cached, but LiteRT-LM initialization failed.', err);
+      return false;
+    }
   }
 
   inferCropFromPrompt(prompt, fallbackCrop = "corn") {
@@ -381,27 +445,22 @@ class LocalAiEngine {
     }
 
     const MODEL_URL = this.modelUrl;
-    const CACHE_KEY = `${this.modelName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-model`;
-
     console.log(`[Local AI] Checking Cache API for local ${this.modelName} model...`);
 
     try {
       const cache = await caches.open('gemma-model-cache');
-      const cachedResponse = await cache.match(CACHE_KEY);
+      let modelBlob = this.llmModelBlob;
+      if (modelBlob) {
+        console.log(`[Local AI] ${this.modelName} model asset is already in memory. Skipping download.`);
+        this.llmAssetCached = true;
+        return this.initializeCachedModelBlob(modelBlob, "litert_lm_memory_cached_model");
+      }
 
-      if (cachedResponse) {
-        console.log(`[Local AI] ${this.modelName} found in local browser Cache API. Initializing LiteRT-LM...`);
-        const modelBlob = await cachedResponse.blob();
-        this.reportProgress(100, "initializing");
-        await this.withTimeout(
-          () => this.initializeLiteRtLm(modelBlob),
-          this.modelInitTimeoutMs,
-          "LiteRT-LM initialization"
-        );
-        this.reportProgress(100, "ready");
-        this.llmLoaded = true;
-        this.llmMode = "litert_lm_cached_model";
-        return true;
+      modelBlob = await this.getCachedModelBlob(cache);
+      if (modelBlob) {
+        this.llmModelBlob = modelBlob;
+        this.llmAssetCached = true;
+        return this.initializeCachedModelBlob(modelBlob, "litert_lm_cached_model");
       }
 
       // If not cached, we need to download it from the network
@@ -413,23 +472,16 @@ class LocalAiEngine {
 
       console.log(`[Local AI] Model cache miss. Downloading ${this.modelName} from ${MODEL_URL}...`);
 
-      const modelBlob = await this.downloadModelBlob(MODEL_URL);
+      modelBlob = await this.downloadModelBlob(MODEL_URL);
+      this.llmModelBlob = modelBlob;
+      this.llmAssetCached = true;
       console.log('[Local AI] Compiling download stream chunks...');
-      await cache.put(CACHE_KEY, new Response(modelBlob));
+      await this.putModelBlobInCache(cache, modelBlob);
 
       console.log(`[Local AI] Local ${this.modelName} model cached. Initializing LiteRT-LM...`);
-      this.reportProgress(100, "initializing");
-      await this.withTimeout(
-        () => this.initializeLiteRtLm(modelBlob),
-        this.modelInitTimeoutMs,
-        "LiteRT-LM initialization"
-      );
-      this.reportProgress(100, "ready");
-      this.llmLoaded = true;
-      this.llmMode = "litert_lm_cloud_model";
-      return true;
+      return this.initializeCachedModelBlob(modelBlob, "litert_lm_cloud_model");
     } catch (err) {
-      console.warn('[Local AI] LiteRT-LM model download or initialization failed. Running deterministic local advisor.', err);
+      console.warn('[Local AI] LiteRT-LM model download failed. Running deterministic local advisor.', err);
       this.llmEngine = null;
       this.llmConversation = null;
       this.llmLoaded = false;

@@ -2128,7 +2128,7 @@ document.addEventListener('DOMContentLoaded', () => {
           return false;
         })
         .finally(() => {
-          if (!localAi?.llmLoaded) {
+          if (!localAi?.llmLoaded && !localAi?.llmAssetCached) {
             sastriModelLoadPromise = null;
           }
         });
