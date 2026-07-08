@@ -1,0 +1,243 @@
+change_map: add-language
+description: >
+  All files that MUST be updated when adding a new language to Krishi Sampark.
+  Used by tools/scaffold/add_language.py and PR review checklists.
+  See .context/04-add-language.md for the detailed guide.
+
+anchor_codes:
+  - en
+  - hi
+  - mr
+  - te
+  - sw
+  - zu  # last existing code — insert new entries after this
+
+files:
+  # ── Frontend JS (translations and UI) ─────────────────────────────────────
+
+  - path: ui/agui/translations.js
+    type: javascript
+    required: true
+    sections:
+      - name: TRANSLATIONS
+        anchor: "zu:"
+        description: Main UI string dictionary. Add full language block.
+      - name: SCHEMA_TRANSLATIONS
+        anchor: "zu:"
+        description: A2UI schema label translations.
+      - name: LANGUAGE_CONFIGS
+        anchor: "'zu':"
+        description: "Add: '<code>': { code, locale, displayName, srLocale, ttsLocale }"
+      - name: applyLanguageTranslation
+        anchor: "case 'zu'"
+        description: Add voice status string for new language code.
+    validation:
+      - "node -c ui/agui/translations.js"
+      - "uv run python -m tools.ai_sdlc.cli validate --translations"
+
+  - path: ui/agui/index.html
+    type: html
+    required: true
+    sections:
+      - name: language-selector
+        anchor: 'value="zu"'
+        description: "Add <option value='<code>'><DisplayName></option>"
+    validation:
+      - "grep -n 'language-selector' ui/agui/index.html"
+
+  - path: ui/agui/dashboard.js
+    type: javascript
+    required: true
+    sections:
+      - name: normalizeLanguageCode
+        anchor: '"zu"'
+        description: Add '"<full_name>": "<code>"' alias mapping.
+      - name: farmerDisplayNameForLanguage
+        anchor: '"zu"'
+        description: Add '"<code>": "<native farmer name>"'.
+      - name: langNameMap
+        anchor: '"zu"'
+        description: Add '"<code>": "<Language>"'.
+      - name: langMap_occurrence_1
+        anchor: '"zu": "zu-ZA"'
+        description: Add '"<code>": "<code-REGION>"' BCP-47 mapping.
+      - name: langMap_occurrence_2
+        anchor: '"zu": "zu-ZA"'
+        description: Second occurrence of langMap — same addition.
+      - name: escalationMessages
+        anchor: '"zu":'
+        description: Add escalation text in the new language.
+      - name: showEscalationPrompt
+        anchor: '"zu"'
+        description: Add farmer-facing escalation text in the new language.
+      - name: getPreparingAdvisoryMsg
+        anchor: '"zu"'
+        description: Add "preparing advisory" message in the new language.
+      - name: irrigation_descriptions
+        anchor: '"zu"'
+        description: Add irrigation method descriptions in the new language.
+      - name: okf_reply_map
+        anchor: '"zu"'
+        description: Add offline OKF reply text in the new language.
+    validation:
+      - "node -c ui/agui/dashboard.js"
+
+  - path: ui/agui/voice.js
+    type: javascript
+    required: true
+    sections:
+      - name: langMap
+        anchor: '"zu"'
+        description: Add '"<full_name>": "<code-REGION>"' for STT.
+      - name: nameToCode
+        anchor: '"Zulu"'
+        description: Add '"<Language>": "<code>"'.
+      - name: codeToCode
+        anchor: '"zu"'
+        description: Add code normalization entry if needed.
+      - name: langNameMap
+        anchor: '"zu"'
+        description: Add '"<code>": "<code-REGION>"' for backend TTS.
+      - name: nameToBcp47
+        anchor: '"Zulu"'
+        description: Add '"<Language>": "<code-REGION>"'.
+      - name: codeToBcp47
+        anchor: '"zu"'
+        description: Add '"<code>": "<code-REGION>"'.
+    validation:
+      - "node -c ui/agui/voice.js"
+
+  - path: ui/agui/local_db.js
+    type: javascript
+    required: true
+    sections:
+      - name: offline_knowledge_diagnostics
+        anchor: '"zu"'
+        description: Add symptom text and organic_remedy in the new language.
+    validation:
+      - "node -c ui/agui/local_db.js"
+
+  - path: ui/agui/local_models.js
+    type: javascript
+    required: true
+    sections:
+      - name: labels
+        anchor: '"zu"'
+        description: Add language block with same keys as other languages for offline AI persona.
+    validation:
+      - "node -c ui/agui/local_models.js"
+
+  - path: ui/index.html
+    type: html
+    required: true
+    sections:
+      - name: language-selector
+        anchor: 'value="zu"'
+        description: Add landing page language option with native script display name.
+
+  - path: ui/landing.js
+    type: javascript
+    required: true
+    sections:
+      - name: TRANSLATIONS
+        anchor: "TRANSLATIONS['zu']"
+        description: Add complete translation block. Register in TRANSLATIONS dict. Add to HOW_IT_WORKS_IMAGES if language-specific images used.
+    validation:
+      - "node -c ui/landing.js"
+
+  # ── Backend Python ─────────────────────────────────────────────────────────
+
+  - path: app/fast_api_app.py
+    type: python
+    required: true
+    sections:
+      - name: VOICE_MAP
+        anchor: "zu"
+        description: Add full name, 2-letter code, and BCP-47 code entries for edge-tts voice.
+      - name: lang_greetings
+        anchor: '"zu"'
+        description: Add greeting in the new language.
+      - name: expert_system_prompt
+        anchor: "Jambo"
+        description: Add new language greeting to the expert system prompt greetings list.
+    validation:
+      - "python -c \"import ast; ast.parse(open('app/fast_api_app.py').read()); print('syntax OK')\""
+
+  - path: mcp_servers/translation/server.py
+    type: python
+    required: true
+    sections:
+      - name: MOCK_TRANSLATIONS
+        anchor: '"zu"'
+        description: Add key translation entries for the new language code.
+    validation:
+      - "python -c \"import ast; ast.parse(open('mcp_servers/translation/server.py').read()); print('syntax OK')\""
+
+  # ── Agent Instructions ─────────────────────────────────────────────────────
+
+  - path: agents/coordinator/agent.py
+    type: python
+    required: true
+    sections:
+      - name: language_parameter_examples
+        anchor: "'zu'"
+        description: Add '<code>' to Language parameter examples and 2-letter code list.
+
+  - path: agents/crop_analyst/agent.py
+    type: python
+    required: true
+    sections:
+      - name: LANGUAGE_RULE
+        anchor: "Respond in zu"
+        description: Add "If 'Respond in <code>', reply in <Language>." to LANGUAGE RULE.
+
+  - path: agents/irrigation_advisor/agent.py
+    type: python
+    required: true
+    sections:
+      - name: LANGUAGE_RULE
+        anchor: "Respond in zu"
+        description: Add LANGUAGE RULE entry.
+
+  - path: agents/market_advisor/agent.py
+    type: python
+    required: true
+    sections:
+      - name: LANGUAGE_RULE
+        anchor: "Respond in zu"
+        description: Add LANGUAGE RULE entry.
+
+  - path: agents/weather_advisor/agent.py
+    type: python
+    required: true
+    sections:
+      - name: LANGUAGE_RULE
+        anchor: "Respond in zu"
+        description: Add LANGUAGE RULE entry.
+
+  - path: agents/farmer_interaction/agent.py
+    type: python
+    required: true
+    sections:
+      - name: language_parameter_examples
+        anchor: "'zu'"
+        description: Add new language to Language parameter examples.
+
+  # ── Documentation ──────────────────────────────────────────────────────────
+
+  - path: AGENTS.md
+    type: markdown
+    required: true
+    sections:
+      - name: supported_languages
+        anchor: "- `zu` (Zulu)"
+        description: Add new language to supported languages list in section 4.2.
+
+final_validation:
+  commands:
+    - "make validate-translations"
+    - "make validate-schemas"
+    - "uv run python -m tools.ai_sdlc.detect_mixed_scripts ui/agui/translations.js"
+    - "node -c ui/agui/translations.js && node -c ui/agui/dashboard.js && node -c ui/agui/voice.js && node -c ui/agui/local_db.js && node -c ui/agui/local_models.js && node -c ui/landing.js"
+    - "make test"
+  expected_outcome: "All validations pass. No script leaks detected. All 6+ languages present in LANGUAGE_CONFIGS."

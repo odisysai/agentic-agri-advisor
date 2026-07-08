@@ -1,0 +1,60 @@
+change_map: add-agent
+description: >
+  All files that MUST be updated when adding a new specialist agent.
+  See .context/06-add-agent.md for the detailed guide.
+
+files:
+  - path: agents/<name>/__init__.py
+    type: python
+    required: true
+    action: create
+    description: Empty module init.
+
+  - path: agents/<name>/agent.py
+    type: python
+    required: true
+    action: create
+    description: >
+      ADK Agent definition using google.adk.agents.Agent.
+      Must include LANGUAGE RULE in instruction for all 6 codes.
+      model must be Gemini(model="gemini-2.5-flash").
+
+  - path: agents/coordinator/agent.py
+    type: python
+    required: true
+    action: update
+    sections:
+      - name: imports
+        description: Import the new agent instance.
+      - name: sub_agents
+        description: Add to coordinator_agent.sub_agents list.
+      - name: instruction
+        description: Add delegation guidance for when to route to this agent.
+
+  - path: agents/agent_registry.yaml
+    type: yaml
+    required: true
+    action: update
+    sections:
+      - name: agent_list
+        description: Add entry with name, id, path, description.
+
+  - path: tests/unit/agents/test_<name>.py
+    type: python
+    required: true
+    action: create
+    description: Unit tests — verify agent loads, instruction has LANGUAGE RULE, mock tool calls.
+
+  - path: agents/AGENTS.md
+    type: markdown
+    required: true
+    action: update
+    sections:
+      - name: specialist_agents
+        description: Add agent to specialist agents table.
+
+final_validation:
+  commands:
+    - "uv run python -c \"from agents.<name>.agent import <name>_agent; print('OK')\""
+    - "uv run python -c \"from agents.coordinator.agent import coordinator_agent; print('coordinator OK')\""
+    - "make test"

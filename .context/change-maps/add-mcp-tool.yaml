@@ -1,0 +1,61 @@
+change_map: add-mcp-tool
+description: >
+  All files that MUST be updated when adding a new MCP tool server.
+  See .context/05-add-mcp-tool.md for the detailed guide.
+
+files:
+  - path: mcp_servers/<name>/__init__.py
+    type: python
+    required: true
+    action: create
+    description: Empty module init file.
+
+  - path: mcp_servers/<name>/server.py
+    type: python
+    required: true
+    action: create
+    description: FastMCP server with tool definitions. Uses mcp.server.fastmcp.FastMCP pattern.
+
+  - path: mcp_servers/mcp_registry.json
+    type: json
+    required: true
+    action: update
+    sections:
+      - name: mcp_servers
+        description: Add entry with type, command, args, description.
+
+  - path: agents/<target_agent>/agent.py
+    type: python
+    required: true
+    action: update
+    sections:
+      - name: tools
+        description: Import and add tool function to agent's tools list.
+
+  - path: agents/<target_agent>/agent.py
+    type: python
+    required: false
+    action: update
+    sections:
+      - name: instruction
+        description: Add guidance on when to use the new tool.
+
+  - path: tests/unit/mcp_servers/test_<name>.py
+    type: python
+    required: true
+    action: create
+    description: Unit tests covering happy path and error handling for each tool.
+
+  - path: agents/AGENTS.md
+    type: markdown
+    required: true
+    action: update
+    sections:
+      - name: mcp_tools_table
+        description: Add new tool to the MCP tools reference table.
+
+final_validation:
+  commands:
+    - "python -c \"import ast; ast.parse(open('mcp_servers/<name>/server.py').read()); print('syntax OK')\""
+    - "uv run python -c \"from mcp_servers.<name>.server import <tool_fn>; print('import OK')\""
+    - "make test"
