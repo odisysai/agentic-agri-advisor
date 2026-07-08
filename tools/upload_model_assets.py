@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 
 DEFAULT_PROJECT_NAME = "agentic-agri-advisor"
-GEMMA_OBJECT = "models/gemma-4-2b-it-gpu-int4.bin"
+GEMMA_OBJECT = "models/gemma-4-E2B-it-web.litertlm"
 CLASSIFIER_OBJECT = "models/crop_disease_classifier.tflite"
 
 
@@ -47,7 +47,7 @@ def main() -> None:
     parser.add_argument(
         "--gemma",
         type=Path,
-        help="Path to gemma-4-2b-it-gpu-int4.bin.",
+        help="Path to gemma-4-E2B-it-web.litertlm.",
     )
     parser.add_argument(
         "--classifier",
@@ -78,7 +78,7 @@ def main() -> None:
     base_url = f"https://storage.googleapis.com/{bucket}/models"
     print("\nModel asset configuration:")
     print(f"MODEL_ASSETS_BASE_URL={base_url}")
-    print(f"KRISHI_LOCAL_MODEL_URL={base_url}/gemma-4-2b-it-gpu-int4.bin")
+    print(f"KRISHI_LOCAL_MODEL_URL={base_url}/gemma-4-E2B-it-web.litertlm")
     print(f"KRISHI_CROP_CLASSIFIER_MODEL_URL={base_url}/crop_disease_classifier.tflite")
     print("\nExpected bucket:")
     print(bucket)

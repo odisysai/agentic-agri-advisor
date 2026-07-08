@@ -528,18 +528,24 @@ def model_config() -> dict:
     """
     gemma_url = os.getenv(
         "KRISHI_LOCAL_MODEL_URL",
-        _default_model_url("gemma-4-2b-it-gpu-int4.bin"),
+        _default_model_url("gemma-4-E2B-it-web.litertlm"),
     )
     crop_classifier_url = os.getenv(
         "KRISHI_CROP_CLASSIFIER_MODEL_URL",
         _default_model_url("crop_disease_classifier.tflite"),
     )
     return {
-        "local_model_name": os.getenv("KRISHI_LOCAL_MODEL_NAME", "Gemma-4-2B"),
+        "local_model_name": os.getenv("KRISHI_LOCAL_MODEL_NAME", "Gemma-4-E2B"),
         "local_model_url": gemma_url,
         "crop_classifier_model_url": crop_classifier_url,
         "model_assets_base_url": _model_assets_base_url(),
         "model_assets_bucket": _model_assets_bucket_name(),
+        "local_model_file": "gemma-4-E2B-it-web.litertlm",
+        "crop_classifier_model_file": "crop_disease_classifier.tflite",
+        "litert_lm_core_url": os.getenv(
+            "KRISHI_LITERT_LM_CORE_URL",
+            "https://cdn.jsdelivr.net/npm/@litert-lm/core/+esm",
+        ),
     }
 
 
@@ -554,6 +560,7 @@ def model_config_js() -> Response:
         + "window.KRISHI_LOCAL_MODEL_NAME = window.KRISHI_MODEL_CONFIG.local_model_name;\n"
         + "window.KRISHI_LOCAL_MODEL_URL = window.KRISHI_MODEL_CONFIG.local_model_url;\n"
         + "window.KRISHI_CROP_CLASSIFIER_MODEL_URL = window.KRISHI_MODEL_CONFIG.crop_classifier_model_url;\n"
+        + "window.KRISHI_LITERT_LM_CORE_URL = window.KRISHI_MODEL_CONFIG.litert_lm_core_url;\n"
     )
     return Response(
         content=script,

@@ -38,34 +38,34 @@ const hasVoice = !!window.speechRecognition || !!window.webkitSpeechRecognition;
 const ram = navigator.deviceMemory || 2; // GB, not precise
 ```
 
-## Local LLM: Gemma-4-2B
+## Local LLM: Gemma-4-E2B
 
 **File:** `ui/agui/local_models.js`
 
 ### Architecture
 
-- **Engine:** MediaPipe WebGenAI (`@mediapipe/tasks-genai`)
-- **Model:** Gemma-4-2B INT4 (quantized for browser)
+- **Engine:** LiteRT-LM target runtime
+- **Model:** Gemma-4-E2B Instruct (`gemma-4-E2B-it-web.litertlm`)
 - **Acceleration:** WebGPU (preferred) or WebGL (fallback)
-- **Size:** ~1.4GB (one-time download)
+- **Size:** ~2.6GB for the downloaded `.litertlm` blob observed locally
 - **Cache:** Browser Cache API (`gemma-model-cache`)
 - **Grounding:** Compact local crop facts from IndexedDB are passed to Sastri as context. They are not a separate chatbot or replacement for Gemma.
-- **Hosting:** Production model URL is provided by `/agui/model_config.js`, normally pointing at `gs://<assets-bucket>/models/gemma-4-2b-it-gpu-int4.bin` through `https://storage.googleapis.com/...`.
+- **Hosting:** Production model URL is provided by `/agui/model_config.js`, normally pointing at `gs://<assets-bucket>/models/gemma-4-E2B-it-web.litertlm` through `https://storage.googleapis.com/...`.
 
 ### Current Status
 
 | Component | Status |
 |-----------|--------|
-| `loadLlm()` | ⚠️ Stub — tries to fetch from `/models/gemma-4-2b-it-gpu-int4.bin` (not bundled) |
-| `generateText()` | ⚠️ Stub — uses compact local crop facts and deterministic Sastri fallback instead of real model inference |
+| `loadLlm()` | ⚠️ Experimental — fetches/caches `gemma-4-E2B-it-web.litertlm` and attempts LiteRT-LM Web initialization |
+| `generateText()` | ⚠️ Hybrid — uses LiteRT-LM when initialized, otherwise compact local crop facts and deterministic Sastri fallback |
 | Model binary | ❌ Not bundled |
 | WebGPU detection | ✅ Working |
 | Model download UI | ⚠️ Fake progress bar |
 
 ### Production Requirements
 
-1. Upload Gemma-4-2B INT4 to the Terraform-created assets bucket under `models/gemma-4-2b-it-gpu-int4.bin`
-2. Implement real `@mediapipe/tasks-genai` Web LLM API integration
+1. Upload Gemma-4-E2B LiteRT-LM to the Terraform-created assets bucket under `models/gemma-4-E2B-it-web.litertlm`
+2. Validate LiteRT-LM Web runtime behavior on target Android Chrome devices
 3. Pass farmer context + compact crop facts into Gemma for grounding
 4. Add one-time download prompt with storage warning (~1.4GB)
 5. Graceful fallback for devices without WebGPU

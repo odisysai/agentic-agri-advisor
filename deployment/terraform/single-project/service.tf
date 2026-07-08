@@ -55,7 +55,12 @@ resource "google_cloud_run_v2_service" "app" {
 
       env {
         name  = "KRISHI_LOCAL_MODEL_URL"
-        value = "https://storage.googleapis.com/${google_storage_bucket.assets_bucket.name}/models/gemma-4-2b-it-gpu-int4.bin"
+        value = "https://storage.googleapis.com/${google_storage_bucket.assets_bucket.name}/models/gemma-4-E2B-it-web.litertlm"
+      }
+
+      env {
+        name  = "KRISHI_LOCAL_MODEL_NAME"
+        value = "Gemma-4-E2B"
       }
 
       env {

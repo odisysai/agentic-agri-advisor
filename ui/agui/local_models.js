@@ -1,13 +1,16 @@
 /**
  * local_models.js
- * In-browser Local LLM (Gemma-4-2B) and TFLite Crop Disease Classification management.
+ * In-browser Local LLM (Gemma-4-E2B) and TFLite Crop Disease Classification management.
  * Local crop facts are used only as grounding/fallback context for Krishi Sastri.
  */
 
 class LocalAiEngine {
   constructor() {
-    this.modelName = window.KRISHI_LOCAL_MODEL_NAME || "Gemma-4-2B";
-    this.modelUrl = window.KRISHI_LOCAL_MODEL_URL || "/models/gemma-4-2b-it-gpu-int4.bin";
+    this.modelName = window.KRISHI_LOCAL_MODEL_NAME || "Gemma-4-E2B";
+    this.modelUrl = window.KRISHI_LOCAL_MODEL_URL || "/models/gemma-4-E2B-it-web.litertlm";
+    this.litertCoreUrl = window.KRISHI_LITERT_LM_CORE_URL || "https://cdn.jsdelivr.net/npm/@litert-lm/core/+esm";
+    this.llmEngine = null;
+    this.llmConversation = null;
     this.llmLoaded = false;
     this.llmMode = "not_loaded";
     this.classifierLoaded = false;
@@ -258,7 +261,7 @@ class LocalAiEngine {
   }
 
   /**
-   * Downloads and caches the client-side Gemma-4-2B model using the Cache API.
+   * Downloads and caches the client-side Gemma-4-E2B model using the Cache API.
    * Falls back to high-fidelity client-side dialog simulator if offline or hardware fails.
    * @param {function} onProgress - Callback with percentage loaded
    * @returns {Promise<boolean>} Load status
@@ -268,6 +271,11 @@ class LocalAiEngine {
     this.checkHardwareSupport();
 
     if (this.llmLoaded) return true;
+    if (!this.webGpuSupported) {
+      console.warn('[Local AI] WebGPU is required for LiteRT-LM Web. Falling back to deterministic local advisor.');
+      this.llmMode = "rule_fallback_no_webgpu";
+      return false;
+    }
 
     const MODEL_URL = this.modelUrl;
     const CACHE_KEY = `${this.modelName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-model`;
@@ -279,10 +287,12 @@ class LocalAiEngine {
       const cachedResponse = await cache.match(CACHE_KEY);
 
       if (cachedResponse) {
-        console.log(`[Local AI] ${this.modelName} found in local browser Cache API! Loading instantly...`);
+        console.log(`[Local AI] ${this.modelName} found in local browser Cache API. Initializing LiteRT-LM...`);
+        const modelBlob = await cachedResponse.blob();
+        await this.initializeLiteRtLm(modelBlob);
         if (this.onProgressCallback) this.onProgressCallback(100);
         this.llmLoaded = true;
-        this.llmMode = "cached_model";
+        this.llmMode = "litert_lm_cached_model";
         return true;
       }
 
@@ -321,12 +331,13 @@ class LocalAiEngine {
       const modelBlob = new Blob(chunks);
       await cache.put(CACHE_KEY, new Response(modelBlob));
 
-      console.log(`[Local AI] Local ${this.modelName} model cached in browser Cache API successfully.`);
+      console.log(`[Local AI] Local ${this.modelName} model cached. Initializing LiteRT-LM...`);
+      await this.initializeLiteRtLm(modelBlob);
       this.llmLoaded = true;
-      this.llmMode = "cached_model";
+      this.llmMode = "litert_lm_cloud_model";
       return true;
     } catch (err) {
-      console.warn('[Local AI] Actual binary download failed or was aborted. Running client-side simulation.', err);
+      console.warn('[Local AI] LiteRT-LM model download or initialization failed. Running deterministic local advisor.', err);
       this.llmMode = "simulated_rule_fallback";
       // Fallback: Run the simulated progress bar so the developer playground still works gracefully
       return new Promise(resolve => {
@@ -344,6 +355,43 @@ class LocalAiEngine {
         }, 100);
       });
     }
+  }
+
+  async initializeLiteRtLm(modelSource) {
+    const { Engine } = await import(this.litertCoreUrl);
+    this.llmEngine = await Engine.create({
+      model: modelSource,
+      mainExecutorSettings: {
+        maxNumTokens: 2048
+      }
+    });
+    this.llmConversation = await this.llmEngine.createConversation({
+      preface: {
+        messages: [
+          {
+            role: "system",
+            content: "You are Krishi Sastri, a warm local agriculture advisor. Answer farmers briefly in their selected language. Avoid unsafe chemical dosage unless verified. Ask to consult Krishi Bisesagya for uncertain, severe, or chemical-sensitive cases."
+          }
+        ]
+      }
+    });
+  }
+
+  async generateWithLiteRt(prompt, context, groundingFacts) {
+    if (!this.llmConversation) return "";
+    const language = context.language || "English";
+    const farmerPrompt = [
+      `Language: ${language}`,
+      `Crop: ${context.crop || "unknown"}`,
+      `Soil: ${context.soil || "unknown"}`,
+      groundingFacts ? `Local crop facts: ${groundingFacts}` : "",
+      context.visionResult ? `Local vision result: ${JSON.stringify(context.visionResult)}` : "",
+      `Farmer question: ${prompt}`,
+      "Respond under 80 words. Do not use markdown. Use the farmer's selected language."
+    ].filter(Boolean).join("\n");
+
+    const response = await this.llmConversation.sendMessage(farmerPrompt);
+    return response?.content?.map(item => item.text || "").join("").trim() || "";
   }
 
   /**
@@ -383,7 +431,7 @@ class LocalAiEngine {
   /**
    * Generates farmer-facing agricultural advice locally.
    *
-   * Desired path: Gemma-4-2B receives farmer context + compact local crop facts.
+   * Desired path: Gemma-4-E2B receives farmer context + compact local crop facts.
    * Current path: until a real browser/mobile Gemma runtime is wired, the same
    * compact facts drive a deterministic fallback response. OKF/local facts are
    * supporting context, not the primary product behavior.
@@ -658,6 +706,18 @@ class LocalAiEngine {
     let activeSkill = "General Advisory";
     const cropName = dict.cropNames?.[crop] || okfGuide.metadata.name || crop;
     const groundingFacts = this.buildGroundingFacts(okfGuide, cropName, lang);
+
+    if (this.llmLoaded && this.llmConversation) {
+      try {
+        const llmResponse = await this.generateWithLiteRt(prompt, { ...context, crop, soil, language: lang }, groundingFacts);
+        if (llmResponse) {
+          return llmResponse;
+        }
+      } catch (err) {
+        console.warn('[Local AI] LiteRT-LM generation failed; using deterministic local advisor.', err);
+        this.llmMode = "rule_fallback_generation_failed";
+      }
+    }
 
     // 2. Multi-Agent Skill Routing (multilingual keyword matching)
     const pestKeywords = ['pest', 'insect', 'disease', 'borer', 'rust', 'aphid', 'blight', 'outbreak', 'pathology',
