@@ -16,6 +16,8 @@
 
 Krishi Sampark was created for the [AI Agents: Intensive Vibe Coding Capstone Project](https://www.kaggle.com/competitions/vibecoding-agents-capstone-project). It demonstrates a real-world agentic AI use case for agriculture, combining multi-agent coordination, MCP-style tool integrations, Agent Skills, safety checks, authentication, multilingual UX, mobile-first deployment, and an AI-led SDLC.
 
+📖 **[Read the full project writeup on Kaggle](https://www.kaggle.com/competitions/vibecoding-agents-capstone-project/writeups/krishi-sampark-offline-first-multi-agent-agricult)**
+
 ---
 
 ## 🌐 Live Demo
@@ -70,60 +72,13 @@ The app combines a farmer-friendly interface with a coordinated set of specialis
 
 ## 🏗️ Architecture
 
-```mermaid
-graph TB
-    subgraph "Farmer Interface (PWA)"
-        UI[AGUI Dashboard<br/>Voice + Text Input]
-        A2UI[A2UI Canvas<br/>Declarative JSON UI]
-    end
+### System Architecture
 
-    subgraph "Agent Layer (Google ADK)"
-        COORD[Coordinator Agent<br/>Triage & Route]
-        CA[Crop Analyst]
-        IA[Irrigation Planner]
-        PD[Pest Detector]
-        WA[Weather Advisor]
-        MA[Market Advisor]
-        KR[Knowledge Retriever]
-        FI[Farmer Interaction]
-        SIM[Simulation Agent]
-        DA[Dashboard Agent]
-    end
+![Krishi Sampark System Architecture](docs/assets/krishi_system_architecture_infographic.png)
 
-    subgraph "MCP-Style Tool Servers"
-        STT[STT Server]
-        TTS[TTS Server]
-        RAG[RAG Server]
-        WTH[Weather Server]
-        MKT[Market Server]
-        IMG[Image Analysis]
-        TRN[Translation]
-        OKF[OKF Knowledge Graph]
-    end
+### Agent Architecture
 
-    subgraph "Safety & Knowledge"
-        SK[Safety Kernel<br/>ADK Callbacks]
-        OKF_DATA[OKF Knowledge Files<br/>Crops, Diseases, Soil, Pests]
-        DB[(Firestore + IndexedDB<br/>Offline Twin)]
-    end
-
-    subgraph "Cloud AI (Optional)"
-        GEM[Gemini 2.5 Flash<br/>Expert Escalation]
-    end
-
-    UI --> COORD
-    COORD --> CA & IA & PD & WA & MA & KR & FI & SIM & DA
-    CA & PD & IA --> SK
-    KR --> OKF
-    FI --> STT & TTS & TRN
-    KR --> RAG
-    WA --> WTH
-    MA --> MKT
-    PD --> IMG
-    COORD -->|escalation| GEM
-    SK --> OKF_DATA
-    UI <--> DB
-```
+![Krishi Sampark Agent Architecture](docs/assets/krishi_agent_architecture_infographic.png)
 
 ### Agent Roster
 
@@ -175,11 +130,58 @@ hooks that intercept every agent response to enforce:
 
 ---
 
+## 🛠️ Developer & Agent Tooling
+
+Krishi Sampark uses a **skill-scoped context architecture** so any developer or coding agent (Copilot, Antigravity, agents-cli) can work on the right part of the codebase without loading the whole project into context.
+
+### Context Routing (start here)
+
+Before working on any part of the codebase, read the context router:
+
+```
+.context/00-index.md   ← routing table: task → which context file to load
+GEMINI.md              ← full inline routing table + agents-cli lifecycle
+AGENTS.md              ← project rules + two-agent system distinction
+```
+
+Each task has a dedicated context file (e.g., `.context/04-add-language.md`, `.context/01-local-dev.md`). Load only the file you need — not the whole codebase.
+
+### Task Skills (auto-invoked by name)
+
+Skills in `.agents/skills/` are matched to your task description automatically:
+
+| You say | Skill activated |
+|---|---|
+| *"add Kannada support"* | `add-language` |
+| *"I can't start the server"* | `local-dev-setup` |
+| *"run the browser tests"* | `browser-testing` |
+| *"there's a missing translation key"* | `fix-translation-bug` |
+| *"add a new MCP tool"* | `add-mcp-tool` |
+| *"create a new specialist agent"* | `add-specialist-agent` |
+| *"run the eval loop"* | `run-agent-eval` |
+
+### Scaffolding Scripts
+
+```bash
+# Audit how complete a language's support is (22-point check)
+python tools/scaffold/add_language.py --code kn --name Kannada --check
+
+# Scaffold a new MCP tool server boilerplate
+python tools/scaffold/add_mcp_tool.py --name soil-sensors --description "..."
+```
+
+### CRITICAL: Two Separate Agent Systems
+
+| Directory | What it is | Runs when |
+|---|---|---|
+| `agents/` | **Business AI agents** (ADK runtime, serve farmers) | At runtime |
+| `.ai-sdlc/agents/` | **SDLC governance personas** (declarative YAML, not deployed) | During development |
+
+---
+
 ## 🤖 AI-Led SDLC and Agent Skills
 
-Krishi Sampark was developed using an AI-led software development lifecycle model. In addition to the product agents that support farmers, the project defines lifecycle agents and reusable skills that help manage requirements, architecture, development, testing, security, safety, release readiness, documentation, and observability.
-
-This approach treats software delivery itself as an agent-assisted workflow.
+Krishi Sampark was developed using an AI-led software development lifecycle model. Lifecycle agents and reusable skills manage requirements, architecture, development, testing, security, safety, release readiness, documentation, and observability.
 
 ### Lifecycle Agents
 
@@ -237,12 +239,13 @@ The `.ai-sdlc/` directory stores project governance and lifecycle evidence:
 
 ```text
 .ai-sdlc/
-├── agents/       # SDLC lifecycle agent definitions
-├── policies/     # Security, safety, privacy, and release policies
-├── workflows/    # Feature delivery and pull request workflows
-├── gates/        # Quality, safety, security, and release gates
-├── evidence/     # Test, scan, browser, safety, and approval evidence
-└── reports/      # Traceability, quality scorecard, and release readiness reports
+├── manifest.yaml  # Project config, quality gates, component registry
+├── agents/        # SDLC lifecycle agent personas (YAML, not deployed)
+├── skills/        # Executable skill runbooks (localization, safety, tests, etc.)
+├── workflows/     # Feature delivery and bug-fix workflows
+├── evidence/      # Command-backed evidence (real results — no fake PASSes)
+│   └── approvals/ # Human approval records (never auto-approved)
+└── reports/       # Quality scorecard, release readiness (derived from evidence)
 ```
 
 The project separates responsibilities clearly:
@@ -293,34 +296,54 @@ This makes Krishi Sampark not only an agentic agriculture advisor, but also a de
 # 1. Install dependencies
 make setup
 
-# 2. (Optional) Configure API keys
+# 2. Configure API keys
 cp config/secrets.template.env .env
-# Edit .env with your GEMINI_API_KEY
+# Edit .env — set GEMINI_API_KEY at minimum
 
-# 3. Start the FastAPI server
-uv run python -m app.fast_api_app
+# 3. Start everything (Firestore emulator + FastAPI + frontend)
+make dev
 
-# 4. Open the project
-open http://localhost:8000/
+# 4. Open the app
+open http://localhost:8000
 # Or visit the live demo: https://krishi.odisysai.com
 ```
 
-### ADK Playground (Agent Development)
-
+Alternatively, start services separately:
 ```bash
-# Launch the ADK interactive playground
-uv run agents-cli playground
+make firestore-start   # Terminal 1: Firestore emulator on :8081
+make serve             # Terminal 2: FastAPI + frontend on :8000
+make serve-ui          # (frontend only, no backend) on :8080
 ```
 
-### Running Tests
+### Agent Development
 
 ```bash
-make test              # Unit + integration tests
-make lint              # Code formatting & linting
-make typecheck         # Type checking
-make ai-sdlc-check     # AI-SDLC validation gates
-make coverage          # Test coverage with JUnit evidence
-make release-check     # Release readiness evaluation
+agents-cli playground  # Interactive agent testing (no frontend needed)
+```
+
+### Running Tests & Quality Checks
+
+```bash
+make test                          # Unit tests
+make test-integration              # Integration tests (requires emulator)
+make lint                          # Code linting (agents-cli lint)
+make typecheck                     # Type checking
+make browser-test                  # Playwright E2E tests (requires make serve)
+make ai-sdlc-check                 # All validation gates
+make coverage                      # Tests + coverage evidence
+make release-check                 # Release readiness evaluation
+make check-language LANG=kn NAME=Kannada  # Audit language support coverage
+```
+
+### Eval Loop (agent quality)
+
+```bash
+agents-cli eval dataset synthesize # Generate starter eval dataset
+agents-cli eval generate           # Run agent against dataset
+agents-cli eval grade              # Score with LLM-as-judge
+agents-cli eval compare            # Regression diff vs previous
+agents-cli eval analyze            # Cluster failure modes
+agents-cli eval optimize           # Auto-tune prompts
 ```
 
 ---
@@ -328,12 +351,21 @@ make release-check     # Release readiness evaluation
 ## 📁 Repository Layout
 
 ```text
-agents/              10 ADK-inspired agents (coordinator + 9 specialists)
-app/                 FastAPI backend, auth, telemetry, expert chat
+agents/              Business AI agents (ADK runtime — serve farmers)
+  coordinator/       Krishi Bisesagya — routes queries, enforces language + safety
+  crop_analyst/      Crop health, NPK, growth stage
+  irrigation_advisor/ ...
+  pest_detector/     ...
+  weather_advisor/   ...
+  market_advisor/    ...
+  knowledge_retriever/ ...
+  simulation_agent/  ...
+  dashboard_agent/   ...
+  farmer_interaction/ ...
+  agent.py           ADK CLI entry point (shim only — do not edit)
+app/                 FastAPI backend, auth, safety endpoints, telemetry
 ui/agui/             Farmer PWA dashboard (voice, camera, offline DB)
 ui/a2ui/             Declarative A2UI canvas renderer
-ui/assets/           Icons and images
-ui/public/           Favicon and web manifest
 ui/schemas/          A2UI declarative screen JSON layouts
 mcp_servers/         8 MCP-style tool servers (STT, TTS, RAG, weather, etc.)
 okf/                 Agricultural ontology (crops, diseases, soil, pests)
@@ -343,8 +375,18 @@ safety_kernel/       ADK safety callback implementations
 config/              Dev/prod configs & secrets template
 deployment/          Terraform IaC for Cloud Run
 docs/                Architecture, design, engineering docs
-.ai-sdlc/            Governance, lifecycle agents, skills, evidence, reports
+.context/            Modular context index for developers and coding agents
+  00-index.md        Context router — start here
+  01-local-dev.md    Local dev runbook
+  04-add-language.md Language addition checklist
+  change-maps/       Machine-readable multi-file change checklists
+.agents/skills/      Coding agent task skills (add-language, browser-testing, etc.)
+.ai-sdlc/            SDLC governance: personas, skills, workflows, evidence, reports
+  agents/            SDLC governance agent personas (not runtime agents)
+tools/scaffold/      Scaffolding scripts (add_language.py, add_mcp_tool.py)
+tools/ai_sdlc/       Validation CLI, evidence writers, quality scorecard
 tests/               Unit, integration, and eval tests
+scratch/             One-off investigation and patching scripts (archive)
 ```
 
 ---
