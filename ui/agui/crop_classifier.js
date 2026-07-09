@@ -104,145 +104,80 @@ class CropClassifier {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  parseContentRangeTotal(value) {
-    const match = String(value || "").match(/\/(\d+)$/);
-    return match ? Number(match[1]) : 0;
-  }
-
-  async downloadModelBlob(url, contentLengthHint = 15000000) {
-    let receivedLength = 0;
-    let contentLength = 0;
-    let chunks = [];
-    let attempt = 0;
-
-    while (attempt <= this.modelDownloadRetries) {
-      const headers = {};
-      if (receivedLength > 0) {
-        headers.Range = `bytes=${receivedLength}-`;
-      }
-
-      try {
-        const response = await fetch(url, { headers });
-        const isResume = receivedLength > 0;
-        const supportsResume = response.status === 206;
-
-        if (!response.ok && !supportsResume) {
-          throw new Error(`Model download failed: ${response.status}`);
-        }
-
-        if (isResume && !supportsResume) {
-          console.warn('[CropClassifier] Model host ignored Range resume. Restarting model download from byte 0.');
-          receivedLength = 0;
-          chunks = [];
-        }
-
-        const contentRangeTotal = this.parseContentRangeTotal(response.headers.get('Content-Range'));
-        const headerLength = Number(response.headers.get('Content-Length')) || 0;
-        contentLength = contentRangeTotal || (receivedLength + headerLength) || contentLength || contentLengthHint;
-
-        const reader = response.body.getReader();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          chunks.push(value);
-          receivedLength += value.length;
-          const percent = contentLength ? Math.round((receivedLength / contentLength) * 100) : 0;
-          if (this.onProgressCallback) this.onProgressCallback(Math.max(0, Math.min(100, percent)));
-        }
-
-        if (!contentLength || receivedLength >= contentLength) {
-          if (this.onProgressCallback) this.onProgressCallback(100);
-          return new Blob(chunks);
-        }
-
-        throw new Error(`Model stream ended early at ${receivedLength}/${contentLength} bytes`);
-      } catch (err) {
-        attempt += 1;
-        if (attempt > this.modelDownloadRetries) {
-          throw err;
-        }
-        console.warn(
-          `[CropClassifier] Model download interrupted at ${receivedLength} bytes. Retrying ${attempt}/${this.modelDownloadRetries}...`,
-          err
-        );
-        await this.sleep(this.modelDownloadRetryDelayMs * attempt);
-      }
-    }
-
-    throw new Error('Crop classifier download retry loop ended unexpectedly');
-  }
-
   /**
-   * Loads the TFLite crop disease classification model.
-   *
-   * First checks the browser Cache API. If not cached, downloads the model
-   * from the server (first-time setup, requires internet). Subsequent uses
-   * work fully offline from cache.
+   * Loads the MediaPipe Tasks Vision ImageClassifier with the TFLite model.
    *
    * @param {function} onProgress - Callback with download percentage (0-100)
    * @returns {Promise<boolean>} Whether the model is ready for inference
    */
   async loadModel(onProgress) {
     this.onProgressCallback = onProgress;
-
     if (this.modelLoaded) return true;
 
+    // WebGL is the minimum requirement for MediaPipe inference
     const hasGPU = this.checkHardwareSupport();
     if (!hasGPU) {
-      console.warn('[CropClassifier] No GPU acceleration available. Using fallback heuristic mode.');
-      this.modelLoaded = false; // Will use fallback classifyFallback()
-      this.runtimeMode = "fallback_no_gpu";
+      console.warn('[CropClassifier] No WebGL/WebGPU. Using color heuristic fallback.');
+      this.runtimeMode = 'fallback_no_gpu';
       return false;
     }
 
-    const MODEL_URL = this.modelUrl;
-    const CACHE_KEY = 'crop-disease-model-v1';
+    if (!navigator.onLine && !this.modelUrl.startsWith('/')) {
+      console.warn('[CropClassifier] Offline. Using heuristic fallback.');
+      this.runtimeMode = 'offline_fallback';
+      return false;
+    }
 
     try {
-      // Check Cache API first
-      const cache = await caches.open('crop-model-cache');
-      const cachedResponse = await cache.match(CACHE_KEY);
+      if (this.onProgressCallback) this.onProgressCallback(10);
+      console.log('[CropClassifier] Loading MediaPipe Tasks Vision runtime...');
 
-      if (cachedResponse) {
-        console.log('[CropClassifier] Model found in cache. Loading...');
-        if (this.onProgressCallback) this.onProgressCallback(100);
-        // In production, this would initialize the MediaPipe ImageClassifier:
-        // const blob = await cachedResponse.blob();
-        // const arrayBuffer = await blob.arrayBuffer();
-        // this.classifier = await ImageClassifier.createFromModelBuffer(
-        //   vision.ASSORTED_TFJS_MODELS, arrayBuffer
-        // );
-        this.modelAssetCached = true;
-        this.modelLoaded = false;
-        this.runtimeMode = "fallback_model_cached_no_mediapipe_runtime";
-        console.warn('[CropClassifier] TFLite asset is cached, but MediaPipe ImageClassifier runtime is not wired yet. Using fallback heuristic.');
-        return false;
+      // Load MediaPipe Tasks Vision via CDN (ESM module)
+      const mpVision = await import(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm'
+      );
+      const { ImageClassifier, FilesetResolver } = mpVision;
+
+      if (this.onProgressCallback) this.onProgressCallback(30);
+
+      // Load WASM runtime
+      const vision = await FilesetResolver.forVisionTasks(
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+      );
+
+      if (this.onProgressCallback) this.onProgressCallback(60);
+      console.log(`[CropClassifier] Loading model from: ${this.modelUrl}`);
+
+      // Try GPU delegate first, fall back to CPU
+      let delegate = 'GPU';
+      try {
+        this.classifier = await ImageClassifier.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: this.modelUrl, delegate: 'GPU' },
+          maxResults: 5,
+          scoreThreshold: 0.05,
+        });
+      } catch {
+        console.warn('[CropClassifier] GPU delegate failed, trying CPU...');
+        delegate = 'CPU';
+        this.classifier = await ImageClassifier.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: this.modelUrl, delegate: 'CPU' },
+          maxResults: 5,
+          scoreThreshold: 0.05,
+        });
       }
 
-      // Download model if online
-      if (!navigator.onLine) {
-        console.warn('[CropClassifier] Offline and model not cached. Using fallback heuristic mode.');
-        return false;
-      }
-
-      console.log('[CropClassifier] Downloading crop disease model (~15MB)...');
-      const modelBlob = await this.downloadModelBlob(MODEL_URL);
-      await cache.put(CACHE_KEY, new Response(modelBlob));
-      console.log('[CropClassifier] Model cached successfully.');
-
-      // Initialize the classifier (would use MediaPipe Tasks Vision in production)
-      // this.classifier = await ImageClassifier.createFromModelBuffer(
-      //   vision.ASSORTED_TFJS_MODELS, await modelBlob.arrayBuffer()
-      // );
+      if (this.onProgressCallback) this.onProgressCallback(100);
+      this.modelLoaded = true;
       this.modelAssetCached = true;
-      this.modelLoaded = false;
-      this.runtimeMode = "fallback_model_cached_no_mediapipe_runtime";
-      console.warn('[CropClassifier] TFLite asset cached, but real MediaPipe inference is not initialized. Using fallback heuristic.');
-      return false;
+      this.runtimeMode = `mediapipe_${delegate.toLowerCase()}`;
+      console.log(`[CropClassifier] Ready — MediaPipe ImageClassifier (${delegate}).`);
+      return true;
 
     } catch (err) {
-      console.warn('[CropClassifier] Model load failed. Using fallback heuristic.', err);
-      this.runtimeMode = "fallback_model_load_failed";
+      console.warn('[CropClassifier] MediaPipe load failed. Using heuristic fallback.', err);
+      this.classifier = null;
+      this.modelLoaded = false;
+      this.runtimeMode = 'fallback_mediapipe_failed';
       return false;
     }
   }
@@ -258,28 +193,105 @@ class CropClassifier {
    * @returns {Promise<object>} Classification result
    */
   async classifyImage(base64Image, context = {}) {
-    if (!this.modelLoaded && this.runtimeMode === "not_loaded") {
+    if (!this.modelLoaded && this.runtimeMode === 'not_loaded') {
       await this.loadModel();
     }
 
-    if (!this.modelLoaded) {
+    if (!this.modelLoaded || !this.classifier) {
       return this.classifyFallback(base64Image, context);
     }
 
     try {
-      // In production with MediaPipe Tasks Vision:
-      // const image = await loadImageElement(base64Image);
-      // const results = await this.classifier.classify(image);
-      // const topResult = results.classifications[0];
-      // const label = this.DISEASE_LABELS[topResult.index] || { name: "Unknown" };
+      const img = await this._base64ToImage(base64Image);
+      const result = this.classifier.classify(img);
 
-      // For now, use the fallback heuristic until the actual model binary is bundled
-      return this.classifyFallback(base64Image, context);
+      if (!result?.classifications?.[0]?.categories?.length) {
+        return this.classifyFallback(base64Image, context);
+      }
+
+      const top = result.classifications[0].categories[0];
+      const idx = typeof top.index === 'number' ? top.index : 0;
+      const labelInfo = this.DISEASE_LABELS[idx] || {
+        name: top.categoryName || 'Unknown Disease',
+        crop: context.crop || 'Unknown',
+        severity: 'Unknown',
+        type: 'Unknown',
+      };
+
+      const confidencePct = Math.round((top.score || 0) * 100);
+      const isLowConfidence = confidencePct < 50;
+
+      const alternatives = (result.classifications[0].categories.slice(1, 3) || [])
+        .map(cat => {
+          const l = this.DISEASE_LABELS[cat.index] || { name: cat.categoryName || 'Unknown' };
+          return `${l.name} (${Math.round(cat.score * 100)}%)`;
+        });
+
+      const cropKey = (labelInfo.crop || '').charAt(0).toUpperCase() + (labelInfo.crop || '').slice(1);
+      const hint = (this.REGIONAL_HINTS[cropKey] || {})[labelInfo.name] || {};
+
+      return {
+        crop: labelInfo.crop || context.crop || 'Unknown',
+        disease_name: labelInfo.name,
+        hindi_name: hint.hindi,
+        confidence: `${confidencePct}%`,
+        severity: labelInfo.severity,
+        type: labelInfo.type,
+        organic_remedy: hint.treatment || this._defaultOrganic(labelInfo),
+        chemical_remedy: this._defaultChemical(labelInfo),
+        alternatives,
+        mode: this.runtimeMode,
+        model_status: this.runtimeMode,
+        ml_runtime_used: true,
+        escalate: isLowConfidence || labelInfo.severity === 'Critical',
+      };
+
     } catch (err) {
-      console.error('[CropClassifier] Inference failed:', err);
-      this.runtimeMode = "fallback_inference_failed";
+      console.error('[CropClassifier] Inference error, using fallback:', err);
+      this.runtimeMode = 'fallback_inference_error';
       return this.classifyFallback(base64Image, context);
     }
+  }
+
+  /** Converts a base64 image string to an HTMLImageElement for MediaPipe. */
+  _base64ToImage(base64Image) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('Image load failed'));
+      img.src = base64Image.startsWith('data:') ? base64Image : `data:image/jpeg;base64,${base64Image}`;
+    });
+  }
+
+  /** Default organic treatment based on disease type. */
+  _defaultOrganic(labelInfo) {
+    if (labelInfo.severity === 'None' || labelInfo.type === 'Healthy') {
+      return 'Crop appears healthy. Maintain balanced irrigation and nutrition.';
+    }
+    const treatmentMap = {
+      Fungal:     'Spray neem oil at 5ml/liter. Apply Trichoderma viride as biocontrol. Remove and burn infected leaves.',
+      Bacterial:  'Remove infected plant parts. Apply copper-based fungicide (Bordeaux mixture 1%). Avoid overhead irrigation.',
+      Viral:      'Remove and destroy infected plants to prevent spread. Control insect vectors with neem oil spray.',
+      Pest:       'Apply neem oil spray at 5ml/liter. Use yellow sticky traps. Encourage natural predators.',
+      Nutrient:   'Apply well-decomposed FYM at 10-15 tonnes/hectare. Spray 2% urea for nitrogen deficiency.',
+    };
+    return treatmentMap[labelInfo.type] || 'Consult a local agronomist for appropriate treatment.';
+  }
+
+  /** Default chemical treatment based on disease type. */
+  _defaultChemical(labelInfo) {
+    if (labelInfo.severity === 'None' || labelInfo.type === 'Healthy') {
+      return 'No treatment required.';
+    }
+    const chemMap = {
+      Fungal:    'Apply mancozeb at 2.5g/liter or carbendazim at 1g/liter. Observe 14-day pre-harvest interval.',
+      Bacterial: 'Apply copper oxychloride 50% WP at 3g/liter. Consult an agronomist before application.',
+      Viral:     'No effective chemical cure. Focus on vector control and removing infected plants.',
+      Pest:      'Apply imidacloprid 17.8% SL at 0.3ml/liter. Observe safety protocols.',
+      Nutrient:  'Apply NPK fertilizer as per soil test. For nitrogen: top-dress urea at 25-30 kg/hectare.',
+    };
+    return chemMap[labelInfo.type] || 'Consult a certified agricultural expert for diagnosis and treatment.';
   }
 
   /**
@@ -446,7 +458,7 @@ class CropClassifier {
    * @returns {boolean} True if real ML model is loaded
    */
   isMlMode() {
-    return this.modelLoaded && !!this.classifier && this.runtimeMode === "tflite_mediapipe";
+    return this.modelLoaded && !!this.classifier && this.runtimeMode.startsWith('mediapipe_');
   }
 }
 
