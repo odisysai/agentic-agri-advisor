@@ -203,6 +203,8 @@ jobs:
       env:
         TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
         TF_VAR_google_oidc_client_id: ${{ secrets.GOOGLE_OIDC_CLIENT_ID }}
+        TF_VAR_expert_model_name: ${{ vars.EXPERT_MODEL_NAME || 'gemini-2.5-flash' }}
+        TF_VAR_expert_model_fallback: ${{ vars.EXPERT_MODEL_FALLBACK || 'gemini-2.5-flash-lite' }}
       run: |
         terraform init -reconfigure \
           -backend-config="bucket=${{ secrets.GCP_PROJECT_ID }}-tfstate" \
@@ -213,6 +215,8 @@ jobs:
       env:
         TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
         TF_VAR_google_oidc_client_id: ${{ secrets.GOOGLE_OIDC_CLIENT_ID }}
+        TF_VAR_expert_model_name: ${{ vars.EXPERT_MODEL_NAME || 'gemini-2.5-flash' }}
+        TF_VAR_expert_model_fallback: ${{ vars.EXPERT_MODEL_FALLBACK || 'gemini-2.5-flash-lite' }}
       run: |
         set +e
         terraform plan \
@@ -220,6 +224,8 @@ jobs:
           -var="region=us-east1" \
           -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" \
           -var="google_oidc_client_id=${{ secrets.GOOGLE_OIDC_CLIENT_ID }}" \
+          -var="expert_model_name=${{ vars.EXPERT_MODEL_NAME || 'gemini-2.5-flash' }}" \
+          -var="expert_model_fallback=${{ vars.EXPERT_MODEL_FALLBACK || 'gemini-2.5-flash-lite' }}" \
           -no-color > plan.txt 2>&1
         plan_exit_code=$?
 
@@ -321,6 +327,8 @@ jobs:
       env:
         TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
         TF_VAR_google_oidc_client_id: ${{ secrets.GOOGLE_OIDC_CLIENT_ID }}
+        TF_VAR_expert_model_name: ${{ vars.EXPERT_MODEL_NAME || 'gemini-2.5-flash' }}
+        TF_VAR_expert_model_fallback: ${{ vars.EXPERT_MODEL_FALLBACK || 'gemini-2.5-flash-lite' }}
       run: |
         terraform init -reconfigure \
           -backend-config="bucket=${{ secrets.GCP_PROJECT_ID }}-tfstate" \
@@ -345,12 +353,16 @@ jobs:
       env:
         TF_VAR_gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
         TF_VAR_google_oidc_client_id: ${{ secrets.GOOGLE_OIDC_CLIENT_ID }}
+        TF_VAR_expert_model_name: ${{ vars.EXPERT_MODEL_NAME || 'gemini-2.5-flash' }}
+        TF_VAR_expert_model_fallback: ${{ vars.EXPERT_MODEL_FALLBACK || 'gemini-2.5-flash-lite' }}
       run: |
         terraform apply -auto-approve \
           -var="project_id=${{ secrets.GCP_PROJECT_ID }}" \
           -var="region=us-east1" \
           -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" \
-          -var="google_oidc_client_id=${{ secrets.GOOGLE_OIDC_CLIENT_ID }}"
+          -var="google_oidc_client_id=${{ secrets.GOOGLE_OIDC_CLIENT_ID }}" \
+          -var="expert_model_name=${{ vars.EXPERT_MODEL_NAME || 'gemini-2.5-flash' }}" \
+          -var="expert_model_fallback=${{ vars.EXPERT_MODEL_FALLBACK || 'gemini-2.5-flash-lite' }}"
 
     - name: Terraform Outputs
       working-directory: deployment/terraform/single-project

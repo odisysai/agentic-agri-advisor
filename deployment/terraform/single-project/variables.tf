@@ -42,6 +42,18 @@ variable "google_oidc_client_id" {
   default     = ""
 }
 
+variable "expert_model_name" {
+  type        = string
+  description = "Primary Gemini model for the Ask Expert cloud chat endpoint."
+  default     = "gemini-2.5-flash"
+}
+
+variable "expert_model_fallback" {
+  type        = string
+  description = "Fallback Gemini model used when the primary returns NOT_FOUND (e.g. during a Google model rollout)."
+  default     = "gemini-2.5-flash-lite"
+}
+
 variable "model_asset_cors_origins" {
   type        = list(string)
   description = "Origins allowed to download public model assets from the assets bucket."

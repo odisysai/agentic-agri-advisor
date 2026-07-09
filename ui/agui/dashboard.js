@@ -10,17 +10,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function _reportClientError(message, stack, url) {
     try {
-      fetch('/api/log/client-error', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: String(message || '').slice(0, 500),
-          stack: String(stack || '').slice(0, 2000),
-          url: String(url || window.location.href).slice(0, 300),
-          device_type: _deviceType(),
-          model_mode: window._localAiMode || ''
-        })
-      }).catch(() => {});
+      const body = JSON.stringify({
+        message: String(message || '').slice(0, 500),
+        stack: String(stack || '').slice(0, 2000),
+        url: String(url || window.location.href).slice(0, 300),
+        device_type: _deviceType(),
+        model_mode: window._localAiMode || ''
+      });
+      // sendBeacon is fire-and-forget and survives page hide/unload on iOS Safari.
+      // Fall back to fetch with keepalive:true for browsers without sendBeacon.
+      const endpoint = '/api/log/client-error';
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' }));
+      } else {
+        fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+          keepalive: true   // survives tab close / page navigation
+        }).catch(() => {});
+      }
     } catch (e) {}
   }
   window.addEventListener('error', (ev) => {
@@ -32,6 +41,13 @@ document.addEventListener('DOMContentLoaded', () => {
       ev.reason?.stack,
       window.location.href
     );
+  });
+  // On iOS, WKWebView fires visibilitychange to 'hidden' just before suspending
+  // the tab. Capture model state at that moment so crashes appear in logs.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && _deviceType() === 'ios') {
+      _reportClientError('page_hidden', '', window.location.href);
+    }
   });
 
   // NAV_SECTIONS is loaded from translations.js

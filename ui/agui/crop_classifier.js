@@ -114,6 +114,17 @@ class CropClassifier {
     this.onProgressCallback = onProgress;
     if (this.modelLoaded) return true;
 
+    // iOS/WKWebView: WebGL is present (Apple Metal), but MediaPipe WASM requires
+    // SharedArrayBuffer (needs COOP/COEP headers not available in WKWebView) and
+    // dynamic CDN imports are blocked by Safari's CSP. Skip on all iOS devices.
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+      console.warn('[CropClassifier] iOS detected. MediaPipe WASM not supported in WKWebView. Using color heuristic.');
+      this.runtimeMode = 'fallback_ios';
+      return false;
+    }
+
     // WebGL is the minimum requirement for MediaPipe inference
     const hasGPU = this.checkHardwareSupport();
     if (!hasGPU) {
@@ -257,7 +268,8 @@ class CropClassifier {
   _base64ToImage(base64Image) {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      // data: URIs are same-origin — do NOT set crossOrigin, which can trigger
+      // a CORS preflight and fail in WKWebView when the src is a data: URI.
       img.onload = () => resolve(img);
       img.onerror = () => reject(new Error('Image load failed'));
       img.src = base64Image.startsWith('data:') ? base64Image : `data:image/jpeg;base64,${base64Image}`;

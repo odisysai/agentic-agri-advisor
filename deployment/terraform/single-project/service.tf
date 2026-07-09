@@ -97,6 +97,16 @@ resource "google_cloud_run_v2_service" "app" {
         name  = "GOOGLE_OIDC_CLIENT_ID"
         value = var.google_oidc_client_id
       }
+
+      env {
+        name  = "EXPERT_MODEL_NAME"
+        value = var.expert_model_name
+      }
+
+      env {
+        name  = "EXPERT_MODEL_FALLBACK"
+        value = var.expert_model_fallback
+      }
     }
 
     service_account                  = google_service_account.app_sa.email

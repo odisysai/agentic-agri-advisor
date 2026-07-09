@@ -1167,9 +1167,21 @@ async def extract_soil_report(request: Request, file: bytes = Body(...)) -> dict
  "iron": null, "soil_type": null}
 Return ONLY JSON."""
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash", contents=[*contents, prompt]
-        )
+        last_soil_exc: Exception | None = None
+        response = None
+        for _soil_model in _expert_models_to_try():
+            try:
+                response = client.models.generate_content(
+                    model=_soil_model, contents=[*contents, prompt]
+                )
+                break
+            except Exception as _e:
+                last_soil_exc = _e
+                if _is_model_not_found(_e):
+                    continue
+                raise
+        if response is None:
+            raise last_soil_exc or RuntimeError("All Gemini models unavailable")
 
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
@@ -1296,7 +1308,19 @@ async def log_client_error(payload: ClientErrorLog, request: Request) -> dict:
     Called by the global window.onerror and unhandledrejection handlers in
     dashboard.js. Errors are logged server-side so iOS/Android crashes are
     visible without needing a USB-connected debugger.
+
+    Accepts both application/json (fetch) and text/plain (sendBeacon Blob fallback).
     """
+    # sendBeacon with a Blob sends Content-Type: application/json but some
+    # browsers send it as text/plain — parse manually if FastAPI body validation
+    # didn't fire (i.e., if the raw body came through as text/plain).
+    if not any(vars(payload).values()):
+        try:
+            raw = await request.body()
+            data = json.loads(raw)
+            payload = ClientErrorLog(**{k: data.get(k, "") for k in ClientErrorLog.model_fields})
+        except Exception:
+            pass
     try:
         ua = request.headers.get("user-agent", "")[:200]
         logger.log_struct({
@@ -1542,6 +1566,24 @@ class ExpertChatRequest(BaseModel):
 
 
 EXPERT_MODEL_NAME = os.environ.get("EXPERT_MODEL_NAME", "gemini-2.5-flash")
+EXPERT_MODEL_FALLBACK = os.environ.get("EXPERT_MODEL_FALLBACK", "gemini-2.5-flash-lite")
+
+
+def _expert_models_to_try() -> list[str]:
+    """Return models to try in order. Deduplicates primary and fallback."""
+    seen: set[str] = set()
+    models = []
+    for name in (EXPERT_MODEL_NAME, EXPERT_MODEL_FALLBACK):
+        if name and name not in seen:
+            seen.add(name)
+            models.append(name)
+    return models
+
+
+def _is_model_not_found(exc: Exception) -> bool:
+    """True when the Gemini API says the model no longer exists (transient 404)."""
+    msg = str(exc)
+    return "NOT_FOUND" in msg or "404" in msg or "no longer available" in msg
 
 EXPERT_SYSTEM_PROMPT = """You are Krishi Bisesagya, a wise and experienced agricultural expert consultant backed by Gemini cloud AI.
 You have deep knowledge of agronomy, soil science, integrated pest management, irrigation systems, market pricing, government schemes, and sustainable farming practices.
@@ -1636,33 +1678,45 @@ async def expert_chat_stream(req: ExpertChatRequest, request: Request):
         user_message = f"[Farm context: {req.context}]\n\nGreet the farmer by their name ({farmer_name}). {req.message}"
 
     async def generate_stream():
-        try:
-            from google import genai
-            from google.genai import types as genai_types
+        from google import genai
+        from google.genai import types as genai_types
 
-            # Pass api_key explicitly to avoid GOOGLE_API_KEY vs GEMINI_API_KEY conflict
-            client = genai.Client(api_key=gemini_api_key)
+        client = genai.Client(api_key=gemini_api_key)
+        full_prompt = f"{greeting}{user_message}"
+        last_exc: Exception | None = None
 
-            full_prompt = f"{greeting}{user_message}"
+        for model_name in _expert_models_to_try():
+            try:
+                response = client.models.generate_content_stream(
+                    model=model_name,
+                    contents=full_prompt,
+                    config=genai_types.GenerateContentConfig(
+                        system_instruction=EXPERT_SYSTEM_PROMPT,
+                        temperature=0.4,
+                        max_output_tokens=1024,
+                    ),
+                )
+                for chunk in response:
+                    if chunk.text:
+                        yield json.dumps({"text": chunk.text, "done": False}) + "\n"
+                yield json.dumps({"text": "", "done": True}) + "\n"
+                return  # success — stop trying further models
+            except Exception as e:
+                last_exc = e
+                if _is_model_not_found(e):
+                    continue  # retry with next model in list
+                # Non-404 error: surface immediately, no retry
+                yield (
+                    json.dumps({"text": f"⚠️ Expert consultation failed: {e}", "done": True})
+                    + "\n"
+                )
+                return
 
-            response = client.models.generate_content_stream(
-                model=EXPERT_MODEL_NAME,
-                contents=full_prompt,
-                config=genai_types.GenerateContentConfig(
-                    system_instruction=EXPERT_SYSTEM_PROMPT,
-                    temperature=0.4,
-                    max_output_tokens=1024,
-                ),
-            )
-            for chunk in response:
-                if chunk.text:
-                    yield json.dumps({"text": chunk.text, "done": False}) + "\n"
-            yield json.dumps({"text": "", "done": True}) + "\n"
-        except Exception as e:
-            yield (
-                json.dumps({"text": f"⚠️ Expert consultation failed: {e}", "done": True})
-                + "\n"
-            )
+        # All models exhausted
+        yield (
+            json.dumps({"text": f"⚠️ Expert consultation failed: {last_exc}", "done": True})
+            + "\n"
+        )
 
     return StreamingResponse(
         generate_stream(),

@@ -347,6 +347,15 @@ class LocalAiEngine {
       return false;
     }
 
+    // iOS/iPadOS: even when navigator.gpu exists (iOS 18+ Safari added WebGPU),
+    // WKWebView kills the tab when a 2GB model stream hits the ~1.5GB per-process
+    // memory limit. Always route iOS to cloud expert — no local model on iOS.
+    if (this.isIOSDevice()) {
+      console.warn('[Local AI] iOS detected. Local model not supported on WKWebView. Routing to cloud expert.');
+      this.llmMode = 'cloud_only_ios';
+      return false;
+    }
+
     this.checkHardwareSupport();
     if (!this.webGpuSupported) {
       console.warn('[Local AI] WebGPU not available. Routing to cloud expert (Bisesagya).');
