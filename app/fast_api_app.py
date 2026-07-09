@@ -1566,7 +1566,7 @@ class ExpertChatRequest(BaseModel):
 
 
 EXPERT_MODEL_NAME = os.environ.get("EXPERT_MODEL_NAME", "gemini-2.5-flash")
-EXPERT_MODEL_FALLBACK = os.environ.get("EXPERT_MODEL_FALLBACK", "gemini-2.5-flash-lite")
+EXPERT_MODEL_FALLBACK = os.environ.get("EXPERT_MODEL_FALLBACK", "gemini-3.1-flash-lite")
 
 
 def _expert_models_to_try() -> list[str]:
@@ -1581,8 +1581,12 @@ def _expert_models_to_try() -> list[str]:
 
 
 def _is_model_not_found(exc: Exception) -> bool:
-    """True when the Gemini API says the model no longer exists (transient 404)."""
+    """True when the Gemini API says the model endpoint no longer exists (transient 404).
+    Quota exhaustion returns RESOURCE_EXHAUSTED / 429, not NOT_FOUND — do not retry those.
+    """
     msg = str(exc)
+    if "RESOURCE_EXHAUSTED" in msg or "429" in msg or "quota" in msg.lower():
+        return False  # quota error — retrying a different model won't help
     return "NOT_FOUND" in msg or "404" in msg or "no longer available" in msg
 
 EXPERT_SYSTEM_PROMPT = """You are Krishi Bisesagya, a wise and experienced agricultural expert consultant backed by Gemini cloud AI.

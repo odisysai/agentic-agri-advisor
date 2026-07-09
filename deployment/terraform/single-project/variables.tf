@@ -50,8 +50,8 @@ variable "expert_model_name" {
 
 variable "expert_model_fallback" {
   type        = string
-  description = "Fallback Gemini model used when the primary returns NOT_FOUND (e.g. during a Google model rollout)."
-  default     = "gemini-2.5-flash-lite"
+  description = "Fallback Gemini model used when the primary returns NOT_FOUND (e.g. during a Google model rollout). Uses a different generation to avoid same-rollout outages."
+  default     = "gemini-3.1-flash-lite"
 }
 
 variable "model_asset_cors_origins" {
